@@ -161,7 +161,7 @@ p { margin: 0; }
 }
 
 #faq-block { padding: 0 0 90px; }
-.faq-wrap .faq { max-width: 860px; }
+
 .faq { display: grid; gap: 12px; }
 .faq details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 0 24px; }
 .faq summary { list-style: none; cursor: pointer; padding: 20px 36px 20px 0; font-weight: 700; font-size: 17px; position: relative; }

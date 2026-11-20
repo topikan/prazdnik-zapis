@@ -313,20 +313,47 @@
           '<br><small class="muted">/' + esc(a.slug) + (a.city ? " · " + esc(a.city) : "") + " · вход: " + esc(a.login || "не создан") + "</small></div>" +
           "<div>Заявок: " + a.orders + "</div><div></div>" +
           '<div class="acts"><button class="btn small" data-open="' + a.id + '">Открыть</button>' +
-          '<button class="btn ghost small" data-user="' + a.id + '" data-login="' + esc(a.login || a.slug) + '">Вход для агентства</button>' +
+          '<button class="btn ghost small" data-user="' + a.id + '" data-login="' + esc(a.login || a.slug) + '" data-slug="' + esc(a.slug) + '">Вход для агентства</button>' +
           '<button class="btn ' + (a.active ? "danger" : "ghost") + ' small" data-toggle="' + a.id + '" data-active="' + (a.active ? 0 : 1) + '">' + (a.active ? "Выключить" : "Включить") + "</button></div></div>";
       }).join("") || '<div class="card empty">Агентств пока нет</div>';
     }).catch(function (e) { flash(e.message, true); });
   }
+  /* ---------- окно с данными для входа ---------- */
+  function genPass() {
+    var abc = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789", a = new Uint32Array(12), out = "";
+    crypto.getRandomValues(a);
+    for (var i = 0; i < a.length; i++) out += abc[a[i] % abc.length];
+    return out;
+  }
+  function showCreds(login, pass, slug) {
+    var base = location.origin;
+    $("credText").value =
+      "Ваша страница онлайн-записи: " + base + "/" + slug + "\n" +
+      "Личный кабинет: " + base + "/admin/\n" +
+      "Логин: " + login + "\n" +
+      "Пароль: " + pass + "\n\n" +
+      "После первого входа смените пароль во вкладке «Настройки».";
+    $("credCopy").textContent = "Скопировать";
+    $("credDlg").showModal();
+  }
+  $("credCopy").addEventListener("click", function () {
+    var ta = $("credText"), btn = this;
+    function done() { btn.textContent = "Скопировано"; }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(ta.value).then(done, fallback);
+    else fallback();
+    function fallback() { ta.select(); try { document.execCommand("copy"); done(); } catch (e) { btn.textContent = "Выделите текст и нажмите Ctrl+C"; } }
+  });
+  $("credClose").addEventListener("click", function () { $("credDlg").close(); });
+
   $("agencies").addEventListener("click", function (e) {
     var t = e.target;
     if (t.dataset.open) api("agency_open", { id: +t.dataset.open }).then(function (m) { start(m); tab = "orders"; }).catch(function (err) { flash(err.message, true); });
     if (t.dataset.toggle) api("agency_toggle", { id: +t.dataset.toggle, active: t.dataset.active === "1" }).then(loadAgencies);
     if (t.dataset.user) {
       var login = prompt("Логин для агентства", t.dataset.login); if (!login) return;
-      var pass = Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8).toUpperCase();
+      var pass = genPass(), slug = t.dataset.slug;
       api("agency_user", { id: +t.dataset.user, login: login, password: pass }).then(function () {
-        alert("Вход для агентства создан.\n\nЛогин: " + login + "\nПароль: " + pass + "\n\nПередайте его агентству лично и попросите сменить пароль во вкладке «Настройки». Повторно этот пароль не показывается.");
+        showCreds(login, pass, slug);
         loadAgencies();
       }).catch(function (err) { flash(err.message, true); });
     }

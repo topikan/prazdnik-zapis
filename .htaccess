@@ -14,13 +14,12 @@ Options -Indexes
   Header always set Strict-Transport-Security "max-age=31536000"
 </IfModule>
 
-# Всегда HTTPS
+# Переход на HTTPS включается в панели хостинга (настройки сайта → «Перенаправлять HTTP на HTTPS»):
+# за прокси хостинга правило здесь вызывает бесконечную переадресацию.
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteCond %{HTTPS} !=on
-  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
   # Короткие ссылки агентств: bronprazdnik.ru/fabrika-skazok → страница записи
+  RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^([a-z0-9-]{2,40})/$ /$1 [R=301,L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d

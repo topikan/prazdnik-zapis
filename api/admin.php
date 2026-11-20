@@ -74,6 +74,13 @@ switch ($action) {
         $st->execute([$status, (int)($in['id'] ?? 0), $a['id']]);
         json_out(['ok' => $st->rowCount() > 0]);
 
+    case 'order_delete': // удалить заявку навсегда (персональные данные клиента тоже удаляются)
+        $a = current_agency();
+        $st = db()->prepare('DELETE FROM orders WHERE id = ? AND agency_id = ?');
+        $st->execute([(int)($in['id'] ?? 0), $a['id']]);
+        if (!$st->rowCount()) fail('Заявка не найдена', 404);
+        json_out(['ok' => true]);
+
     // ----- расписание -----
     case 'schedule':
         $a = current_agency(); $cfg = $a['cfg'];

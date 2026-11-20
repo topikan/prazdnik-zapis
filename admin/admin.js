@@ -3,6 +3,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var me = null, cfg = null, slug = "", tab = "orders";
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  var DAYS = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+  function plural(n, one, few, many) { var m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; }
   var STATUS = { "new": "Новая", confirmed: "Подтверждена", done: "Выполнена", cancelled: "Отменена" };
   var ADDON_ICONS = [["sack", "Мешок с подарком"], ["camera", "Фотоаппарат"], ["letter", "Письмо"], ["bubbles", "Пузыри"], ["candy", "Конфета"], ["cake", "Торт"], ["balloon", "Шарик"], ["music", "Музыка"], ["snowflake", "Снежинка"], ["car", "Машина"], ["star", "Звезда"], ["video", "Видео"], ["gift", "Подарок"]];
 
@@ -60,7 +62,12 @@
   }
 
   /* ---------- вкладки ---------- */
-  $("tabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b && !b.disabled) setTab(b.dataset.tab); });
+  $("tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || b.disabled || b.dataset.tab === tab) return;
+    if (dirty[tab] && !confirm("На этой вкладке есть несохранённые изменения. Уйти без сохранения?")) return;
+    if (dirty[tab]) markDirty(tab, false);
+    setTab(b.dataset.tab);
+  });
   function setTab(t) {
     tab = t;
     document.querySelectorAll("#tabs button").forEach(function (b) { b.setAttribute("aria-current", b.dataset.tab === t ? "true" : "false"); });
@@ -81,36 +88,47 @@
   ["ordReload"].forEach(function (id) { $(id).addEventListener("click", loadOrders); });
   ["ordFrom", "ordTo", "ordStatus"].forEach(function (id) { $(id).addEventListener("change", loadOrders); });
 
+  function years(a) { var n = parseInt(a, 10); return String(+a) === String(a).trim() && n > 0 && n < 19 ? n + " " + plural(n, "год", "года", "лет") : a; }
+  function statusSelect(o) {
+    return '<select class="st-select st-' + esc(o.status) + '" data-order="' + o.id + '" aria-label="Статус заявки № ' + o.id + '">' +
+      Object.keys(STATUS).map(function (k) { return '<option value="' + k + '"' + (k === o.status ? " selected" : "") + ">" + STATUS[k] + "</option>"; }).join("") + "</select>";
+  }
   function loadOrders() {
     defaultDates();
     api("orders", { from: $("ordFrom").value, to: $("ordTo").value }).then(function (r) {
       var st = $("ordStatus").value;
       var list = r.orders.filter(function (o) { return !st || o.status === st; });
-      if (!list.length) { $("orders").innerHTML = '<div class="card empty">Заявок за этот период нет</div>'; return; }
+      var active = list.filter(function (o) { return o.status !== "cancelled"; });
+      var sum = active.reduce(function (s, o) { return s + +o.total; }, 0);
+      $("ordSummary").textContent = list.length ? list.length + " " + plural(list.length, "заявка", "заявки", "заявок") + (sum ? " · на " + rub(sum) + (active.length < list.length ? " без отменённых" : "") : "") : "";
+      if (!list.length) { $("orders").innerHTML = '<div class="card empty"><b>Заявок нет</b><p class="muted">За выбранные даты' + (st ? " с таким статусом" : "") + " заявок не было. Измените период или статус.</p></div>"; return; }
       $("orders").innerHTML = list.map(function (o) {
         var d = o.data || {}, ch = find(cfg.characters, d.character), pr = find(cfg.programs, d.program);
-        var kids = (d.children || []).map(function (c) { return esc(c.name) + (c.age ? ", " + esc(c.age) : ""); }).join("; ");
+        var kids = (d.children || []).map(function (c) { return esc(c.name) + (c.age ? ", " + esc(years(c.age)) : ""); }).join("; ");
         var addons = (d.addons || []).map(function (id) { var a = find(cfg.addons, id); return a ? esc(a.title) : ""; }).filter(Boolean).join(", ");
-        return '<div class="card order">' +
-          '<div class="when"><b>' + human(o.visit_date) + "</b>" + esc(o.visit_time) + '<small>№ ' + o.id + "</small></div>" +
-          "<div><b>" + esc(ch ? ch.title : d.character) + "</b><small>" + esc(pr ? pr.title + ", " + pr.minutes + " мин" : d.program) + " · детей: " + esc(d.kids) + "</small>" +
-          (addons ? "<small>Допы: " + addons + "</small>" : "") + (kids ? "<small>Дети: " + kids + "</small>" : "") + (d.comment ? "<small>Пожелания: " + esc(d.comment) + "</small>" : "") + "</div>" +
-          "<div><b>" + esc(o.name) + '</b><small><a href="tel:' + esc(o.phone) + '">' + esc(fmtPhone(o.phone)) + "</a></small><small>" + esc(o.address) + "</small></div>" +
-          '<div><div class="sum">' + rub(o.total) + '</div><span class="st st-' + esc(o.status) + '">' + STATUS[o.status] + "</span>" +
-          '<p><select data-order="' + o.id + '" aria-label="Статус заявки ' + o.id + '">' + Object.keys(STATUS).map(function (k) { return '<option value="' + k + '"' + (k === o.status ? " selected" : "") + ">" + STATUS[k] + "</option>"; }).join("") + "</select></p></div>" +
-          "</div>";
+        var extra = (addons ? "<dt>Допы</dt><dd>" + addons + "</dd>" : "") + (kids ? "<dt>Дети</dt><dd>" + kids + "</dd>" : "") + (d.comment ? "<dt>Пожелания</dt><dd>" + esc(d.comment) + "</dd>" : "");
+        return '<article class="card order' + (o.status === "cancelled" ? " is-cancelled" : "") + '">' +
+          '<div class="o-when"><b>' + human(o.visit_date) + "</b><span>" + esc(o.visit_time) + "</span><small>" + DAYS[new Date(o.visit_date + "T12:00").getDay()] + " · № " + o.id + "</small></div>" +
+          '<div class="o-what"><b>' + esc(ch ? ch.title : d.character) + "</b><p>" + esc(pr ? pr.title + ", " + pr.minutes + " мин" : d.program) + " · " + esc(d.kids) + " " + plural(+d.kids || 0, "ребёнок", "ребёнка", "детей") + "</p>" + (extra ? "<dl>" + extra + "</dl>" : "") + "</div>" +
+          '<div class="o-who"><b>' + esc(o.name) + '</b><a href="tel:+' + esc(String(o.phone).replace(/\D/g, "")) + '">' + esc(fmtPhone(o.phone)) + "</a><p>" + esc(o.address) + "</p></div>" +
+          '<div class="o-side"><div class="sum">' + rub(o.total) + "</div>" + statusSelect(o) +
+          '<button type="button" class="o-del" data-del-order="' + o.id + '">Удалить</button></div></article>';
       }).join("");
     }).catch(function (e) { flash(e.message, true); });
   }
   $("orders").addEventListener("change", function (e) {
     var id = e.target.dataset.order; if (!id) return;
-    api("order_status", { id: +id, status: e.target.value }).then(function () { flash("Статус обновлён"); loadOrders(); }).catch(function (err) { flash(err.message, true); });
+    e.target.className = "st-select st-" + e.target.value;
+    api("order_status", { id: +id, status: e.target.value }).then(function () { flash("Статус заявки № " + id + ": " + STATUS[e.target.value].toLowerCase()); loadOrders(); }).catch(function (err) { flash(err.message, true); });
+  });
+  $("orders").addEventListener("click", function (e) {
+    var id = e.target.dataset.delOrder; if (!id) return;
+    if (!confirm("Удалить заявку № " + id + " навсегда? Данные клиента тоже удалятся, восстановить их будет нельзя.\n\nЕсли заказ просто не состоялся, лучше поставьте статус «Отменена».")) return;
+    api("order_delete", { id: +id }).then(function () { flash("Заявка № " + id + " удалена"); loadOrders(); }).catch(function (err) { flash(err.message, true); });
   });
   function find(list, id) { return (list || []).filter(function (x) { return x.id === id; })[0]; }
 
   /* ---------- расписание ---------- */
-  var DAYS = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-  function plural(n, one, few, many) { var m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; }
   function trips(n) { return n + " " + plural(n, "выезд", "выезда", "выездов"); }
   var schSlots = [];
   function shiftDay(n) { var d = new Date($("schDate").value + "T12:00"); d.setDate(d.getDate() + n); setDate($("schDate"), iso(d)); loadSchedule(); }
@@ -170,7 +188,7 @@
 
   /* ---------- редактор строк ---------- */
   // fields: [{k, label, type: text|number|date|time|select|percent|mult, options, num}]
-  function rowsEditor(title, hint, rows, fields, newRow) {
+  function rowsEditor(title, hint, rows, fields, newRow, max) {
     var box = document.createElement("div"); box.className = "card ed";
     var data = clone(rows || []);
     function cell(f, r, i) {
@@ -183,9 +201,10 @@
     }
     function draw() {
       box.innerHTML = "<h2>" + esc(title) + "</h2>" + (hint ? '<p class="muted">' + esc(hint) + "</p>" : "") +
-        "<table><thead><tr>" + fields.map(function (f) { return "<th>" + esc(f.label) + "</th>"; }).join("") + "<th></th></tr></thead><tbody>" +
-        data.map(function (r, i) { return "<tr>" + fields.map(function (f) { return '<td class="' + (f.num ? "num" : "") + '">' + cell(f, r, i) + "</td>"; }).join("") + '<td><button type="button" class="del" data-del="' + i + '" aria-label="Удалить строку">×</button></td></tr>'; }).join("") +
-        '</tbody></table><button type="button" class="btn ghost small add">+ Добавить</button>';
+        "<table><thead><tr>" + fields.map(function (f) { return '<th class="' + (f.num ? "num" : "") + '">' + esc(f.label) + "</th>"; }).join("") + (max === 0 ? "" : "<th></th>") + "</tr></thead><tbody>" +
+        data.map(function (r, i) { return "<tr>" + fields.map(function (f) { return '<td class="' + (f.num ? "num" : "") + '">' + cell(f, r, i) + "</td>"; }).join("") + (max === 0 ? "" : '<td class="del-cell"><button type="button" class="del" data-del="' + i + '" aria-label="Удалить строку" title="Удалить строку">×</button></td>') + "</tr>"; }).join("") +
+        "</tbody></table>" + (data.length ? "" : '<p class="ed-empty">Пока ничего нет</p>') +
+        (max === 0 || (max && data.length >= max) ? "" : '<button type="button" class="btn ghost small add">+ Добавить</button>');
     }
     box.addEventListener("input", function (e) {
       var i = e.target.dataset.i, k = e.target.dataset.k; if (i == null) return;
@@ -233,7 +252,7 @@
     ed.matrix = { get: function () { var out = {}; ed.characters.get().forEach(function (c) { out[c.id] = {}; ed.programs.get().forEach(function (p) { var v = (prices[c.id] || {})[p.id]; if (v != null) out[c.id][p.id] = v; }); }); return out; } };
 
     ed.kids = rowsEditor("Дети", "Сколько детей входит в цену, максимум на один заказ и доплата за каждого сверх нормы.", [cfg.kids],
-      [{ k: "included", label: "Входит в цену", type: "number", num: 1 }, { k: "max", label: "Максимум", type: "number", num: 1 }, { k: "extraPrice", label: "Доплата за ребёнка, ₽", type: "number", num: 1 }], function () { return { included: 5, max: 15, extraPrice: 300 }; });
+      [{ k: "included", label: "Входит в цену", type: "number", num: 1 }, { k: "max", label: "Максимум", type: "number", num: 1 }, { k: "extraPrice", label: "Доплата за ребёнка, ₽", type: "number", num: 1 }], function () { return { included: 5, max: 15, extraPrice: 300 }; }, 0);
     ed.dateRules = rowsEditor("Наценки по датам", "Коэффициент: 1 — обычная цена, 1,5 — на 50% дороже. Подпись видит клиент.", cfg.dateRules,
       [{ k: "from", label: "С", type: "date" }, { k: "to", label: "По", type: "date" }, { k: "mult", label: "Коэффициент", type: "mult", num: 1 }, { k: "label", label: "Подпись" }],
       function () { return { from: cfg.season.start, to: cfg.season.start, mult: 1, label: "" }; });
@@ -243,9 +262,9 @@
     ed.demand = rowsEditor("Наценка за спрос", "Когда свободных выездов на это время остаётся мало, цена растёт. Удалите строки, если наценка не нужна.", cfg.demandPricing,
       [{ k: "freeShareAtMost", label: "Свободно не больше, %", type: "percent", num: 1 }, { k: "plus", label: "Наценка, %", type: "percent", num: 1 }, { k: "label", label: "Подпись для клиента" }],
       function () { return { freeShareAtMost: 0.5, plus: 0.1, label: "Это время популярно" }; });
-    ed.promo = rowsEditor("Скидка за раннее бронирование", "Действует для заказов, оформленных до указанной даты. Оставьте пустым, если не нужна.", cfg.promo ? [cfg.promo] : [],
+    ed.promo = rowsEditor("Скидка за раннее бронирование", "Действует для заказов, оформленных до указанной даты. Если скидка не нужна, удалите строку.", cfg.promo ? [cfg.promo] : [],
       [{ k: "percent", label: "Скидка, %", type: "number", num: 1 }, { k: "until", label: "Для заказов до", type: "date" }, { k: "text", label: "Текст" }],
-      function () { return { percent: 10, until: cfg.season.start, text: "" }; });
+      function () { return { percent: 10, until: cfg.season.start, text: "" }; }, 1);
     ed.addons = rowsEditor("Дополнительные услуги", "Все картинки в одном стиле, выберите подходящую.", cfg.addons,
       [{ k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "price", label: "Цена, ₽", type: "number", num: 1 }, { k: "icon", label: "Картинка", type: "select", options: ADDON_ICONS }],
       function () { return { id: uid("a"), title: "", note: "", price: 1000, icon: "star" }; });
@@ -270,7 +289,7 @@
   /* ---------- настройки ---------- */
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
-    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "В особый день последний визит в", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Принимать заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
+    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "Особый день: последний визит", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
@@ -378,7 +397,7 @@
       $("agencies").innerHTML = r.agencies.map(function (a) {
         return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.demo ? ' <span class="st st-new">демо</span>' : "") + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') +
           '<br><small class="muted">/' + esc(a.slug) + (a.city ? " · " + esc(a.city) : "") + " · вход: " + esc(a.login || "не создан") + "</small></div>" +
-          "<div>Заявок: " + a.orders + "</div><div></div>" +
+          "<div class=\"ag-count\"><b>" + a.orders + "</b> " + plural(a.orders, "заявка", "заявки", "заявок") + "</div>" +
           '<div class="acts"><button class="btn small" data-open="' + a.id + '">Открыть</button>' +
           '<button class="btn ghost small" data-user="' + a.id + '" data-login="' + esc(a.login || a.slug) + '" data-slug="' + esc(a.slug) + '">Вход для агентства</button>' +
           '<button class="btn ' + (a.active ? "danger" : "ghost") + ' small" data-toggle="' + a.id + '" data-active="' + (a.active ? 0 : 1) + '">' + (a.active ? "Выключить" : "Включить") + "</button>" +
@@ -386,6 +405,26 @@
       }).join("") || '<div class="card empty">Агентств пока нет</div>';
     }).catch(function (e) { flash(e.message, true); });
   }
+  /* ---------- несохранённые изменения ---------- */
+  var dirty = {};
+  function markDirty(t, on) {
+    dirty[t] = on;
+    var bar = document.querySelector("#tab-" + t + " .save-bar");
+    if (bar) bar.classList.toggle("is-dirty", on);
+  }
+  ["prices", "settings", "site"].forEach(function (t) {
+    var sec = $("tab-" + t);
+    ["input", "change", "changed"].forEach(function (ev) {
+      sec.addEventListener(ev, function (e) {
+        if (e.target.closest && e.target.closest(".save-bar, #pwForm, #tgActs")) return;
+        if (e.target.id === "notifyTest") return;
+        markDirty(t, true);
+      }, true);
+    });
+    sec.querySelector(".save-bar .btn").addEventListener("click", function () { setTimeout(function () { if (!document.querySelector("#flash.bad:not([hidden])")) markDirty(t, false); }, 900); });
+  });
+  window.addEventListener("beforeunload", function (e) { if (Object.keys(dirty).some(function (k) { return dirty[k]; })) { e.preventDefault(); e.returnValue = ""; } });
+
   /* ---------- даты и время: всегда ДД.ММ.ГГГГ и 24 часа, независимо от языка браузера ---------- */
   var MONTHS_NOM = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
   function isoToRu(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v.slice(8, 10) + "." + v.slice(5, 7) + "." + v.slice(0, 4) : ""; }

@@ -13,7 +13,8 @@
 <body>
   <div id="login" class="login" hidden>
     <form id="loginForm" class="card login-card">
-      <h1>Вход</h1>
+      <div class="login-brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3l7 10h-4l6 8h-5l6 7H6l6-7H7l6-8H9z" fill="currentColor"/></svg>БронПраздник</div>
+      <h1>Вход в личный кабинет</h1>
       <label>Логин<input name="login" autocomplete="username" required></label>
       <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
       <p class="err" id="loginErr" hidden></p>
@@ -51,6 +52,7 @@
             <select id="ordStatus"><option value="">Все</option><option value="new">Новые</option><option value="confirmed">Подтверждённые</option><option value="done">Выполненные</option><option value="cancelled">Отменённые</option></select>
           </label>
           <button class="btn ghost" id="ordReload">Обновить</button>
+          <span class="bar-note" id="ordSummary" role="status"></span>
         </div>
         <div id="orders"></div>
       </section>
@@ -86,12 +88,12 @@
 
       <section id="tab-prices" class="tab" hidden>
         <div id="pricesForm"></div>
-        <div class="save-bar"><button class="btn" id="savePrices">Сохранить цены и услуги</button></div>
+        <div class="save-bar"><button class="btn" id="savePrices">Сохранить цены и услуги</button><span class="dirty-note">Есть несохранённые изменения</span></div>
       </section>
 
       <section id="tab-settings" class="tab" hidden>
         <div id="settingsForm"></div>
-        <div class="save-bar"><button class="btn" id="saveSettings">Сохранить настройки</button></div>
+        <div class="save-bar"><button class="btn" id="saveSettings">Сохранить настройки</button><span class="dirty-note">Есть несохранённые изменения</span></div>
         <div class="card">
           <h2>Сменить пароль</h2>
           <form id="pwForm" class="inline">
@@ -105,7 +107,7 @@
       <section id="tab-site" class="tab" hidden>
         <p class="muted">Тексты страницы bronprazdnik.ru для агентств. После сохранения они сразу появляются на сайте.</p>
         <div id="siteForm"></div>
-        <div class="save-bar"><button class="btn" id="saveSite">Сохранить главную</button> <a href="../" target="_blank" rel="noopener noreferrer">Открыть главную ↗</a></div>
+        <div class="save-bar"><button class="btn" id="saveSite">Сохранить главную</button><span class="dirty-note">Есть несохранённые изменения</span><a class="save-link" href="../" target="_blank" rel="noopener noreferrer">Открыть главную ↗</a></div>
       </section>
 
       <section id="tab-agencies" class="tab" hidden>

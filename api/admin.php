@@ -122,6 +122,7 @@ switch ($action) {
     // ----- уведомления -----
     case 'notify_get':
         $a = current_agency();
+        if (tg_ready()) { try { tg_poll(); } catch (Throwable $e) { error_log('tg_poll: ' . $e->getMessage()); } }
         json_out(['tgReady' => tg_ready(), 'tgChats' => count(tg_chats((int)$a['id']))]);
 
     case 'tg_link':

@@ -26,12 +26,17 @@
   }
 
   function api(action, data) {
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = ctl && setTimeout(function () { ctl.abort(); }, 25000);
     return fetch("../api/admin.php?action=" + action, {
-      method: "POST", credentials: "same-origin",
+      method: "POST", credentials: "same-origin", signal: ctl ? ctl.signal : undefined,
       headers: { "Content-Type": "application/json", "X-CSRF": me ? me.csrf : "" },
       body: JSON.stringify(data || {})
+    }).catch(function (e) {
+      throw new Error(e && e.name === "AbortError" ? "Сервер долго не отвечает. Проверьте интернет и попробуйте ещё раз." : "Нет связи с сервером. Проверьте интернет.");
     }).then(function (r) {
-      return r.json().catch(function () { return { error: "Сервер не ответил" }; }).then(function (j) {
+      if (timer) clearTimeout(timer);
+      return r.json().catch(function () { return { error: "Сервер ответил с ошибкой (код " + r.status + ")" }; }).then(function (j) {
         if (r.status === 401 && action !== "login") { showLogin(); throw new Error(j.error); }
         if (!r.ok) throw new Error(j.error || "Ошибка");
         return j;
@@ -451,6 +456,7 @@
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
   ];
   function loadSite() {
+    $("siteForm").innerHTML = '<div class="card empty"><p class="muted">Загружаю тексты главной…</p></div>';
     api("site_get").then(function (r) {
       if (r.landing) return r.landing;
       return null;
@@ -476,7 +482,10 @@
       siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение" }], function () { return { title: "", text: "" }; });
       siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ" }], function () { return { q: "", a: "" }; });
       [siteEd.strip, siteEd.items, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
-    }).catch(function (e) { flash(e.message, true); });
+    }).catch(function (e) {
+      $("siteForm").innerHTML = '<div class="card empty"><b>Не удалось загрузить тексты</b><p class="muted">' + esc(e.message) + '</p><button class="btn ghost small" type="button" id="siteRetry">Попробовать ещё раз</button></div>';
+      $("siteRetry").addEventListener("click", loadSite);
+    });
   }
   $("saveSite").addEventListener("click", function () {
     var d = clone(siteData || {});

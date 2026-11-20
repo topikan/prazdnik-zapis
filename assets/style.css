@@ -33,7 +33,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--cream); color: var(--ink); font: 400 15px/1.5 var(--font); }
+body { margin: 0; background: var(--cream); color: var(--ink); font: 400 15px/1.5 var(--font); overflow-x: clip; }
 button, input, textarea { font: inherit; color: inherit; }
 svg { display: block; }
 a { color: inherit; }
@@ -53,7 +53,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .btn-ghost:hover { border-color: var(--ink); }
 
 /* Первый экран: зимняя картинка (агентство может заменить свою) */
-.hero { position: relative; color: #fff; background: var(--night) url("img/winter.webp") center 35% / cover no-repeat; padding: 22px 0 150px; overflow: hidden; isolation: isolate; }
+.hero { position: relative; color: #fff; background: var(--night) url("img/winter.webp") center 35% / cover no-repeat; padding: calc(22px + env(safe-area-inset-top)) 0 150px; overflow: hidden; isolation: isolate; }
 .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(10, 19, 40, .9) 0%, rgba(10, 19, 40, .6) 50%, rgba(10, 19, 40, .25) 100%), linear-gradient(180deg, rgba(10, 19, 40, .3), rgba(10, 19, 40, 0) 40%, rgba(10, 19, 40, .55) 100%); }
 .hero.custom .hero-santa { display: none; }
 .hero-santa { position: absolute; z-index: -1; right: max(24px, calc(50% - 560px)); bottom: 70px; width: 330px; height: auto; }

@@ -12,5 +12,5 @@ $season = $cfg['season'];
 $cfg['live'] = true;
 $cfg['occupancy'] = occupancy((int)$a['id'], $season['start'], $season['end']);
 $cfg['legal']['processor'] = $APP['processor'] ?? '';
-unset($cfg['telegram']); // служебное, клиенту не нужно
+unset($cfg['telegram'], $cfg['notify']); // служебное: почта для уведомлений агентства посетителям не показывается
 json_out($cfg);

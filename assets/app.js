@@ -1,5 +1,7 @@
 (function () {
   "use strict";
+  // Если сайт открыли по http, переходим на https (хостинг за прокси не всегда делает это сам)
+  if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) { location.replace("https://" + location.host + location.pathname + location.search + location.hash); return; }
 
   var $ = function (id) { return document.getElementById(id); };
   var MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -105,7 +107,7 @@
   }
   function span() {
     var prog = find(cfg.programs, state.program);
-    return Math.max(1, Math.ceil(((prog ? prog.minutes : 30) + (cfg.travelMinutes || 30)) / 60));
+    return Math.max(1, Math.ceil(((prog ? prog.minutes : 30) + (cfg.travelMinutes == null ? 30 : +cfg.travelMinutes)) / 60));
   }
   function slotsFor(date) {
     var from = minutes(cfg.hours.from), to = minutes(cfg.hours.to);
@@ -155,7 +157,7 @@
     $("programs").innerHTML = cfg.programs.map(function (p) {
       return '<label class="card"><input type="radio" name="program" value="' + esc(p.id) + '"' + (state.program === p.id ? " checked" : "") + ">" +
         '<span class="card-body"><svg class="prog-icon" viewBox="0 0 48 48" aria-hidden="true"><use href="#' + (PROG_ICON[p.icon] || "i-giftbig") + '"/></svg>' +
-        '<span><span class="card-title">' + esc(p.title) + '</span><span class="card-note">' + esc(p.note) + '</span><span class="prog-min">' + p.minutes + " мин · от " + rub(cfg.prices[state.character][p.id]) + "</span></span></span></label>";
+        '<span><span class="card-title">' + esc(p.title) + '</span><span class="card-note">' + esc(p.note) + '</span><span class="prog-min">' + esc(p.minutes) + " мин · от " + rub(cfg.prices[state.character][p.id]) + "</span></span></span></label>";
     }).join("");
   }
   function renderKids() {

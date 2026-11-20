@@ -3,3 +3,4 @@ config.local.php
 node_modules/
 _router.php
 uploads/logos/
+data/sessions/

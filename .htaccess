@@ -1,8 +1,11 @@
 # Закрыть служебное от доступа из браузера
-<FilesMatch "^(config\.local\.php|config\.example\.php|README\.md)$">
+<FilesMatch "^(config\.local\.php|config\.example\.php|README\.md|_router\.php|\.user\.ini|php\.ini)$">
   Require all denied
 </FilesMatch>
-RedirectMatch 404 ^/(lib|docs|\.git|\.github)(/.*)?$
+<FilesMatch "\.(sqlite|sqlite3|db|log|sql|bak|sh|gs|md|ini|lock|dist)$">
+  Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(lib|docs|data|\.git|\.github)(/.*)?$
 
 Options -Indexes
 

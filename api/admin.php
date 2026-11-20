@@ -12,18 +12,38 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 
 // ---------- вход ----------
 if ($action === 'login') {
-    rate_limit('login', 8, 900);
+    $login = is_scalar($in['login'] ?? null) ? mb_substr(trim((string)$in['login']), 0, 60) : '';
+    $pass = is_scalar($in['password'] ?? null) ? (string)$in['password'] : '';
+    rate_limit('login', 8, 900);                                   // с одного адреса
+    rate_limit('loginu', 10, 900, 'u:' . mb_strtolower($login));    // на один логин с любых адресов
     $st = db()->prepare('SELECT * FROM users WHERE login = ?');
-    $st->execute([(string)($in['login'] ?? '')]);
+    $st->execute([$login]);
     $u = $st->fetch();
-    if (!$u || !password_verify((string)($in['password'] ?? ''), $u['password_hash'])) fail('Неверный логин или пароль', 401);
+    // проверяем пароль даже для несуществующего логина, чтобы по времени ответа нельзя было угадать логины
+    $ok = password_verify($pass, $u ? $u['password_hash'] : '$2y$10$q5sdvpWX2/YTdl9MyGFC7OSeoTpADJYzKj5F00tnYaTMzjAhj5UGS');
+    if (!$u || !$ok) fail('Неверный логин или пароль', 401);
+    if ($u['role'] === 'agency') { $ag = agency_by_id((int)$u['agency_id']); if (!$ag) fail('Неверный логин или пароль', 401); }
+    if (password_needs_rehash($u['password_hash'], PASSWORD_DEFAULT)) {
+        $u['password_hash'] = password_hash($pass, PASSWORD_DEFAULT);
+        db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$u['password_hash'], $u['id']]);
+    }
     session_regenerate_id(true);
-    $_SESSION = ['uid' => (int)$u['id'], 'role' => $u['role'], 'agency' => $u['agency_id'] ? (int)$u['agency_id'] : null, 'csrf' => bin2hex(random_bytes(24))];
+    $_SESSION = ['uid' => (int)$u['id'], 'role' => $u['role'], 'agency' => $u['agency_id'] ? (int)$u['agency_id'] : null,
+        'csrf' => bin2hex(random_bytes(24)), 'fp' => pass_fp($u['password_hash']), 'seen' => time()];
     json_out(me());
 }
 
 // ---------- дальше только для вошедших ----------
-if (empty($_SESSION['uid'])) fail('Нужно войти', 401);
+function kick(string $msg = 'Нужно войти'): void { $_SESSION = []; if (session_status() === PHP_SESSION_ACTIVE) session_destroy(); fail($msg, 401); }
+if (empty($_SESSION['uid'])) kick();
+if (time() - (int)($_SESSION['seen'] ?? 0) > SESSION_DAYS * 86400) kick('Сессия закончилась, войдите снова');
+// Пользователь мог быть удалён, или его пароль сменили: тогда эта сессия больше не действует
+$stU = db()->prepare('SELECT id, role, agency_id, password_hash FROM users WHERE id = ?');
+$stU->execute([(int)$_SESSION['uid']]);
+$user = $stU->fetch();
+if (!$user || $user['role'] !== $_SESSION['role'] || !hash_equals(pass_fp($user['password_hash']), (string)($_SESSION['fp'] ?? ''))) kick('Сессия устарела, войдите снова');
+if ($user['role'] !== 'super' && (int)$user['agency_id'] !== (int)($_SESSION['agency'] ?? 0)) kick('Сессия устарела, войдите снова');
+if (time() - (int)$_SESSION['seen'] > 300) $_SESSION['seen'] = time();
 // «me» только читает и отдаёт токен; остальное требует токен в заголовке
 if ($action !== 'me' && !hash_equals($_SESSION['csrf'] ?? '', (string)($_SERVER['HTTP_X_CSRF'] ?? ''))) fail('Сессия устарела, обновите страницу', 403);
 $isSuper = $_SESSION['role'] === 'super';
@@ -50,9 +70,13 @@ switch ($action) {
     case 'password': // сменить свой пароль
         $new = (string)($in['new'] ?? '');
         if (strlen($new) < 10) fail('Пароль не короче 10 символов');
+        rate_limit('passwd', 10, 900);
         $st = db()->prepare('SELECT password_hash FROM users WHERE id = ?'); $st->execute([$_SESSION['uid']]);
         if (!password_verify((string)($in['old'] ?? ''), (string)$st->fetchColumn())) fail('Старый пароль неверный');
-        db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([password_hash($new, PASSWORD_DEFAULT), $_SESSION['uid']]);
+        if (strlen($new) > 200) fail('Слишком длинный пароль');
+        $hash = password_hash($new, PASSWORD_DEFAULT);
+        db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$hash, $_SESSION['uid']]);
+        $_SESSION['fp'] = pass_fp($hash); // эта сессия остаётся, остальные (на других устройствах) выходят
         json_out(['ok' => true]);
 
     // ----- заявки -----
@@ -121,10 +145,12 @@ switch ($action) {
         $c = $in['config'] ?? null;
         if (!is_array($c)) fail('Нет настроек');
         if (!$isSuper) $c['demo'] = $a['cfg']['demo'] ?? false; // демо-режим меняет только владелец сервиса
-        $errors = validate_config($c);
-        if ($errors) fail(implode('. ', $errors));
-        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($c, JSON_UNESCAPED_UNICODE), $a['id']]);
-        json_out(['ok' => true]);
+        $c['logo'] = $a['cfg']['logo'] ?? '';                   // логотип меняется только загрузкой файла
+        $errors = [];
+        $clean = normalize_config($c, $errors);
+        if ($errors) fail(implode('. ', array_slice(array_values(array_unique($errors)), 0, 5)));
+        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($clean, JSON_UNESCAPED_UNICODE), $a['id']]);
+        json_out(['ok' => true, 'config' => $clean]);
 
     // ----- логотип агентства -----
     case 'logo_upload':
@@ -224,7 +250,7 @@ switch ($action) {
         $slug = strtolower(trim((string)($in['slug'] ?? '')));
         $name = trim((string)($in['name'] ?? ''));
         if (!preg_match('/^[a-z0-9-]{2,40}$/', $slug)) fail('Адрес ссылки: латиница, цифры и дефис, от 2 символов');
-        if (in_array($slug, ['admin', 'api', 'assets', 'agencies', 'install', 'lib'], true)) fail('Такой адрес занят системой');
+        if (in_array($slug, ['admin', 'api', 'assets', 'agencies', 'install', 'lib', 'uploads', 'docs', 'data', 'zapis', 'consent', 'privacy', 'index', 'demo', 'www', 'mail'], true)) fail('Такой адрес занят системой');
         if (agency_by_slug($slug)) fail('Такой адрес уже есть');
         if ($name === '') fail('Укажите название');
         $tpl = json_decode(file_get_contents(APP_ROOT . '/agencies/demo.json'), true);
@@ -270,8 +296,15 @@ switch ($action) {
         if (strlen($pass) < 10) fail('Пароль не короче 10 символов');
         $st = db()->prepare('SELECT id, agency_id FROM users WHERE login = ?'); $st->execute([$login]); $u = $st->fetch();
         if ($u && (int)$u['agency_id'] !== $aid) fail('Такой логин уже занят');
-        if ($u) db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([password_hash($pass, PASSWORD_DEFAULT), $u['id']]);
-        else db()->prepare('INSERT INTO users (agency_id, login, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)')->execute([$aid, $login, password_hash($pass, PASSWORD_DEFAULT), 'agency', date('Y-m-d H:i:s')]);
+        // У агентства один вход: новый логин заменяет старый, а новый пароль выкидывает всех, кто был внутри
+        $hash = password_hash($pass, PASSWORD_DEFAULT);
+        $st = db()->prepare("SELECT id FROM users WHERE agency_id = ? AND role = 'agency' ORDER BY id"); $st->execute([$aid]); $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+        if ($ids) {
+            db()->prepare('UPDATE users SET login = ?, password_hash = ? WHERE id = ?')->execute([$login, $hash, $ids[0]]);
+            if (count($ids) > 1) db()->prepare('DELETE FROM users WHERE agency_id = ? AND role = ? AND id <> ?')->execute([$aid, 'agency', $ids[0]]);
+        } else {
+            db()->prepare('INSERT INTO users (agency_id, login, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)')->execute([$aid, $login, $hash, 'agency', date('Y-m-d H:i:s')]);
+        }
         json_out(['ok' => true]);
 }
 fail('Неизвестное действие', 404);

@@ -38,3 +38,6 @@ jobs:
             config.local.php
             _router.php
             *.sqlite
+            install/**
+            data/sessions/**
+            uploads/logos/**

@@ -11,7 +11,7 @@ $in = body_json();
 // Ловушка для ботов: поле, которое человек не видит и не заполняет
 if (!empty($in['website'])) json_out(['ok' => true, 'id' => 0]);
 
-rate_limit('order', 5, 600);
+rate_limit('order', 8, 600);
 
 $a = agency_by_slug((string)($in['agency'] ?? ''));
 if (!$a || !$a['active']) fail('Агентство не найдено', 404);
@@ -20,6 +20,7 @@ if (!empty($cfg['demo'])) fail('Это демо-версия, заявки не 
 
 // --- проверка полей ---
 $str = function ($v, int $max): string { return mb_substr(trim(preg_replace('/\s+/u', ' ', (string)$v)), 0, $max); };
+foreach (['character', 'program', 'date', 'time', 'zone', 'name', 'phone', 'address', 'comment'] as $k) if (isset($in[$k]) && !is_scalar($in[$k])) fail('Проверьте заполнение формы');
 $o = [
     'character' => (string)($in['character'] ?? ''),
     'program'   => (string)($in['program'] ?? ''),
@@ -35,7 +36,8 @@ if (strlen($phoneDigits) === 11 && $phoneDigits[0] === '8') $phoneDigits = '7' .
 $address = $str($in['address'] ?? '', 200);
 $comment = $str($in['comment'] ?? '', 500);
 $children = [];
-foreach (array_slice((array)($in['children'] ?? []), 0, (int)$cfg['kids']['max']) as $c) {
+foreach (array_slice(is_array($in['children'] ?? null) ? $in['children'] : [], 0, (int)$cfg['kids']['max']) as $c) {
+    if (!is_array($c)) continue;
     $cn = $str($c['name'] ?? '', 40); $ca = preg_replace('/\D/', '', (string)($c['age'] ?? ''));
     if ($cn !== '' || $ca !== '') $children[] = ['name' => $cn, 'age' => substr($ca, 0, 2)];
 }
@@ -56,6 +58,11 @@ if ($address === '') fail('Укажите адрес');
 if (empty($in['consent'])) fail('Нужно согласие на обработку персональных данных');
 
 $phone = '+' . $phoneDigits;
+
+// Защита от забивания расписания фальшивыми заявками: не больше 3 активных заявок с одного номера в агентстве
+$st = db()->prepare("SELECT COUNT(*) FROM orders WHERE agency_id = ? AND phone = ? AND status IN ('new','confirmed') AND visit_date >= ?");
+$st->execute([$a['id'], $phone, agency_today($cfg)]);
+if ((int)$st->fetchColumn() >= 3) fail('С этого номера уже есть несколько заявок. Позвоните в агентство, если нужно ещё.', 429);
 $span = order_span($cfg, $o['program']);
 
 // --- бронь под блокировкой, чтобы последнее окно не забрали двое ---

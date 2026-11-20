@@ -1,5 +1,7 @@
 (function () {
   "use strict";
+  // Если сайт открыли по http, переходим на https (хостинг за прокси не всегда делает это сам)
+  if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) { location.replace("https://" + location.host + location.pathname + location.search + location.hash); return; }
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function safeUrl(u, fallback) { return /^https:\/\//.test(u || "") ? u : fallback; }

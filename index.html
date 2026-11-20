@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru" translate="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="google" content="notranslate">
+  <meta name="theme-color" content="#E8F0F4">
+  <title>Заказать Деда Мороза на дом</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2718%27 r=%2711%27 fill=%27%23B3203A%27/%3E%3Crect x=%2713%27 y=%273%27 width=%276%27 height=%275%27 rx=%271%27 fill=%27%23B8912F%27/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Prata&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="demo-note" id="demoNote" hidden>Демо-версия: цены примерные, заявка никуда не отправляется.</div>
+
+  <header class="top">
+    <div class="wrap">
+      <p class="agency" id="agencyName">&nbsp;</p>
+      <h1>Дед Мороз к вам домой</h1>
+      <p class="lead">Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков.</p>
+      <a class="phone" id="agencyPhone" href="#" hidden></a>
+    </div>
+  </header>
+
+  <main class="wrap" id="app">
+    <form id="order" novalidate>
+
+      <section class="step" id="step-who">
+        <h2><span class="n">1</span>Кто приедет</h2>
+        <div class="options" id="characters" role="radiogroup" aria-label="Кто приедет"></div>
+      </section>
+
+      <section class="step" id="step-program">
+        <h2><span class="n">2</span>Программа</h2>
+        <div class="options" id="programs" role="radiogroup" aria-label="Программа"></div>
+        <div class="kids">
+          <div>
+            <p class="kids-title">Сколько детей</p>
+            <p class="kids-note" id="kidsNote"></p>
+          </div>
+          <div class="stepper">
+            <button type="button" id="kidsMinus" aria-label="Меньше детей">−</button>
+            <output id="kidsValue" aria-live="polite">1</output>
+            <button type="button" id="kidsPlus" aria-label="Больше детей">+</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="step-date">
+        <h2><span class="n">3</span>Дата и время</h2>
+        <p class="hint">Цвет дня показывает спрос: чем темнее, тем дороже визит.</p>
+        <div class="heat-legend" aria-hidden="true"><span>дешевле</span><i></i><span>дороже</span></div>
+        <div id="calendar"></div>
+        <div class="times" id="timesBox" hidden>
+          <p class="times-title" id="timesTitle"></p>
+          <div class="time-grid" id="times" role="radiogroup" aria-label="Время"></div>
+        </div>
+      </section>
+
+      <section class="step" id="step-extra">
+        <h2><span class="n">4</span>Дополнительно</h2>
+        <div class="options" id="addons"></div>
+        <p class="sub">Куда ехать</p>
+        <div class="chips" id="zones" role="radiogroup" aria-label="Куда ехать"></div>
+      </section>
+
+      <section class="step" id="step-contacts">
+        <h2><span class="n">5</span>Контакты</h2>
+        <div class="fields">
+          <label class="field"><span>Ваше имя</span><input name="name" autocomplete="name" required></label>
+          <label class="field"><span>Телефон</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (___) ___-__-__" required></label>
+          <label class="field wide"><span>Адрес</span><input name="address" autocomplete="street-address" placeholder="Улица, дом, подъезд, квартира" required></label>
+          <label class="field"><span>Имя ребёнка</span><input name="child" placeholder="Деду Морозу пригодится"></label>
+          <label class="field"><span>Возраст</span><input name="age" inputmode="numeric" placeholder="Например, 5"></label>
+          <label class="field wide"><span>Пожелания</span><textarea name="comment" rows="3" placeholder="Где спрятать подарок, чего ребёнок боится, какой стих учил"></textarea></label>
+        </div>
+        <label class="consent"><input type="checkbox" name="consent" required> Согласен на обработку персональных данных для оформления заказа</label>
+        <p class="form-error" id="formError" role="alert" hidden></p>
+      </section>
+
+    </form>
+  </main>
+
+  <div class="bar" id="bar">
+    <div class="wrap bar-in">
+      <button type="button" class="bar-sum" id="barSum" aria-expanded="false" aria-controls="breakdown">
+        <span class="bar-label" id="barLabel">Итого</span>
+        <span class="bar-total" id="barTotal">—</span>
+      </button>
+      <button type="submit" form="order" class="cta" id="cta">Заказать</button>
+    </div>
+    <div class="wrap breakdown" id="breakdown" hidden></div>
+  </div>
+
+  <div class="done" id="done" hidden>
+    <div class="done-card" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <h2 id="doneTitle">Заявка принята</h2>
+      <p id="doneText"></p>
+      <div class="done-sum" id="doneSum"></div>
+      <button type="button" class="cta" id="doneClose">Хорошо</button>
+    </div>
+  </div>
+
+  <div class="fail" id="fail" hidden>
+    <div class="wrap"><h1>Страница не найдена</h1><p>Проверьте ссылку или свяжитесь с агентством напрямую.</p></div>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

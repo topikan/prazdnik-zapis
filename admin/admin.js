@@ -75,8 +75,8 @@
 
   /* ---------- заявки ---------- */
   function defaultDates() {
-    if (!$("ordFrom").value) $("ordFrom").value = iso(new Date());
-    if (!$("ordTo").value && cfg) $("ordTo").value = cfg.season.end;
+    if (!$("ordFrom").value) setDate($("ordFrom"), iso(new Date()));
+    if (!$("ordTo").value && cfg) setDate($("ordTo"), cfg.season.end);
   }
   ["ordReload"].forEach(function (id) { $(id).addEventListener("click", loadOrders); });
   ["ordFrom", "ordTo", "ordStatus"].forEach(function (id) { $(id).addEventListener("change", loadOrders); });
@@ -109,32 +109,59 @@
   function find(list, id) { return (list || []).filter(function (x) { return x.id === id; })[0]; }
 
   /* ---------- расписание ---------- */
-  function shiftDay(n) { var d = new Date($("schDate").value + "T12:00"); d.setDate(d.getDate() + n); $("schDate").value = iso(d); loadSchedule(); }
+  var DAYS = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+  function plural(n, one, few, many) { var m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; }
+  function trips(n) { return n + " " + plural(n, "выезд", "выезда", "выездов"); }
+  var schSlots = [];
+  function shiftDay(n) { var d = new Date($("schDate").value + "T12:00"); d.setDate(d.getDate() + n); setDate($("schDate"), iso(d)); loadSchedule(); }
   $("schPrev").addEventListener("click", function () { shiftDay(-1); });
   $("schNext").addEventListener("click", function () { shiftDay(1); });
   $("schDate").addEventListener("change", loadSchedule);
   function loadSchedule() {
-    if (!$("schDate").value) { var t = new Date(); t.setDate(t.getDate() + 1); $("schDate").value = iso(t); }
-    api("schedule", { date: $("schDate").value }).then(function (r) {
-      $("schSlots").innerHTML = r.slots.map(function (s) {
-        var pct = Math.min(100, Math.round(s.busy / s.total * 100));
-        return '<div class="slot-row"><b>' + s.time + '</b><div class="meter"><i class="' + (pct >= 100 ? "full" : pct >= 50 ? "mid" : "") + '" data-w="' + pct + '"></i></div><span>' + s.busy + " из " + s.total + "</span></div>";
-      }).join("");
+    if (!$("schDate").value) { var t = new Date(); t.setDate(t.getDate() + 1); setDate($("schDate"), iso(t)); }
+    var day = $("schDate").value;
+    $("schDayName").textContent = human(day) + ", " + DAYS[new Date(day + "T12:00").getDay()];
+    $("schPairs").textContent = trips(cfg.pairs);
+    api("schedule", { date: day }).then(function (r) {
+      schSlots = r.slots;
+      $("schSlots").innerHTML = r.slots.length ? r.slots.map(function (s, i) {
+        var free = Math.max(0, s.total - s.busy), pct = Math.min(100, Math.round(s.busy / s.total * 100));
+        return '<div class="slot-row"><b>' + s.time + '</b><div class="meter"><i class="' + (pct >= 100 ? "full" : pct >= 50 ? "mid" : "") + '" data-w="' + pct + '"></i></div>' +
+          "<span>" + (free ? "свободно " + free + " из " + s.total : "занято") + "</span>" +
+          (free ? '<button class="btn ghost small" type="button" data-close="' + i + '">Закрыть</button>' : "<span></span>") + "</div>";
+      }).join("") : '<p class="muted">В этот день записи нет: он вне сезона.</p>';
       // ширину задаём из скрипта: атрибут style запрещён политикой безопасности
       document.querySelectorAll("#schSlots .meter i").forEach(function (i) { i.style.width = i.dataset.w + "%"; });
-      $("blockTime").innerHTML = r.slots.map(function (s) { return "<option>" + s.time + "</option>"; }).join("");
-      $("blockForm").teams.max = cfg.pairs;
+      $("closeDay").hidden = !r.slots.some(function (s) { return s.busy < s.total; });
+      $("blockTime").innerHTML = r.slots.map(function (s) { return "<option" + (s.busy >= s.total ? " disabled" : "") + ">" + s.time + "</option>"; }).join("");
       $("schBlocks").innerHTML = r.blocks.length ? r.blocks.map(function (b) {
-        return '<div class="list-row"><span><b>' + esc(b.visit_time) + "</b> · закрыто составов: " + esc(b.teams) + (b.note ? " · " + esc(b.note) : "") + '</span><button class="btn danger small" data-block="' + b.id + '">Открыть</button></div>';
-      }).join("") : '<p class="muted">Вручную ничего не закрыто</p>';
+        var what = +b.teams >= cfg.pairs ? "закрыто полностью" : "занят" + (+b.teams > 1 ? "о " : " ") + trips(+b.teams);
+        return '<div class="list-row"><span><b>' + esc(b.visit_time) + "</b> · " + what + (b.note ? " · " + esc(b.note) : "") + '</span><button class="btn ghost small" data-block="' + b.id + '">Вернуть</button></div>';
+      }).join("") : '<p class="muted">Ничего не закрыто</p>';
       $("schOrders").innerHTML = r.orders.length ? r.orders.map(function (o) {
         return '<div class="list-row"><span><b>' + esc(o.visit_time) + "</b> " + esc(o.name) + " · " + esc(o.address) + '</span><span class="st st-' + esc(o.status) + '">' + STATUS[o.status] + "</span></div>";
-      }).join("") : '<p class="muted">Визитов нет</p>';
+      }).join("") : '<p class="muted">Заявок на этот день нет</p>';
     }).catch(function (e) { flash(e.message, true); });
   }
+  function closeSlots(list) {
+    var day = $("schDate").value;
+    return list.reduce(function (p, s) {
+      return p.then(function () { return api("block_add", { date: day, time: s.time, teams: s.total - s.busy, note: "" }); });
+    }, Promise.resolve());
+  }
+  $("schSlots").addEventListener("click", function (e) {
+    var i = e.target.dataset.close; if (i == null) return;
+    var s = schSlots[+i];
+    closeSlots([s]).then(function () { flash(s.time + " закрыто"); loadSchedule(); }).catch(function (err) { flash(err.message, true); });
+  });
+  $("closeDay").addEventListener("click", function () {
+    var open = schSlots.filter(function (s) { return s.busy < s.total; });
+    if (!open.length || !confirm("Закрыть весь день " + human($("schDate").value) + "? На сайте на этот день больше не запишутся. Заявки, которые уже есть, останутся.")) return;
+    closeSlots(open).then(function () { flash("День закрыт"); loadSchedule(); }).catch(function (err) { flash(err.message, true); loadSchedule(); });
+  });
   $("blockForm").addEventListener("submit", function (e) {
     e.preventDefault(); var f = e.target;
-    api("block_add", { date: $("schDate").value, time: f.time.value, teams: +f.teams.value, note: f.note.value }).then(function () { f.note.value = ""; flash("Время закрыто"); loadSchedule(); }).catch(function (err) { flash(err.message, true); });
+    api("block_add", { date: $("schDate").value, time: f.time.value, teams: 1, note: f.note.value || "Заказ по телефону" }).then(function () { f.note.value = ""; flash("Заказ записан, " + f.time.value + " занято на один выезд"); loadSchedule(); }).catch(function (err) { flash(err.message, true); });
   });
   $("schBlocks").addEventListener("click", function (e) {
     var id = e.target.dataset.block; if (!id) return;
@@ -186,7 +213,7 @@
   var ed = {};
   function renderPrices() {
     var root = $("pricesForm"); root.innerHTML = "";
-    ed.characters = rowsEditor("Кто приедет", "Составы персонажей. Значок «бейдж» — короткая плашка над карточкой, например «Чаще всего выбирают».", cfg.characters,
+    ed.characters = rowsEditor("Кто приедет", "Кто едет на праздник. Значок «бейдж» — короткая плашка над карточкой, например «Чаще всего выбирают».", cfg.characters,
       [{ k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Картинка", type: "select", options: [["santa", "Дед Мороз"], ["duo", "Дед Мороз и Снегурочка"], ["trio", "Трио со Снеговиком"]] }, { k: "badge", label: "Бейдж" }],
       function () { return { id: uid("c"), title: "", note: "", icon: "santa", badge: "" }; });
     ed.programs = rowsEditor("Программы", "Длительность в минутах влияет на то, сколько часов займёт визит вместе с дорогой.", cfg.programs,
@@ -213,7 +240,7 @@
     ed.timeRules = rowsEditor("Наценки по времени", "Например, вечер 31 декабря после 19:00.", cfg.timeRules,
       [{ k: "date", label: "Дата", type: "date" }, { k: "after", label: "Начиная с", type: "time" }, { k: "mult", label: "Коэффициент", type: "mult", num: 1 }, { k: "label", label: "Подпись" }],
       function () { return { date: cfg.season.end, after: "19:00", mult: 2, label: "" }; });
-    ed.demand = rowsEditor("Наценка за спрос", "Когда свободных составов на это время остаётся мало, цена растёт. Удалите строки, если наценка не нужна.", cfg.demandPricing,
+    ed.demand = rowsEditor("Наценка за спрос", "Когда свободных выездов на это время остаётся мало, цена растёт. Удалите строки, если наценка не нужна.", cfg.demandPricing,
       [{ k: "freeShareAtMost", label: "Свободно не больше, %", type: "percent", num: 1 }, { k: "plus", label: "Наценка, %", type: "percent", num: 1 }, { k: "label", label: "Подпись для клиента" }],
       function () { return { freeShareAtMost: 0.5, plus: 0.1, label: "Это время популярно" }; });
     ed.promo = rowsEditor("Скидка за раннее бронирование", "Действует для заказов, оформленных до указанной даты. Оставьте пустым, если не нужна.", cfg.promo ? [cfg.promo] : [],
@@ -243,7 +270,7 @@
   /* ---------- настройки ---------- */
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
-    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "В особый день последний визит в", "time"], ["pairs", "Сколько составов работает", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"]]],
+    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "В особый день последний визит в", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
@@ -259,7 +286,7 @@
   }
   $("saveSettings").addEventListener("click", function () {
     var c = clone(cfg);
-    document.querySelectorAll("#settingsForm input[data-path]").forEach(function (i) {
+    document.querySelectorAll("#settingsForm [data-path]").forEach(function (i) {
       var v = i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim();
       setPath(c, i.dataset.path, v);
     });
@@ -319,6 +346,91 @@
       }).join("") || '<div class="card empty">Агентств пока нет</div>';
     }).catch(function (e) { flash(e.message, true); });
   }
+  /* ---------- даты и время: всегда ДД.ММ.ГГГГ и 24 часа, независимо от языка браузера ---------- */
+  var MONTHS_NOM = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+  function isoToRu(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v.slice(8, 10) + "." + v.slice(5, 7) + "." + v.slice(0, 4) : ""; }
+  function ruToIso(v) {
+    var m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(v); if (!m) return null;
+    var d = new Date(+m[3], +m[2] - 1, +m[1]);
+    return d.getMonth() === +m[2] - 1 && d.getDate() === +m[1] ? m[3] + "-" + m[2] + "-" + m[1] : null;
+  }
+  function setDate(inp, v) { inp.value = v || ""; if (inp._txt) inp._txt.value = isoToRu(v); }
+  function commitDate(txt, v) {
+    var h = txt._iso; if (h.value === v) return;
+    h.value = v;
+    h.dispatchEvent(new Event("input", { bubbles: true }));
+    h.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  function upgradeDate(inp) {
+    var txt = document.createElement("input");
+    txt.type = "text"; txt.className = "dt-text"; txt.inputMode = "numeric"; txt.placeholder = "ДД.ММ.ГГГГ"; txt.maxLength = 10; txt.autocomplete = "off";
+    inp.type = "hidden";
+    inp.parentNode.insertBefore(txt, inp);
+    inp._txt = txt; txt._iso = inp; txt.value = isoToRu(inp.value);
+  }
+  function upgradeTime(inp) {
+    var sel = document.createElement("select"), v = inp.value, times = [];
+    for (var h = 0; h < 24; h++) for (var m = 0; m < 60; m += 30) times.push(pad(h) + ":" + pad(m));
+    if (v && times.indexOf(v) < 0) { times.push(v); times.sort(); }
+    Array.prototype.forEach.call(inp.attributes, function (a) { if (["type", "value", "step"].indexOf(a.name) < 0) sel.setAttribute(a.name, a.value); });
+    sel.innerHTML = (v ? "" : '<option value="">—</option>') + times.map(function (t) { return "<option" + (t === v ? " selected" : "") + ">" + t + "</option>"; }).join("");
+    inp.parentNode.replaceChild(sel, inp);
+  }
+  function upgradeAll() {
+    document.querySelectorAll('input[type="date"]').forEach(upgradeDate);
+    document.querySelectorAll('input[type="time"]').forEach(upgradeTime);
+  }
+  upgradeAll();
+  new MutationObserver(upgradeAll).observe(document.body, { childList: true, subtree: true });
+
+  var pop = document.createElement("div"), popOwner = null, popMonth = null;
+  pop.className = "dt-pop"; pop.hidden = true; document.body.appendChild(pop);
+  function drawPop() {
+    var y = popMonth.getFullYear(), mo = popMonth.getMonth(), sel = popOwner._iso.value, today = iso(new Date());
+    var first = (new Date(y, mo, 1).getDay() + 6) % 7, days = new Date(y, mo + 1, 0).getDate(), html = "";
+    for (var i = 0; i < first; i++) html += "<span></span>";
+    for (var d = 1; d <= days; d++) {
+      var v = y + "-" + pad(mo + 1) + "-" + pad(d);
+      html += '<button type="button" data-d="' + v + '" class="' + (v === sel ? "on " : "") + (v === today ? "today" : "") + '">' + d + "</button>";
+    }
+    pop.innerHTML = '<div class="dt-head"><button type="button" data-m="-1" aria-label="Предыдущий месяц">‹</button><b>' + MONTHS_NOM[mo] + " " + y +
+      '</b><button type="button" data-m="1" aria-label="Следующий месяц">›</button></div><div class="dt-grid"><i>Пн</i><i>Вт</i><i>Ср</i><i>Чт</i><i>Пт</i><i>Сб</i><i>Вс</i>' + html + "</div>";
+  }
+  function openPop(t) {
+    popOwner = t;
+    var v = t._iso.value || iso(new Date());
+    popMonth = new Date(+v.slice(0, 4), +v.slice(5, 7) - 1, 1);
+    drawPop(); pop.hidden = false;
+    var r = t.getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 272)) + window.scrollX + "px";
+    pop.style.top = r.bottom + window.scrollY + 4 + "px";
+  }
+  function closePop() { pop.hidden = true; popOwner = null; }
+  pop.addEventListener("mousedown", function (e) { e.preventDefault(); }); // фокус остаётся в поле
+  pop.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || !popOwner) return;
+    if (b.dataset.m) { popMonth.setMonth(popMonth.getMonth() + +b.dataset.m); drawPop(); return; }
+    var t = popOwner; t.value = isoToRu(b.dataset.d); t.classList.remove("bad"); commitDate(t, b.dataset.d); closePop();
+  });
+  document.addEventListener("focusin", function (e) { if (e.target.classList && e.target.classList.contains("dt-text")) openPop(e.target); });
+  document.addEventListener("focusout", function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains("dt-text")) return;
+    if (popOwner === t) closePop();
+    if (!t.value) commitDate(t, ""); // очистить поле можно, дата сбрасывается при выходе из него
+    t.value = isoToRu(t._iso.value); t.classList.remove("bad");
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && popOwner) closePop(); });
+  document.addEventListener("input", function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains("dt-text")) return;
+    var d = t.value.replace(/\D/g, "").slice(0, 8), out = d.slice(0, 2);
+    if (d.length > 2) out += "." + d.slice(2, 4);
+    if (d.length > 4) out += "." + d.slice(4);
+    t.value = out;
+    var v = ruToIso(out);
+    t.classList.toggle("bad", out.length === 10 && !v);
+    if (v) { commitDate(t, v); if (popOwner === t) { popMonth = new Date(+v.slice(0, 4), +v.slice(5, 7) - 1, 1); drawPop(); } }
+  });
+
   /* ---------- окно с данными для входа ---------- */
   function genPass() {
     var abc = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789", a = new Uint32Array(12), out = "";

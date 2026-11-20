@@ -58,22 +58,27 @@
       <section id="tab-schedule" class="tab" hidden>
         <div class="bar">
           <label>День <input type="date" id="schDate"></label>
-          <button class="btn ghost" id="schPrev">←</button>
-          <button class="btn ghost" id="schNext">→</button>
+          <button class="btn ghost" id="schPrev" aria-label="Предыдущий день">←</button>
+          <button class="btn ghost" id="schNext" aria-label="Следующий день">→</button>
+          <span class="day-name" id="schDayName"></span>
         </div>
         <div class="grid2">
-          <div class="card"><h2>Загрузка по часам</h2><div id="schSlots"></div></div>
           <div class="card">
-            <h2>Закрыть время вручную</h2>
-            <p class="muted">Для заказов по телефону, болезни артиста или выходного. Закрытое время на сайте выбрать нельзя.</p>
+            <div class="card-head"><h2>Загрузка по часам</h2><button class="btn danger small" id="closeDay" type="button">Закрыть весь день</button></div>
+            <p class="muted">Одновременно у вас <b id="schPairs"></b>. Если закрыть час, на сайте на это время больше не запишутся.</p>
+            <div id="schSlots"></div>
+          </div>
+          <div class="card">
+            <h2>Заказ по телефону</h2>
+            <p class="muted">Займёт один выезд в выбранное время, чтобы его не заняли через сайт.</p>
             <form id="blockForm" class="inline">
-              <select name="time" id="blockTime"></select>
-              <label>составов <input name="teams" type="number" min="1" value="1"></label>
-              <input name="note" placeholder="Заметка, например «заказ по телефону»" maxlength="100">
-              <button class="btn">Закрыть</button>
+              <select name="time" id="blockTime" aria-label="Время визита"></select>
+              <input name="note" placeholder="Кто заказал, адрес" maxlength="100">
+              <button class="btn">Записать</button>
             </form>
+            <h2>Закрыто вручную</h2>
             <div id="schBlocks"></div>
-            <h2>Визиты дня</h2>
+            <h2>Заявки с сайта</h2>
             <div id="schOrders"></div>
           </div>
         </div>

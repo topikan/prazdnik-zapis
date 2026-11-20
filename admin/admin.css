@@ -58,7 +58,7 @@ label input, label select { color: var(--ink); font-size: 14px; }
 .empty { color: var(--muted); padding: 30px; text-align: center; }
 
 /* расписание */
-.slot-row { display: grid; grid-template-columns: 56px 1fr 60px; gap: 10px; align-items: center; padding: 4px 0; }
+.slot-row { display: grid; grid-template-columns: 52px 1fr 104px 76px; gap: 10px; align-items: center; padding: 4px 0; }
 .meter { height: 10px; border-radius: 5px; background: #EEE9DF; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--ok); }
 .meter i.mid { background: #E9B23A; } .meter i.full { background: var(--red); }
@@ -97,3 +97,23 @@ label input, label select { color: var(--ink); font-size: 14px; }
 .cred h3 { margin: 0 0 6px; }
 .cred textarea { width: 100%; box-sizing: border-box; font: 14px/1.5 "Golos Text", system-ui, sans-serif; color: var(--ink); resize: none; margin-bottom: 12px; }
 .cred .acts { display: flex; gap: 8px; }
+
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.card-head h2 { margin: 0; }
+.card-head + .muted { margin-top: 6px; }
+.day-name { align-self: center; font-weight: 600; padding-bottom: 2px; }
+.slot-row span { font-size: 13px; color: var(--muted); }
+.dt-text { width: 120px; font-variant-numeric: tabular-nums; }
+.dt-text.bad { border-color: var(--red); }
+.dt-pop { position: absolute; z-index: 50; width: 264px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px; box-shadow: 0 8px 24px rgba(22, 58, 47, .14); }
+.dt-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.dt-head button { border: 0; background: none; font-size: 20px; line-height: 1; padding: 4px 10px; border-radius: 8px; cursor: pointer; color: var(--ink); }
+.dt-head button:hover { background: var(--bg); }
+.dt-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.dt-grid i { font-style: normal; font-size: 11px; color: var(--muted); padding: 4px 0; }
+.dt-grid button { border: 0; background: none; padding: 7px 0; border-radius: 8px; cursor: pointer; color: var(--ink); font: inherit; }
+.dt-grid button:hover { background: var(--bg); }
+.dt-grid button.today { box-shadow: inset 0 0 0 1px var(--gold); }
+.dt-grid button.on { background: var(--ink); color: #fff; }
+@media (max-width: 560px) { .slot-row { grid-template-columns: 46px 1fr 92px 70px; } }
+#tab-schedule .card h2 + .muted, #tab-schedule .card form + h2, #tab-schedule .card div + h2 { margin-top: 18px; }

@@ -1,6 +1,10 @@
 .landing { padding-bottom: 0; }
 .l-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 20px; padding-bottom: 20px; }
 .l-top .phone-pill span { display: inline; }
+.l-top .hide-s { font-weight: inherit; }
+.l-top-acts { display: flex; align-items: center; gap: 10px; }
+.l-login { background: var(--ink); color: #fff; border: 1.5px solid var(--ink); border-radius: 999px; padding: 9px 20px; font-weight: 600; font-size: 14px; text-decoration: none; white-space: nowrap; }
+.l-login:hover { background: #0F2A22; }
 
 .l-hero { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 48px; align-items: center; padding-top: 30px; padding-bottom: 20px; }
 .l-hero h1 { font-size: clamp(36px, 5vw, 58px); text-align: left; margin-bottom: 20px; }
@@ -39,4 +43,6 @@
   .l-grid { grid-template-columns: 1fr; }
   .l-block { padding-top: 54px; }
   .l-top .phone-pill { font-size: 13px; padding: 8px 12px; }
+  .l-login { font-size: 13px; padding: 8px 14px; }
+  .l-top .hide-s { display: none; }
 }

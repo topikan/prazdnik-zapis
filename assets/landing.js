@@ -3,6 +3,21 @@
   // Если сайт открыли по http, переходим на https (хостинг за прокси не всегда делает это сам)
   if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) { location.replace("https://" + location.host + location.pathname + location.search + location.hash); return; }
   var $ = function (id) { return document.getElementById(id); };
+
+  // Кнопка «Отключить анимацию»: выбор запоминается в этом браузере
+  (function () {
+    var KEY = "bp-no-anim", btn = document.getElementById("animToggle"), off = false;
+    try { off = localStorage.getItem(KEY) === "1"; } catch (e) {}
+    function apply() {
+      document.documentElement.classList.toggle("no-anim", off);
+      if (!btn) return;
+      btn.setAttribute("aria-pressed", off ? "true" : "false");
+      var t = off ? "Включить анимацию" : "Отключить анимацию";
+      btn.querySelector("span").textContent = t; btn.title = t + " снега"; btn.setAttribute("aria-label", t);
+    }
+    apply();
+    if (btn) btn.addEventListener("click", function () { off = !off; try { localStorage.setItem(KEY, off ? "1" : "0"); } catch (e) {} apply(); });
+  })();
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function safeUrl(u, fallback) { return /^https:\/\/[^\s<>"]+$/.test(u || "") ? u : fallback; }
   function getJson(url) { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }

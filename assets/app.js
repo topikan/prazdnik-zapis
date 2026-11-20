@@ -4,6 +4,21 @@
   if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) { location.replace("https://" + location.host + location.pathname + location.search + location.hash); return; }
 
   var $ = function (id) { return document.getElementById(id); };
+
+  // Кнопка «Отключить анимацию»: выбор запоминается в этом браузере
+  (function () {
+    var KEY = "bp-no-anim", btn = document.getElementById("animToggle"), off = false;
+    try { off = localStorage.getItem(KEY) === "1"; } catch (e) {}
+    function apply() {
+      document.documentElement.classList.toggle("no-anim", off);
+      if (!btn) return;
+      btn.setAttribute("aria-pressed", off ? "true" : "false");
+      var t = off ? "Включить анимацию" : "Отключить анимацию";
+      btn.querySelector("span").textContent = t; btn.title = t + " снега"; btn.setAttribute("aria-label", t);
+    }
+    apply();
+    if (btn) btn.addEventListener("click", function () { off = !off; try { localStorage.setItem(KEY, off ? "1" : "0"); } catch (e) {} apply(); });
+  })();
   var MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
   var MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   var DOW_FULL = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];

@@ -18,6 +18,10 @@ jobs:
         run: |
           if [ -z "$FTP_SERVER" ]; then echo "Секреты FTP ещё не добавлены, выкладка пропущена"; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
 
+      - name: Пометить версию стилей и скриптов, чтобы браузеры не держали старые
+        if: steps.chk.outputs.ok == 'true'
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::8}/g" *.html admin/*.html
+
       - name: Залить файлы по FTP
         if: steps.chk.outputs.ok == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

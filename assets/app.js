@@ -129,7 +129,10 @@
   }
   function renderKids() {
     $("kidsValue").textContent = state.kids;
-    $("kidsMinus").disabled = state.kids <= 1;
+    var last = state.children[state.children.length - 1];
+    var lastFilled = last && (last.name.trim() || String(last.age).trim());
+    // Нельзя сделать детей меньше, чем вписано имён: сначала убрать ребёнка крестиком
+    $("kidsMinus").disabled = state.kids <= 1 || (state.kids <= state.children.length && lastFilled);
     $("kidsPlus").disabled = state.kids >= cfg.kids.max;
     $("kidsNote").textContent = "До " + cfg.kids.included + " детей входит в цену, каждый следующий +" + rub(cfg.kids.extraPrice) + ".";
   }
@@ -221,7 +224,7 @@
         (state.children.length > 1 ? '<button type="button" data-remove="' + i + '" aria-label="Убрать ребёнка ' + (i + 1) + '">×</button>' : "<span></span>");
       box.appendChild(row);
     });
-    $("addChild").hidden = state.children.length >= 10;
+    $("addChild").hidden = state.children.length >= cfg.kids.max;
   }
 
   function renderBar() {
@@ -253,17 +256,22 @@
     });
     $("calPrev").addEventListener("click", function () { if (state.month > 0) { state.month--; renderCalendar(); } });
     $("calNext").addEventListener("click", function () { if (state.month < months.length - 1) { state.month++; renderCalendar(); } });
-    $("kidsMinus").addEventListener("click", function () { if (state.kids > 1) { state.kids--; renderKids(); renderTimes(); renderBar(); } });
+    $("kidsMinus").addEventListener("click", function () {
+      if (state.kids <= 1) return;
+      state.kids--;
+      if (state.children.length > state.kids) { state.children.pop(); renderChildren(); }
+      renderKids(); renderTimes(); renderBar();
+    });
     $("kidsPlus").addEventListener("click", function () { if (state.kids < cfg.kids.max) { state.kids++; renderKids(); renderTimes(); renderBar(); } });
     $("barSum").addEventListener("click", function () {
       var bd = $("breakdown"); if (!bd.innerHTML) return;
       var open = bd.hidden; bd.hidden = !open; this.setAttribute("aria-expanded", String(open));
     });
 
-    $("children").addEventListener("input", function (e) { var i = e.target.dataset.i; if (i != null) state.children[i][e.target.dataset.k] = e.target.value; });
+    $("children").addEventListener("input", function (e) { var i = e.target.dataset.i; if (i != null) { state.children[i][e.target.dataset.k] = e.target.value; renderKids(); } });
     $("children").addEventListener("click", function (e) {
       var r = e.target.dataset.remove; if (r == null) return;
-      state.children.splice(+r, 1); renderChildren();
+      state.children.splice(+r, 1); renderChildren(); renderKids();
     });
     $("addChild").addEventListener("click", function () {
       state.children.push({ name: "", age: "" }); renderChildren();

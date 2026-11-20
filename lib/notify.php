@@ -64,6 +64,10 @@ function tg_bot(): ?array {
     return $bot;
 }
 // Забирает новые сообщения боту (режим реле): подключения по ссылке и /stop
+function tg_link_pending(): bool {
+    foreach (db()->query("SELECT value FROM settings WHERE name LIKE 'tglink:%'")->fetchAll(PDO::FETCH_COLUMN) as $v) if ((json_decode($v, true)['exp'] ?? 0) >= time()) return true;
+    return false;
+}
 function tg_poll(): void {
     if (!tg_relay()) return;
     $bot = setting_get('tgbot');

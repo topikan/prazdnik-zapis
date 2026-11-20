@@ -60,6 +60,8 @@ $user = $stU->fetch();
 if (!$user || $user['role'] !== $_SESSION['role'] || !hash_equals(pass_fp($user['password_hash']), (string)($_SESSION['fp'] ?? ''))) kick('Сессия устарела, войдите снова');
 if ($user['role'] !== 'super' && (int)$user['agency_id'] !== (int)($_SESSION['agency'] ?? 0)) kick('Сессия устарела, войдите снова');
 if (time() - (int)$_SESSION['seen'] > 300) $_SESSION['seen'] = time();
+// Сессию отпускаем сразу: иначе пока один запрос ждёт Telegram или почту, все остальные запросы админки стоят в очереди
+if (!in_array($action, ['logout', 'password', 'agency_open', 'agency_delete'], true)) session_write_close();
 // «me» только читает и отдаёт токен; остальное требует токен в заголовке
 if ($action !== 'me' && !hash_equals($_SESSION['csrf'] ?? '', (string)($_SERVER['HTTP_X_CSRF'] ?? ''))) fail('Сессия устарела, обновите страницу', 403);
 $isSuper = $_SESSION['role'] === 'super';
@@ -269,7 +271,8 @@ switch ($action) {
     // ----- уведомления -----
     case 'notify_get':
         $a = current_agency();
-        if (tg_ready()) { try { tg_poll(); } catch (Throwable $e) { error_log('tg_poll: ' . $e->getMessage()); } }
+        // спрашиваем Telegram только когда ждём подключения по свежей ссылке — иначе вкладка открывается мгновенно
+        if (tg_ready() && tg_link_pending()) { try { tg_poll(); } catch (Throwable $e) { error_log('tg_poll: ' . $e->getMessage()); } }
         json_out(['tgReady' => tg_ready(), 'tgChats' => count(tg_chats((int)$a['id']))]);
 
     case 'tg_link':

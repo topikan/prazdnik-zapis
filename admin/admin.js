@@ -489,7 +489,7 @@
   function loadAgencies() {
     api("agencies").then(function (r) {
       $("agencies").innerHTML = r.agencies.map(function (a) {
-        return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.demo ? ' <span class="st st-new">демо</span>' : "") + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') +
+        return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.demo ? ' <span class="st st-new">демо</span>' : "") + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') + (a.demo || a.legal ? "" : ' <span class="st st-warn" title="Без них согласие и политика на странице записи неполные">нет реквизитов</span>') +
           '<br><small class="muted">/' + esc(a.slug) + (a.city ? " · " + esc(a.city) : "") + " · вход: " + esc(a.login || "не создан") + "</small></div>" +
           "<div class=\"ag-count\"><b>" + a.orders + "</b> " + plural(a.orders, "заявка", "заявки", "заявок") + "</div>" +
           '<div class="acts"><button class="btn small" data-open="' + a.id + '">Открыть</button>' +

@@ -324,7 +324,7 @@ switch ($action) {
         $rows = [];
         foreach (db()->query('SELECT a.id, a.slug, a.config, a.active, a.created_at, (SELECT COUNT(*) FROM orders o WHERE o.agency_id = a.id) AS orders_count, (SELECT login FROM users u WHERE u.agency_id = a.id LIMIT 1) AS login FROM agencies a ORDER BY a.id DESC') as $r) {
             $cfg = json_decode($r['config'], true) ?: [];
-            $rows[] = ['id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
+            $rows[] = ['id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
         }
         json_out(['agencies' => $rows]);
 

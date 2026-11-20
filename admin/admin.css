@@ -109,6 +109,7 @@ label.row { flex-direction: row; align-items: center; color: var(--ink); font-si
 .st { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; vertical-align: 1px; }
 .st-new { background: #FFF3D6; color: #7A5700; } .st-confirmed { background: #E2F0FF; color: #1D4F8C; }
 .st-done { background: #E7F3EC; color: #24653F; } .st-cancelled { background: #EFEDE8; color: #6B6B6B; }
+.st-warn { background: #FBEAED; color: var(--red); }
 
 /* расписание */
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }

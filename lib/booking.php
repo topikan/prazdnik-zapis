@@ -212,6 +212,11 @@ function normalize_config(array $c, array &$err): array {
     if (is_string($logo) && preg_match('~^uploads/logos/[a-z0-9-]+\.(webp|png|jpe?g)$~', $logo)) $o['logo'] = $logo;
     $hero = $c['heroImage'] ?? '';
     if (is_string($hero) && preg_match('~^uploads/heroes/[a-z0-9-]+\.(webp|png|jpe?g)$~', $hero)) $o['heroImage'] = $hero;
+    // Предоплата: кнопка со ссылкой агентства после заявки; деньги идут агентству напрямую
+    $pay = is_array($c['payment'] ?? null) ? $c['payment'] : [];
+    $o['payment'] = ['enabled' => !empty($pay['enabled']), 'link' => $str($pay['link'] ?? '', 500), 'amount' => $str($pay['amount'] ?? '', 40)];
+    if ($o['payment']['link'] !== '' && !preg_match('~^https://[^\s<>"]+$~', $o['payment']['link'])) $err[] = 'Ссылка на оплату должна начинаться с https://';
+    if ($o['payment']['enabled'] && $o['payment']['link'] === '') $err[] = 'Чтобы показывать кнопку предоплаты, вставьте ссылку на оплату';
     // Баннер внизу страницы записи: пустой заголовок — баннера нет
     if (is_array($c['banner'] ?? null)) {
         $bn = $c['banner'];

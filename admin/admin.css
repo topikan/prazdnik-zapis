@@ -104,6 +104,8 @@ label.row { flex-direction: row; align-items: center; color: var(--ink); font-si
 .st-select.st-confirmed { background-color: #E2F0FF; color: #1D4F8C; }
 .st-select.st-done { background-color: #E7F3EC; color: #24653F; }
 .st-select.st-cancelled { background-color: #EFEDE8; color: #6B6B6B; }
+.o-paid { flex-direction: row; align-items: center; gap: 0; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.o-paid input { margin-right: 6px; }
 .o-del { border: 0; background: none; padding: 4px 0; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .o-del:hover { color: var(--red); }
 .st { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; vertical-align: 1px; }

@@ -82,6 +82,13 @@ function need_super(): void { global $isSuper; if (!$isSuper) fail('Нет до�
 function remove_upload(int $aid, string $path): void {
     if (preg_match('~^uploads/(logos|heroes|chars)/a' . $aid . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $path)) @unlink(APP_ROOT . '/' . $path);
 }
+// Отметка «предоплата получена» у заявки; в старых базах колонка добавляется при первом обращении
+function ensure_orders_paid(): void {
+    static $done = false; if ($done) return;
+    try { db()->query('SELECT paid FROM orders LIMIT 1'); }
+    catch (Throwable $e) { db()->exec('ALTER TABLE orders ADD COLUMN paid TINYINT NOT NULL DEFAULT 0'); }
+    $done = true;
+}
 // Колонка-метка, объединяющая часы одного заказа по телефону; в старых базах добавляется при первом обращении
 function ensure_blocks_grp(): void {
     static $done = false; if ($done) return;
@@ -113,7 +120,8 @@ switch ($action) {
         $a = current_agency();
         $from = valid_date(in_str($in, 'from', (string)(date('Y-m-d'))));
         $to = valid_date(in_str($in, 'to', (string)($a['cfg']['season']['end'])));
-        $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
+        ensure_orders_paid();
+        $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, paid, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
         $st->execute([$a['id'], $from, $to]);
         $rows = [];
         foreach ($st as $r) { $r['data'] = json_decode($r['data'], true); $r['price_lines'] = json_decode($r['price_lines'], true); $rows[] = $r; }
@@ -126,6 +134,14 @@ switch ($action) {
         $st = db()->prepare('UPDATE orders SET status = ? WHERE id = ? AND agency_id = ?');
         $st->execute([$status, (int)($in['id'] ?? 0), $a['id']]);
         json_out(['ok' => $st->rowCount() > 0]);
+
+    case 'order_paid':
+        $a = current_agency();
+        ensure_orders_paid();
+        $chk = db()->prepare('SELECT 1 FROM orders WHERE id = ? AND agency_id = ?'); $chk->execute([(int)($in['id'] ?? 0), $a['id']]);
+        if (!$chk->fetchColumn()) fail('Заявка не найдена', 404);
+        db()->prepare('UPDATE orders SET paid = ? WHERE id = ? AND agency_id = ?')->execute([!empty($in['paid']) ? 1 : 0, (int)($in['id'] ?? 0), $a['id']]);
+        json_out(['ok' => true]);
 
     case 'order_delete': // удалить заявку навсегда (персональные данные клиента тоже удаляются)
         $a = current_agency();

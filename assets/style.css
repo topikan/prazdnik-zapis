@@ -294,6 +294,8 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .done-sum { text-align: left; display: grid; gap: 8px; padding: 16px; margin-bottom: 18px; border-radius: 16px; background: #fff; border: 1px solid var(--line); font-size: 14px; }
 .done-sum .row:last-child { padding-top: 8px; border-top: 1px solid var(--line); font-weight: 800; }
 .done-card .btn { width: 100%; }
+.done-pay { display: grid; gap: 8px; margin-bottom: 10px; }
+.done-pay p { margin: 0; font-size: 13px; color: var(--muted); }
 .fail { padding: 120px 0; text-align: center; }
 
 /* Планшет и телефон: справа брони нет, итог и кнопки прилипают к низу экрана внутри блока записи */

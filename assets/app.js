@@ -531,7 +531,15 @@
     if (kids) rows.push(["Дети", kids]);
     rows = rows.concat(pr.lines).concat([["Итого", pr.total]]);
     $("doneSum").innerHTML = rows.map(function (r) { return '<div class="row"><span>' + esc(r[0]) + "</span><span>" + (typeof r[1] === "number" ? (r[1] < 0 ? "−" + rub(-r[1]) : rub(r[1])) : esc(r[1])) + "</span></div>"; }).join("");
-    $("done").hidden = false; $("doneClose").focus();
+    // кнопка предоплаты — только если агентство включило её в настройках
+    var pay = cfg.payment || {}, payOn = !cfg.demo && pay.enabled && /^https:\/\//.test(pay.link || "");
+    $("donePay").hidden = !payOn;
+    if (payOn) {
+      $("payBtn").href = pay.link;
+      $("payNote").textContent = (pay.amount ? "Предоплата: " + pay.amount + ". " : "") + "Оплата идёт напрямую агентству. Укажите в комментарии к платежу номер заявки № " + (server ? server.id : "") + ".";
+    }
+    $("doneClose").textContent = payOn ? "Закрыть" : "Хорошо";
+    $("done").hidden = false; (payOn ? $("payBtn") : $("doneClose")).focus();
   }
 
   /* ---------- запуск ---------- */

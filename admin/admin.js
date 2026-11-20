@@ -119,11 +119,14 @@
           '<div class="o-what"><b>' + esc(ch ? ch.title : d.character) + "</b><p>" + esc(pr ? pr.title + ", " + pr.minutes + " мин" : d.program) + " · " + esc(d.kids) + " " + plural(+d.kids || 0, "ребёнок", "ребёнка", "детей") + "</p>" + (extra ? "<dl>" + extra + "</dl>" : "") + "</div>" +
           '<div class="o-who"><b>' + esc(o.name) + '</b><a href="tel:+' + esc(String(o.phone).replace(/\D/g, "")) + '">' + esc(fmtPhone(o.phone)) + "</a><p>" + esc(o.address) + "</p></div>" +
           '<div class="o-side"><div class="sum">' + rub(o.total) + "</div>" + statusSelect(o) +
+          '<label class="o-paid"><input type="checkbox" data-paid="' + o.id + '"' + (+o.paid ? " checked" : "") + "> Предоплата получена</label>" +
           '<button type="button" class="o-del" data-del-order="' + o.id + '">Удалить</button></div></article>';
       }).join("");
     }).catch(function (e) { flash(e.message, true); });
   }
   $("orders").addEventListener("change", function (e) {
+    var pid = e.target.dataset.paid;
+    if (pid) { api("order_paid", { id: +pid, paid: e.target.checked }).then(function () { flash("Заявка № " + pid + ": " + (e.target.checked ? "предоплата отмечена" : "отметка о предоплате снята")); }).catch(function (err) { e.target.checked = !e.target.checked; flash(err.message, true); }); return; }
     var id = e.target.dataset.order; if (!id) return;
     e.target.className = "st-select st-" + e.target.value;
     api("order_status", { id: +id, status: e.target.value }).then(function () { flash("Статус заявки № " + id + ": " + STATUS[e.target.value].toLowerCase()); loadOrders(); }).catch(function (err) { flash(err.message, true); });
@@ -312,6 +315,7 @@
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
     ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "Особый день: последний визит", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
+    ["Предоплата после заявки", [["payment.enabled", "Показывать кнопку «Внести предоплату»", "check"], ["payment.amount", "Сколько внести, например «1 000 ₽» или «30%»"], ["payment.link", "Ссылка на оплату из вашего банка или СБП (https://…)", "wide"]]],
     ["Баннер внизу страницы записи", [["banner.title", "Заголовок (пусто — баннера не будет)"], ["banner.button", "Текст кнопки"], ["banner.text", "Текст", "area"], ["banner.link", "Куда ведёт кнопка: https://… или tel:+7…; пусто — к началу записи"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
@@ -329,6 +333,8 @@
         var v = getPath(cfg, f[0]); if (f[0] === "travelMinutes" && v == null) v = 30; if (f[0] === "leadHours" && v == null) v = 3;
         if (f[2] === "color" && (!v || v.toUpperCase() === "#163A2F" || v.toUpperCase() === "#C9A24A")) v = f[0] === "colors.gold" ? "#D9B26A" : "#B3203A";
         if (/^banner\./.test(f[0]) && v == null) v = BANNER_DEFAULT[f[0].slice(7)];
+        if (f[2] === "check") return '<label class="row wide"><input type="checkbox" data-path="' + f[0] + '"' + (v ? " checked" : "") + "> " + esc(f[1]) + "</label>";
+        if (f[2] === "wide") return '<label class="wide">' + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" value="' + esc(v == null ? "" : v) + '"></label>';
         if (f[2] === "area") return '<label class="wide">' + esc(f[1]) + '<textarea data-path="' + f[0] + '" rows="2">' + esc(v || "") + "</textarea></label>";
         if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
         return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
@@ -433,7 +439,7 @@
   $("saveSettings").addEventListener("click", function () {
     var c = clone(cfg);
     document.querySelectorAll("#settingsForm [data-path]").forEach(function (i) {
-      var v = i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim();
+      var v = i.type === "checkbox" ? i.checked : i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim();
       if (i.dataset.path === "colors.accent" && v.toUpperCase() === "#B3203A") v = "";   // цвета по умолчанию не сохраняем
       if (i.dataset.path === "colors.gold" && v.toUpperCase() === "#D9B26A") v = "";
       setPath(c, i.dataset.path, v);

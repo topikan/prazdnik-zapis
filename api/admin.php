@@ -76,6 +76,10 @@ function current_agency(): array {
     return $a;
 }
 function need_super(): void { global $isSuper; if (!$isSuper) fail('Нет доступа', 403); }
+// Удаляет загруженный файл агентства (только свой и только из папок загрузок)
+function remove_upload(int $aid, string $path): void {
+    if (preg_match('~^uploads/(logos|heroes|chars)/a' . $aid . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $path)) @unlink(APP_ROOT . '/' . $path);
+}
 // Колонка-метка, объединяющая часы одного заказа по телефону; в старых базах добавляется при первом обращении
 function ensure_blocks_grp(): void {
     static $done = false; if ($done) return;
@@ -188,45 +192,78 @@ switch ($action) {
         $c = $in['config'] ?? null;
         if (!is_array($c)) fail('Нет настроек');
         if (!$isSuper) $c['demo'] = $a['cfg']['demo'] ?? false; // демо-режим меняет только владелец сервиса
-        $c['logo'] = $a['cfg']['logo'] ?? '';                   // логотип меняется только загрузкой файла
+        $c['logo'] = $a['cfg']['logo'] ?? '';                   // логотип и фон меняются только загрузкой файла
+        $c['heroImage'] = $a['cfg']['heroImage'] ?? '';
         $errors = [];
         $clean = normalize_config($c, $errors);
         if ($errors) fail(implode('. ', array_slice(array_values(array_unique($errors)), 0, 5)));
-        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($clean, JSON_UNESCAPED_UNICODE), $a['id']]);
+        $aid = (int)$a['id'];
+        // фото составов — только свои файлы этого агентства
+        $used = [];
+        foreach ($clean['characters'] as &$ch) {
+            if (!empty($ch['photo']) && (!preg_match('~^uploads/chars/a' . $aid . '-~', $ch['photo']) || !is_file(APP_ROOT . '/' . $ch['photo']))) unset($ch['photo']);
+            if (!empty($ch['photo'])) $used[] = $ch['photo'];
+        }
+        unset($ch);
+        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($clean, JSON_UNESCAPED_UNICODE), $aid]);
+        foreach (glob(APP_ROOT . '/uploads/chars/a' . $aid . '-*') ?: [] as $f) if (!in_array('uploads/chars/' . basename($f), $used, true)) @unlink($f);
         json_out(['ok' => true, 'config' => $clean]);
 
-    // ----- логотип агентства -----
-    case 'logo_upload':
-        $a = current_agency();
+    // ----- картинки агентства: логотип, фон первого экрана, фото составов -----
+    case 'logo_upload': $in['kind'] = 'logo'; // старое название действия
+    case 'image_upload':
+        $a = current_agency(); $aid = (int)$a['id'];
+        $kind = in_str($in, 'kind');
+        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'char' => 'chars'];
+        $maxSide = ['logo' => 2000, 'hero' => 4000, 'char' => 3000];
+        if (!isset($dirs[$kind])) fail('Неизвестный вид картинки');
+        $charId = in_str($in, 'char');
+        if ($kind === 'char' && !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $charId)) fail('Не выбран состав');
         if (!preg_match('~^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$~', in_str($in, 'data'), $m)) fail('Загрузите картинку PNG, JPG или WebP');
         $bin = base64_decode($m[2], true);
-        if ($bin === false || strlen($bin) > 600000) fail('Картинка слишком большая, нужна до 600 КБ');
+        if ($bin === false || strlen($bin) > 1500000) fail('Картинка слишком большая, нужна до 1,5 МБ');
         $info = @getimagesizefromstring($bin);
-        if (!$info || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_WEBP], true) || $info[0] > 2000 || $info[1] > 2000) fail('Не похоже на картинку PNG, JPG или WebP');
-        $dir = dirname(__DIR__) . '/uploads/logos';
+        if (!$info || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_WEBP], true) || $info[0] > $maxSide[$kind] || $info[1] > $maxSide[$kind]) fail('Не похоже на картинку PNG, JPG или WebP');
+        $dir = APP_ROOT . '/uploads/' . $dirs[$kind];
         if (!is_dir($dir) && !@mkdir($dir, 0755, true)) fail('Не удалось сохранить файл на сервере', 500);
-        $name = 'a' . (int)$a['id'] . '-' . bin2hex(random_bytes(4));
+        $name = 'a' . $aid . '-' . bin2hex(random_bytes(4));
         // перекодируем через GD: в файле остаётся только картинка, без посторонних данных
         $img = function_exists('imagecreatefromstring') ? @imagecreatefromstring($bin) : false;
         if ($img && function_exists('imagewebp')) {
             imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true);
-            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", 90); imagedestroy($img);
+            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", $kind === 'hero' ? 82 : 88); imagedestroy($img);
         } else {
             $file = $name . ['png' => '.png', 'jpeg' => '.jpg', 'webp' => '.webp'][$m[1]]; $ok = file_put_contents("$dir/$file", $bin) !== false;
         }
         if (!$ok) fail('Не удалось сохранить файл на сервере', 500);
-        $cfg = $a['cfg']; $old = (string)($cfg['logo'] ?? '');
-        $cfg['logo'] = "uploads/logos/$file";
-        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $a['id']]);
-        if (preg_match('~^uploads/logos/a' . (int)$a['id'] . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $old)) @unlink(dirname(__DIR__) . '/' . $old);
-        json_out(['logo' => $cfg['logo']]);
+        $path = 'uploads/' . $dirs[$kind] . '/' . $file;
+        $cfg = $a['cfg'];
+        if ($kind === 'char') {
+            // если состав уже сохранён, сразу ставим фото; новый состав получит его при сохранении цен
+            foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); $ch['photo'] = $path; }
+            unset($ch);
+        } else {
+            $field = $kind === 'logo' ? 'logo' : 'heroImage';
+            remove_upload($aid, (string)($cfg[$field] ?? ''));
+            $cfg[$field] = $path;
+        }
+        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $aid]);
+        json_out(['path' => $path, 'logo' => $path]);
 
-    case 'logo_remove':
-        $a = current_agency();
-        $cfg = $a['cfg']; $old = (string)($cfg['logo'] ?? '');
-        unset($cfg['logo']);
-        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $a['id']]);
-        if (preg_match('~^uploads/logos/a' . (int)$a['id'] . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $old)) @unlink(dirname(__DIR__) . '/' . $old);
+    case 'logo_remove': $in['kind'] = 'logo';
+    case 'image_remove':
+        $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
+        $kind = in_str($in, 'kind');
+        if ($kind === 'char') {
+            $charId = in_str($in, 'char');
+            foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); unset($ch['photo']); }
+            unset($ch);
+        } elseif ($kind === 'logo' || $kind === 'hero') {
+            $field = $kind === 'logo' ? 'logo' : 'heroImage';
+            remove_upload($aid, (string)($cfg[$field] ?? ''));
+            unset($cfg[$field]);
+        } else fail('Неизвестный вид картинки');
+        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $aid]);
         json_out(['ok' => true]);
 
     // ----- уведомления -----
@@ -269,12 +306,12 @@ switch ($action) {
         need_super();
         $d = $in['landing'] ?? null;
         if (!is_array($d) || trim((string)($d['heroTitle'] ?? '')) === '') fail('Заполните заголовок');
-        foreach (['telegram', 'footerLink'] as $k) if (!empty($d[$k]) && !preg_match('#^https://#', (string)$d[$k])) fail('Ссылки должны начинаться с https://');
+        if (!empty($d['telegram']) && !preg_match('#^https://[^\s<>"]+$#', (string)$d['telegram'])) fail('Ссылка на Telegram должна начинаться с https://');
         if (!empty($d['demoSlug']) && !preg_match('/^[a-z0-9-]{2,40}$/', (string)$d['demoSlug'])) fail('Адрес демо: латиница, цифры и дефис');
         $clean = function ($v, $max) { return mb_substr(trim((string)$v), 0, $max); };
         $out = [];
-        foreach (['telegram', 'heroTitle', 'heroLead', 'demoButton', 'contactButton', 'itemsTitle', 'stepsTitle', 'faqTitle', 'finalTitle', 'finalDemoButton', 'finalContactButton', 'footer', 'footerLink', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
-        foreach (['items' => ['title', 'text'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
+        foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'heroLead', 'demoButton', 'contactButton', 'loginLink', 'itemsTitle', 'itemsLead', 'stepsTitle', 'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
+        foreach (['strip' => ['title'], 'items' => ['title', 'text'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }
         }
@@ -331,8 +368,7 @@ switch ($action) {
         $pdo->prepare('DELETE FROM agencies WHERE id = ?')->execute([$aid]);
         $pdo->prepare('DELETE FROM settings WHERE name = ?')->execute(["tgchats:$aid"]);
         $pdo->commit();
-        $logo = (string)($a['cfg']['logo'] ?? '');
-        if (preg_match('~^uploads/logos/a' . $aid . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $logo)) @unlink(APP_ROOT . '/' . $logo);
+        foreach (['logos', 'heroes', 'chars'] as $d) foreach (glob(APP_ROOT . "/uploads/$d/a$aid-*") ?: [] as $f) @unlink($f);
         if ((int)($_SESSION['agency'] ?? 0) === $aid) unset($_SESSION['agency']);
         json_out(me());
 

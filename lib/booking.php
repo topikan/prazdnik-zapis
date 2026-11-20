@@ -156,7 +156,9 @@ function normalize_config(array $c, array &$err): array {
     $o['characters'] = [];
     foreach ($list($c['characters'] ?? [], 20) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $o['characters'][] = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
+        $row = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
+        if (is_string($x['photo'] ?? null) && preg_match('~^uploads/chars/[a-z0-9-]+\.(webp|png|jpe?g)$~', $x['photo'])) $row['photo'] = $x['photo'];
+        $o['characters'][] = $row;
     }
     $o['programs'] = [];
     foreach ($list($c['programs'] ?? [], 20) as $x) {
@@ -208,6 +210,14 @@ function normalize_config(array $c, array &$err): array {
     $o['notify'] = ['email' => $mail];
     $logo = $c['logo'] ?? '';
     if (is_string($logo) && preg_match('~^uploads/logos/[a-z0-9-]+\.(webp|png|jpe?g)$~', $logo)) $o['logo'] = $logo;
+    $hero = $c['heroImage'] ?? '';
+    if (is_string($hero) && preg_match('~^uploads/heroes/[a-z0-9-]+\.(webp|png|jpe?g)$~', $hero)) $o['heroImage'] = $hero;
+    // Баннер внизу страницы записи: пустой заголовок — баннера нет
+    if (is_array($c['banner'] ?? null)) {
+        $bn = $c['banner'];
+        $o['banner'] = ['title' => $str($bn['title'] ?? '', 120), 'text' => $str($bn['text'] ?? '', 300), 'button' => $str($bn['button'] ?? '', 40), 'link' => $str($bn['link'] ?? '', 300)];
+        if ($o['banner']['link'] !== '' && !preg_match('~^(https://[^\s<>"]+|tel:\+?[0-9()\s-]{5,20})$~', $o['banner']['link'])) $err[] = 'Ссылка кнопки баннера: адрес с https:// или телефон вида tel:+79991234567';
+    }
     return $o;
 }
 function validate_config(array $c): array { $err = []; normalize_config($c, $err); return array_values(array_unique($err)); }

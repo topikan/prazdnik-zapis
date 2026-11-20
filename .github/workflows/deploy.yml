@@ -41,3 +41,5 @@ jobs:
             install/**
             data/sessions/**
             uploads/logos/**
+            uploads/heroes/**
+            uploads/chars/**

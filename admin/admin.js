@@ -205,6 +205,7 @@
     var data = clone(rows || []);
     function cell(f, r, i) {
       var v = r[f.k];
+      if (f.type === "photo") return imgBox("char", r.id, r.photo);
       if (f.type === "select") return "<select data-i=\"" + i + "\" data-k=\"" + f.k + "\">" + f.options.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select>";
       if (f.type === "percent") v = v == null ? "" : Math.round(v * 100);
       var type = f.type === "percent" || f.type === "number" || f.type === "mult" ? "number" : (f.type || "text");
@@ -230,6 +231,10 @@
       if (e.target.dataset.del != null) { data.splice(+e.target.dataset.del, 1); draw(); box.dispatchEvent(new CustomEvent("changed")); }
       if (e.target.classList.contains("add")) { data.push(newRow()); draw(); box.dispatchEvent(new CustomEvent("changed")); }
     });
+    box.addEventListener("photo", function (e) {
+      data.forEach(function (r) { if (r.id === e.detail.id) { if (e.detail.path) r.photo = e.detail.path; else delete r.photo; } });
+      draw(); box.dispatchEvent(new CustomEvent("changed"));
+    });
     draw();
     box.get = function () { return data; };
     return box;
@@ -244,8 +249,8 @@
   var ed = {};
   function renderPrices() {
     var root = $("pricesForm"); root.innerHTML = "";
-    ed.characters = rowsEditor("Кто приедет", "Кто едет на праздник. Значок «бейдж» — короткая плашка над карточкой, например «Чаще всего выбирают».", cfg.characters,
-      [{ k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Картинка", type: "select", options: [["santa", "Дед Мороз"], ["duo", "Дед Мороз и Снегурочка"], ["trio", "Трио со Снеговиком"]] }, { k: "badge", label: "Бейдж" }],
+    ed.characters = rowsEditor("Кто приедет", "Кто едет на праздник. «Иконка» показывается, пока не загружено своё фото: лучше квадратное, персонажи крупно. «Бейдж» — плашка на карточке, например «Чаще всего выбирают».", cfg.characters,
+      [{ k: "photo", label: "Фото", type: "photo" }, { k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Иконка", type: "select", options: [["santa", "Дед Мороз"], ["duo", "Дед Мороз и Снегурочка"], ["trio", "Трио со Снеговиком"]] }, { k: "badge", label: "Бейдж" }],
       function () { return { id: uid("c"), title: "", note: "", icon: "santa", badge: "" }; });
     ed.programs = rowsEditor("Программы", "Длительность в минутах влияет на то, сколько часов займёт визит вместе с дорогой.", cfg.programs,
       [{ k: "title", label: "Название" }, { k: "minutes", label: "Минут", type: "number", num: 1 }, { k: "note", label: "Что входит" }, { k: "icon", label: "Картинка", type: "select", options: [["gift", "Подарок"], ["tree", "Ёлка"], ["ball", "Диско-шар"]] }],
@@ -302,19 +307,24 @@
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
     ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "Особый день: последний визит", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
+    ["Баннер внизу страницы записи", [["banner.title", "Заголовок (пусто — баннера не будет)"], ["banner.button", "Текст кнопки"], ["banner.text", "Текст", "area"], ["banner.link", "Куда ведёт кнопка: https://… или tel:+7…; пусто — к началу записи"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
+  var BANNER_DEFAULT = { title: "Подарите детям настоящий Новый год!", text: "Забронируйте визит Деда Мороза и создайте волшебство в каждом доме.", button: "Забронировать праздник", link: "" };
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
   function setPath(o, p, v) { var ks = p.split("."), last = ks.pop(); ks.forEach(function (k) { if (o[k] == null || typeof o[k] !== "object") o[k] = {}; o = o[k]; }); o[last] = v; }
   function renderSettings() {
     var root = $("settingsForm");
-    var logoCard = '<div class="card"><h2>Логотип</h2><p class="muted">Появится на странице записи вместо ёлочки. Лучше квадратный или горизонтальный, на прозрачном или белом фоне: PNG, JPG или WebP.</p>' +
-      '<div class="logo-box"><div class="logo-prev" id="logoPrev">' + (cfg.logo ? '<img src="../' + esc(cfg.logo) + '" alt="Логотип">' : "<span>Нет логотипа</span>") + "</div>" +
-      '<div class="acts"><label class="btn ghost small file-btn">' + (cfg.logo ? "Заменить" : "Загрузить логотип") + '<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden></label>' +
-      (cfg.logo ? '<button class="btn danger small" type="button" id="logoRemove">Убрать</button>' : "") + "</div></div></div>";
+    var logoCard = '<div class="card"><h2>Оформление страницы записи</h2><div class="design-grid">' +
+      '<div><h3>Логотип</h3><p class="muted">Вместо снежинки рядом с названием. PNG, JPG или WebP, лучше на прозрачном фоне.</p>' + imgBox("logo", "", cfg.logo) + "</div>" +
+      '<div><h3>Фон первого экрана</h3><p class="muted">Своя фотография вместо общей зимней картинки. Лучше горизонтальная, от 1600 px в ширину.</p>' + imgBox("hero", "", cfg.heroImage) + "</div>" +
+      "</div></div>";
     root.innerHTML = logoCard + SETTINGS.map(function (g) {
       return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
-        var v = getPath(cfg, f[0]); if (f[0] === "travelMinutes" && v == null) v = 30; if (f[0] === "leadHours" && v == null) v = 3; if (f[2] === "color" && !v) v = f[0] === "colors.gold" ? "#C9A24A" : "#163A2F";
+        var v = getPath(cfg, f[0]); if (f[0] === "travelMinutes" && v == null) v = 30; if (f[0] === "leadHours" && v == null) v = 3;
+        if (f[2] === "color" && (!v || v.toUpperCase() === "#163A2F" || v.toUpperCase() === "#C9A24A")) v = f[0] === "colors.gold" ? "#D9B26A" : "#B3203A";
+        if (/^banner\./.test(f[0]) && v == null) v = BANNER_DEFAULT[f[0].slice(7)];
+        if (f[2] === "area") return '<label class="wide">' + esc(f[1]) + '<textarea data-path="' + f[0] + '" rows="2">' + esc(v || "") + "</textarea></label>";
         if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
         return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
       }).join("") + "</div></div>";
@@ -330,41 +340,60 @@
   }
   var TIMEZONES = [["Europe/Kaliningrad", "Калининград (МСК−1)"], ["Europe/Moscow", "Москва (МСК)"], ["Europe/Samara", "Самара (МСК+1)"], ["Asia/Yekaterinburg", "Екатеринбург (МСК+2)"], ["Asia/Omsk", "Омск (МСК+3)"], ["Asia/Krasnoyarsk", "Красноярск, Новосибирск (МСК+4)"], ["Asia/Irkutsk", "Иркутск (МСК+5)"], ["Asia/Yakutsk", "Якутск (МСК+6)"], ["Asia/Vladivostok", "Владивосток (МСК+7)"], ["Asia/Magadan", "Магадан (МСК+8)"], ["Asia/Kamchatka", "Камчатка (МСК+9)"]];
 
-  /* ---------- логотип ---------- */
-  // Уменьшаем картинку в браузере до 400 px: файл лёгкий, страница записи грузится быстро
-  function shrinkImage(file) {
+  /* ---------- картинки: логотип, фон, фото составов ---------- */
+  var IMG = {
+    logo: { max: 400, empty: "Нет логотипа", def: "" },
+    hero: { max: 1920, empty: "Общая зимняя картинка", def: "../assets/img/winter-m.webp" },
+    char: { max: 640, empty: "Иконка", def: "" }
+  };
+  function imgBox(kind, charId, path) {
+    var k = IMG[kind], has = /^uploads\//.test(path || "");
+    var prev = has ? '<img src="../' + esc(path) + '" alt="">' : (k.def ? '<img src="' + k.def + '" alt=""><span class="img-tag">' + k.empty + "</span>" : "<span>" + k.empty + "</span>");
+    return '<div class="img-box img-' + kind + '" data-kind="' + kind + '" data-char="' + esc(charId) + '"><div class="img-prev">' + prev + "</div>" +
+      '<div class="acts"><label class="btn ghost small file-btn">' + (has ? "Заменить" : "Загрузить") + '<input type="file" class="img-file" accept="image/png,image/jpeg,image/webp" hidden></label>' +
+      (has ? '<button class="btn danger small img-remove" type="button">' + (kind === "hero" ? "Вернуть общую" : "Убрать") + "</button>" : "") + "</div></div>";
+  }
+  // Уменьшаем картинку в браузере: файл лёгкий, страница записи грузится быстро
+  function shrinkImage(file, max) {
     return new Promise(function (ok, bad) {
       if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return bad(new Error("Нужна картинка PNG, JPG или WebP"));
-      if (file.size > 15e6) return bad(new Error("Файл слишком большой"));
+      if (file.size > 25e6) return bad(new Error("Файл слишком большой"));
       var url = URL.createObjectURL(file), img = new Image();
       img.onload = function () {
-        var k = Math.min(1, 400 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+        var k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
         c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
-        var data = c.toDataURL("image/webp", 0.92);
-        ok(data.indexOf("data:image/webp") === 0 ? data : c.toDataURL("image/png"));
+        var data = c.toDataURL("image/webp", 0.88);
+        ok(data.indexOf("data:image/webp") === 0 ? data : c.toDataURL("image/jpeg", 0.88));
       };
       img.onerror = function () { URL.revokeObjectURL(url); bad(new Error("Не получилось открыть картинку")); };
       img.src = url;
     });
   }
-  $("settingsForm").addEventListener("change", function (e) {
-    if (e.target.id !== "logoFile" || !e.target.files[0]) return;
-    e.stopPropagation();
-    shrinkImage(e.target.files[0]).then(function (data) { return api("logo_upload", { data: data }); })
-      .then(function (r) { cfg.logo = r.logo; flash("Логотип загружен, он уже на странице записи"); renderLogo(); })
+  function imgDone(box, path) {
+    var kind = box.dataset.kind, ch = box.dataset.char;
+    if (kind === "logo") { if (path) cfg.logo = path; else delete cfg.logo; }
+    if (kind === "hero") { if (path) cfg.heroImage = path; else delete cfg.heroImage; }
+    if (kind === "char") {
+      (cfg.characters || []).forEach(function (c) { if (c.id === ch) { if (path) c.photo = path; else delete c.photo; } });
+      var ed = box.closest(".ed"); if (ed) ed.dispatchEvent(new CustomEvent("photo", { detail: { id: ch, path: path } }));
+      return;
+    }
+    box.outerHTML = imgBox(kind, ch, path);
+  }
+  document.addEventListener("change", function (e) {
+    if (!e.target.classList || !e.target.classList.contains("img-file") || !e.target.files[0]) return;
+    var box = e.target.closest(".img-box"), kind = box.dataset.kind;
+    shrinkImage(e.target.files[0], IMG[kind].max).then(function (data) { return api("image_upload", { kind: kind, char: box.dataset.char, data: data }); })
+      .then(function (r) { imgDone(box, r.path); flash(kind === "char" ? "Фото загружено. Если состав новый, сохраните цены" : "Картинка загружена, она уже на странице записи"); })
       .catch(function (err) { flash(err.message, true); });
   }, true);
-  function renderLogo() {
-    var box = document.querySelector(".logo-box"); if (!box) return;
-    $("logoPrev").innerHTML = cfg.logo ? '<img src="../' + esc(cfg.logo) + '" alt="Логотип">' : "<span>Нет логотипа</span>";
-    box.querySelector(".acts").innerHTML = '<label class="btn ghost small file-btn">' + (cfg.logo ? "Заменить" : "Загрузить логотип") + '<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden></label>' +
-      (cfg.logo ? '<button class="btn danger small" type="button" id="logoRemove">Убрать</button>' : "");
-  }
-  $("settingsForm").addEventListener("click", function (e) {
-    if (e.target.id !== "logoRemove" || !confirm("Убрать логотип? На странице записи снова будет ёлочка.")) return;
-    api("logo_remove").then(function () { delete cfg.logo; flash("Логотип убран"); renderLogo(); }).catch(function (err) { flash(err.message, true); });
+  document.addEventListener("click", function (e) {
+    if (!e.target.classList || !e.target.classList.contains("img-remove")) return;
+    var box = e.target.closest(".img-box"), kind = box.dataset.kind;
+    if (!confirm(kind === "hero" ? "Вернуть общую зимнюю картинку?" : "Убрать картинку? Вместо неё будет иконка.")) return;
+    api("image_remove", { kind: kind, char: box.dataset.char }).then(function () { imgDone(box, ""); flash("Готово"); }).catch(function (err) { flash(err.message, true); });
   });
 
   /* ---------- уведомления ---------- */
@@ -400,6 +429,8 @@
     var c = clone(cfg);
     document.querySelectorAll("#settingsForm [data-path]").forEach(function (i) {
       var v = i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim();
+      if (i.dataset.path === "colors.accent" && v.toUpperCase() === "#B3203A") v = "";   // цвета по умолчанию не сохраняем
+      if (i.dataset.path === "colors.gold" && v.toUpperCase() === "#D9B26A") v = "";
       setPath(c, i.dataset.path, v);
     });
     if (c.hours && c.hours.lastDay && !c.hours.lastDay.date) delete c.hours.lastDay;
@@ -414,14 +445,23 @@
   /* ---------- главная (владелец) ---------- */
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
-    ["Первый экран", [["heroTitle", "Заголовок", "area"], ["heroLead", "Подзаголовок", "area"], ["demoButton", "Кнопка демо"], ["contactButton", "Кнопка связи"]]],
-    ["Ссылки", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Текст в подвале"], ["footerLink", "Ссылка в подвале"]]],
-    ["Заголовки блоков", [["itemsTitle", "Блок «Что это решает»"], ["stepsTitle", "Блок «Как подключиться»"], ["faqTitle", "Блок вопросов"], ["finalTitle", "Заголовок внизу"], ["finalDemoButton", "Кнопка демо внизу"], ["finalContactButton", "Кнопка связи внизу"]]]
+    ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["heroLead", "Подзаголовок", "area"], ["demoButton", "Кнопка демо"], ["loginLink", "Ссылка «Вход для агентств»"], ["contactButton", "Красная кнопка в шапке"]]],
+    ["Блок возможностей", [["itemsTitle", "Заголовок"], ["itemsLead", "Текст под заголовком", "area"], ["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
+    ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
+    ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
   ];
   function loadSite() {
     api("site_get").then(function (r) {
       if (r.landing) return r.landing;
-      return fetch("../assets/landing.json", { cache: "no-store" }).then(function (x) { return x.json(); });
+      return null;
+    }).then(function (saved) {
+      return fetch("../assets/landing.json", { cache: "no-store" }).then(function (x) { return x.json(); }).then(function (def) {
+        // тексты, сохранённые до нового дизайна, дополняем новыми полями по умолчанию
+        if (!saved) return def;
+        if (saved.heroBadge == null) saved = { telegram: saved.telegram, demoSlug: saved.demoSlug, items: saved.items, steps: saved.steps, faq: saved.faq };
+        Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
+        return saved;
+      });
     }).then(function (d) {
       siteData = d;
       var root = $("siteForm");
@@ -431,16 +471,17 @@
           return "<label>" + esc(f[1]) + (f[2] === "area" ? '<textarea data-site="' + f[0] + '" rows="3">' + v + "</textarea>" : '<input data-site="' + f[0] + '" value="' + v + '">') + "</label>";
         }).join("") + "</div></div>";
       }).join("");
-      siteEd.items = rowsEditor("Карточки «Что это решает»", "", d.items, [{ k: "title", label: "Заголовок" }, { k: "text", label: "Текст" }], function () { return { title: "", text: "" }; });
+      siteEd.strip = rowsEditor("Полоса под первым экраном", "Три коротких пункта с иконками.", d.strip, [{ k: "title", label: "Текст" }], function () { return { title: "" }; }, 3);
+      siteEd.items = rowsEditor("Карточки возможностей", "", d.items, [{ k: "title", label: "Заголовок" }, { k: "text", label: "Текст" }], function () { return { title: "", text: "" }; });
       siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение" }], function () { return { title: "", text: "" }; });
       siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ" }], function () { return { q: "", a: "" }; });
-      [siteEd.items, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
+      [siteEd.strip, siteEd.items, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
     }).catch(function (e) { flash(e.message, true); });
   }
   $("saveSite").addEventListener("click", function () {
     var d = clone(siteData || {});
     document.querySelectorAll("#siteForm [data-site]").forEach(function (i) { d[i.dataset.site] = i.value.trim(); });
-    d.items = siteEd.items.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get();
+    d.strip = siteEd.strip.get(); d.items = siteEd.items.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get();
     api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 
@@ -470,7 +511,7 @@
     ["input", "change", "changed"].forEach(function (ev) {
       sec.addEventListener(ev, function (e) {
         if (e.target.closest && e.target.closest(".save-bar, #pwForm, #tgActs")) return;
-        if (e.target.id === "notifyTest" || e.target.id === "logoFile" || e.target.id === "logoRemove") return;
+        if (e.target.id === "notifyTest" || e.target.classList.contains("img-file") || e.target.classList.contains("img-remove")) return;
         markDirty(t, true);
       }, true);
     });

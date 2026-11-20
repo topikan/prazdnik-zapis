@@ -79,7 +79,7 @@ function notify_order(array $a, int $id, array $o, int $total): void {
     [$y, $m, $d] = array_map('intval', explode('-', $o['date']));
     $who = ''; foreach ($cfg['characters'] as $c) if ($c['id'] === $o['character']) $who = $c['title'];
     $prog = ''; foreach ($cfg['programs'] as $p) if ($p['id'] === $o['program']) $prog = $p['title'] . ', ' . $p['minutes'] . ' мин';
-    $text = "Новая заявка №$id\n\n$d {$months[$m - 1]}, {$o['time']}\n$who\n$prog\nДетей: {$o['kids']}\nСумма: " . number_format($total, 0, '', ' ') . " ₽\n\n"
+    $text = "Новая заявка №$id — «" . ($cfg['name'] ?? $a['slug']) . "»\n\n$d {$months[$m - 1]}, {$o['time']}\n$who\n$prog\nДетей: {$o['kids']}\nСумма: " . number_format($total, 0, '', ' ') . " ₽\n\n"
         . "Контакты клиента — в личном кабинете:\n" . site_url() . "/admin/";
     notify_agency($a, "Новая заявка №$id на $d {$months[$m - 1]}, {$o['time']}", $text);
 }

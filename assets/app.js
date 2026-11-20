@@ -29,7 +29,7 @@
   function icon(id) { return '<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
   function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
   function plural(n, a, b, c) { var n10 = n % 10, n100 = n % 100; if (n10 === 1 && n100 !== 11) return a; if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return b; return c; }
-  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; }
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return (h >>> 0) / 4294967295; }
   function today() { var t = new Date(); t.setHours(0, 0, 0, 0); return t; }
 
   /* ---------- цены ---------- */
@@ -44,8 +44,22 @@
     });
     return { mult: m, label: label };
   }
-  function demand(m) { return m <= 1 ? 1 : m <= 1.5 ? 2 : 3; }
   function promoActive() { return cfg.promo && cfg.promo.percent && iso(today()) <= cfg.promo.until; }
+
+  // Наценка за спрос: чем меньше свободных артистов на это время, тем дороже
+  function surgeFor(free) {
+    var share = free / cfg.pairs, best = { plus: 0, label: "" };
+    (cfg.demandPricing || []).forEach(function (r) { if (share <= r.freeShareAtMost && r.plus > best.plus) best = r; });
+    return best;
+  }
+  function slotOf(date, time) { var l = slotsFor(date); for (var i = 0; i < l.length; i++) if (l[i].time === time) return l[i]; return null; }
+  // Загрузка дня: доля занятых артистов по всем часам
+  function dayLoad(date) {
+    var l = slotsFor(date), busy = 0;
+    l.forEach(function (s) { busy += cfg.pairs - s.free; });
+    return busy / (l.length * cfg.pairs);
+  }
+  function loadLevel(load) { return load < 0.4 ? 1 : load < 0.7 ? 2 : 3; }
 
   function calc(date, time) {
     var base = cfg.prices[state.character] && cfg.prices[state.character][state.program];
@@ -55,13 +69,20 @@
     var lines = [];
     var program = round100(base * m.mult);
     lines.push([find(cfg.characters, state.character).title + ", " + prog.minutes + " мин" + (m.mult !== 1 ? " (" + m.label.toLowerCase() + ")" : ""), program]);
+    var surge = { plus: 0, label: "" };
+    if (date && time) { var sl = slotOf(date, time); if (sl) surge = surgeFor(sl.free); }
+    else if (date) { // без выбранного времени показываем цену самого дешёвого свободного часа
+      var min = null; slotsFor(date).forEach(function (sl) { if (sl.free > 0) { var g = surgeFor(sl.free); if (!min || g.plus < min.plus) min = g; } });
+      if (min) surge = min;
+    }
+    if (surge.plus) lines.push(["Наценка за спрос +" + Math.round(surge.plus * 100) + "%", round100(program * surge.plus)]);
     var extra = Math.max(0, state.kids - cfg.kids.included);
     if (extra) lines.push(["Ещё " + extra + " " + plural(extra, "ребёнок", "ребёнка", "детей") + " сверх " + cfg.kids.included, extra * cfg.kids.extraPrice]);
     if (promoActive()) lines.push(["Скидка за раннее бронирование −" + cfg.promo.percent + "%", -round100(program * cfg.promo.percent / 100)]);
     cfg.addons.forEach(function (a) { if (state.addons[a.id]) lines.push([a.title, a.price]); });
     var z = find(cfg.zones, state.zone);
     if (z && z.price) lines.push(["Выезд: " + z.title.toLowerCase(), z.price]);
-    return { total: lines.reduce(function (s, l) { return s + l[1]; }, 0), lines: lines, mult: m.mult, label: m.label };
+    return { total: lines.reduce(function (s, l) { return s + l[1]; }, 0), lines: lines, mult: m.mult, label: m.label, surge: surge };
   }
 
   /* ---------- слоты (в демо занятость условная) ---------- */
@@ -71,7 +92,7 @@
     var list = [];
     for (var t = from; t <= to; t += 60) {
       var time = hhmm(t), m = multFor(date, time).mult;
-      var p = Math.min(0.9, 0.12 + 0.22 * (m - 1)), free = 0;
+      var p = Math.min(0.92, 0.1 + 0.32 * (m - 1)), free = 0;
       for (var k = 0; k < cfg.pairs; k++) if (hash(slug + date + time + k) > p) free++;
       list.push({ time: time, end: hhmm(t + 60), free: free });
     }
@@ -86,29 +107,6 @@
     if (cfg.phone) { var a = $("agencyPhone"); a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; }
     $("demoNote").hidden = !cfg.demo;
     if (q) { $("consentLink").href = "consent.html?a=" + encodeURIComponent(slug); $("privacyLink").href = "privacy.html?a=" + encodeURIComponent(slug); }
-
-    $("trust").innerHTML = (cfg.trust || []).map(function (t) { return "<li><b>" + esc(t.big) + "</b><span>" + esc(t.small) + "</span></li>"; }).join("");
-    if (promoActive()) { $("promo").textContent = cfg.promo.text; $("promo").hidden = false; }
-
-    $("advantages").innerHTML = (cfg.advantages || []).map(function (a) {
-      return '<div class="panel adv-item"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-' + esc(a.icon) + '"/></svg><h3>' + esc(a.title) + "</h3><p>" + esc(a.text) + "</p></div>";
-    }).join("");
-    if (!(cfg.advantages || []).length) $("why").hidden = true;
-
-    $("artists").innerHTML = (cfg.artists || []).map(function (a) {
-      var art = a.photo ? '<img src="' + esc(a.photo) + '" alt="' + esc(a.name) + '" loading="lazy">' : icon(/Снегур/.test(a.name) ? "i-maiden" : "i-santa");
-      return '<div class="panel artist"><div class="artist-photo">' + art + '</div><div class="artist-body"><b>' + esc(a.name) + "</b><span>" + esc(a.text) + "</span></div></div>";
-    }).join("");
-    if (!(cfg.artists || []).length) $("artists-block").hidden = true;
-
-    $("reviewsNote").hidden = !cfg.reviewsAreExamples;
-    $("reviewList").innerHTML = (cfg.reviews || []).map(function (r) {
-      return '<div class="panel review"><div class="stars" aria-label="' + r.stars + ' из 5">' + "★★★★★".slice(0, r.stars) + "</div><p>" + esc(r.text) + "</p><b>" + esc(r.name) + "</b></div>";
-    }).join("");
-    if (!(cfg.reviews || []).length) $("reviews").hidden = true;
-
-    $("faqList").innerHTML = (cfg.faq || []).map(function (f) { return "<details><summary>" + esc(f.q) + "</summary><p>" + esc(f.a) + "</p></details>"; }).join("");
-    if (!(cfg.faq || []).length) $("faq").hidden = true;
   }
 
   function renderCharacters() {
@@ -155,9 +153,9 @@
       if (date < start || date > end || date < tomorrow) { b.disabled = true; }
       else if (!dayFree(key)) { b.disabled = true; b.classList.add("full"); b.setAttribute("aria-label", human(key) + ", всё занято"); }
       else {
-        var r = dateRule(key);
-        b.classList.add("d" + demand(r.mult));
-        b.setAttribute("aria-label", human(key) + ", " + r.label.toLowerCase());
+        var lv = loadLevel(dayLoad(key));
+        b.classList.add("d" + lv);
+        b.setAttribute("aria-label", human(key) + ", " + ["", "много свободных артистов", "половина занята", "почти всё занято"][lv]);
         b.setAttribute("aria-pressed", state.date === key ? "true" : "false");
       }
       box.appendChild(b);
@@ -172,7 +170,8 @@
     var freeCount = slots.filter(function (s) { return s.free > 0; }).length;
     $("leftNote").hidden = freeCount > 3;
     $("leftNote").textContent = "На эту дату осталось " + freeCount + " " + plural(freeCount, "свободное окно", "свободных окна", "свободных окон");
-    var base = calc(state.date);
+    var base = null;
+    slots.forEach(function (s) { if (s.free > 0) { var p = calc(state.date, s.time); if (!base || p.total < base.total) base = p; } });
     slots.forEach(function (s) {
       var dis = s.free === 0;
       if (dis && state.time === s.time) state.time = null;
@@ -180,23 +179,25 @@
       var diff = pr && base && pr.total !== base.total;
       var lab = el("label", "slot");
       lab.innerHTML = '<input type="radio" name="time" value="' + s.time + '"' + (dis ? " disabled" : "") + (state.time === s.time ? " checked" : "") + ">" +
-        "<span><b>" + s.time + " – " + s.end + "</b>" + (dis ? "<em>занято</em>" : diff ? "<em>" + rub(pr.total) + "</em>" : "") + "</span>";
+        "<span><b>" + s.time + " – " + s.end + "</b>" + (dis ? "<em>занято</em>" : diff ? '<em class="' + (pr.surge.plus ? "up" : "") + '">' + rub(pr.total) + "</em>" : "") + "</span>";
       grid.appendChild(lab);
     });
   }
 
   function renderPriceCard() {
     var pr = calc(state.date, state.time);
+    $("pcSurge").hidden = true;
     if (!state.date) {
       $("pcLabel").textContent = "Стоимость";
       $("pcPrice").textContent = pr ? "от " + rub(pr.total) : "—";
-      $("pcDemand").textContent = "Зависит от даты и времени";
+      $("pcDemand").textContent = "Зависит от даты, времени и того, сколько артистов уже занято";
       return;
     }
     $("pcLabel").textContent = "Стоимость " + short(state.date) + (state.time ? ", " + state.time : "");
     $("pcPrice").textContent = pr ? (state.time ? "" : "от ") + rub(pr.total) : "—";
-    var lvl = demand(pr ? pr.mult : 1);
-    $("pcDemand").textContent = ["", "Низкий спрос", "Средний спрос", "Высокий спрос"][lvl] + (pr && pr.label ? ": " + pr.label.toLowerCase() : "");
+    var lv = loadLevel(dayLoad(state.date));
+    $("pcDemand").textContent = "Загрузка дня: " + ["", "низкая", "средняя", "высокая"][lv] + (pr && pr.label ? ". " + pr.label : "");
+    if (state.time && pr && pr.surge.plus) { $("pcSurge").textContent = pr.surge.label + ": +" + Math.round(pr.surge.plus * 100) + "%"; $("pcSurge").hidden = false; }
   }
 
   function renderAddons() {

@@ -13,30 +13,15 @@
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <header class="nav">
-    <div class="wrap nav-in">
-      <a class="logo" href="#top" aria-label="Наверх">
-        <svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg>
-        <span id="agencyName">&nbsp;</span>
-      </a>
-      <nav class="links" aria-label="Разделы">
-        <a href="#why">Преимущества</a>
-        <a href="#reviews">Отзывы</a>
-        <a href="#faq">Частые вопросы</a>
-      </nav>
-      <a class="phone-pill" id="agencyPhone" href="#" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"/></svg><span></span>
-      </a>
-    </div>
-  </header>
-
   <section class="hero" id="top">
     <div class="wrap">
+      <div class="topline">
+        <span class="logo"><svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg><span id="agencyName">&nbsp;</span></span>
+        <a class="phone-pill" id="agencyPhone" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
+      </div>
       <div class="star" aria-hidden="true"><i></i><svg viewBox="0 0 24 24"><use href="#i-star4"/></svg><i></i></div>
       <h1>Дед Мороз<br>к вам домой</h1>
       <p class="lead">Выберите, кто приедет, программу и время. <br>Цена посчитается сразу, без звонков.</p>
-      <ul class="trust" id="trust"></ul>
-      <p class="promo" id="promo" hidden></p>
     </div>
   </section>
 
@@ -85,10 +70,11 @@
             <p class="pc-label" id="pcLabel">Стоимость в эту дату</p>
             <p class="pc-price" id="pcPrice">—</p>
             <p class="pc-demand" id="pcDemand"></p>
+            <p class="pc-surge" id="pcSurge" hidden></p>
             <ul class="legend">
-              <li><i class="d1"></i>Низкий спрос</li>
-              <li><i class="d2"></i>Средний спрос</li>
-              <li><i class="d3"></i>Высокий спрос</li>
+              <li><i class="d1"></i>Много свободных артистов</li>
+              <li><i class="d2"></i>Половина занята</li>
+              <li><i class="d3"></i>Почти всё занято</li>
             </ul>
           </div>
         </div>
@@ -126,27 +112,6 @@
       </section>
     </form>
 
-    <section class="block" id="why">
-      <h2 class="block-title">Почему выбирают нас</h2>
-      <div class="adv" id="advantages"></div>
-    </section>
-
-    <section class="block" id="artists-block">
-      <h2 class="block-title">Кто к вам приедет</h2>
-      <div class="artists" id="artists"></div>
-    </section>
-
-    <section class="block" id="reviews">
-      <h2 class="block-title">Отзывы родителей</h2>
-      <p class="example-note" id="reviewsNote" hidden>Пример блока: здесь будут настоящие отзывы клиентов агентства.</p>
-      <div class="reviews" id="reviewList"></div>
-    </section>
-
-    <section class="block" id="faq">
-      <h2 class="block-title">Частые вопросы</h2>
-      <div class="faq" id="faqList"></div>
-    </section>
-
     <p class="disclaimer" id="demoNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>Демо-версия: цены примерные, заявка никуда не отправляется.</p>
   </main>
 
@@ -166,6 +131,10 @@
 
   <div class="done" id="done" hidden>
     <div class="done-card" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <div class="topline">
+        <span class="logo"><svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg><span id="agencyName">&nbsp;</span></span>
+        <a class="phone-pill" id="agencyPhone" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
+      </div>
       <div class="star" aria-hidden="true"><i></i><svg viewBox="0 0 24 24"><use href="#i-star4"/></svg><i></i></div>
       <h2 id="doneTitle">Заявка принята</h2>
       <p id="doneText"></p>

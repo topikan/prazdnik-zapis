@@ -1,0 +1,89 @@
+@font-face { font-family: "Golos Text"; font-weight: 400; font-display: swap; src: url("../assets/fonts/golos-text-cyrillic-400-normal.woff2") format("woff2"); unicode-range: U+0400-045F, U+2116; }
+@font-face { font-family: "Golos Text"; font-weight: 400; font-display: swap; src: url("../assets/fonts/golos-text-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20BD; }
+@font-face { font-family: "Golos Text"; font-weight: 600; font-display: swap; src: url("../assets/fonts/golos-text-cyrillic-600-normal.woff2") format("woff2"); unicode-range: U+0400-045F, U+2116; }
+@font-face { font-family: "Golos Text"; font-weight: 600; font-display: swap; src: url("../assets/fonts/golos-text-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20BD; }
+
+:root { --bg: #F6F4EF; --card: #fff; --line: #E4DED3; --ink: #163A2F; --muted: #5F6C66; --red: #B3203A; --gold: #C9A24A; --ok: #2E7D4F; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 14px/1.5 "Golos Text", system-ui, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--ink); }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px; }
+h1 { font-size: 24px; margin: 0 0 14px; }
+h2 { font-size: 16px; margin: 0 0 10px; }
+.muted { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.btn { border: 0; border-radius: 10px; background: var(--ink); color: #fff; padding: 9px 16px; font-weight: 600; cursor: pointer; }
+.btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn.danger { background: #fff; color: var(--red); border: 1px solid #EBC5CC; }
+.link { border: 0; background: none; text-decoration: underline; cursor: pointer; }
+input, select, textarea { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: #fff; min-width: 0; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--ink); }
+label { display: inline-flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+label input, label select { color: var(--ink); font-size: 14px; }
+.err { color: var(--red); font-weight: 600; }
+
+.login { min-height: 100vh; display: grid; place-items: center; padding: 18px; }
+.login-card { width: 100%; max-width: 360px; display: grid; gap: 12px; }
+.login-card label { display: flex; }
+
+.top { background: var(--ink); color: #fff; position: sticky; top: 0; z-index: 5; }
+.top-in { max-width: 1180px; margin: 0 auto; padding: 10px 18px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.who { display: grid; }
+.who a { color: #CFE0D9; font-size: 12px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+.tabs button { border: 0; background: none; color: #CFE0D9; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+.tabs button[aria-current="true"] { background: rgba(255,255,255,.14); color: #fff; font-weight: 600; }
+.top .link { color: #CFE0D9; }
+
+.flash { background: #E7F3EC; border: 1px solid #BFDCCB; color: var(--ok); padding: 10px 14px; border-radius: 10px; font-weight: 600; }
+.flash.bad { background: #FBEAED; border-color: #EBC5CC; color: var(--red); }
+
+.bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+.inline input[name="note"] { flex: 1; min-width: 180px; }
+
+/* заявки */
+.order { display: grid; grid-template-columns: 120px 1fr 1fr 150px; gap: 14px; align-items: start; }
+.order .when b { font-size: 16px; display: block; }
+.order .sum { font-weight: 700; font-size: 16px; }
+.order small { color: var(--muted); display: block; }
+.st { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.st-new { background: #FFF3D6; color: #8A6300; } .st-confirmed { background: #E2F0FF; color: #1D4F8C; }
+.st-done { background: #E7F3EC; color: var(--ok); } .st-cancelled { background: #F0F0F0; color: #777; }
+.empty { color: var(--muted); padding: 30px; text-align: center; }
+
+/* расписание */
+.slot-row { display: grid; grid-template-columns: 56px 1fr 60px; gap: 10px; align-items: center; padding: 4px 0; }
+.meter { height: 10px; border-radius: 5px; background: #EEE9DF; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ok); }
+.meter i.mid { background: #E9B23A; } .meter i.full { background: var(--red); }
+.list-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+
+/* редакторы */
+.ed { overflow-x: auto; }
+.ed table { width: 100%; border-collapse: collapse; }
+.ed th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 400; padding: 4px; }
+.ed td { padding: 4px; vertical-align: top; }
+.ed td input, .ed td select { width: 100%; }
+.ed td.num input { width: 90px; }
+.ed .del { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.ed .add { margin-top: 6px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.fields label { display: flex; }
+.save-bar { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 18px 0 10px; }
+.matrix td input { width: 100px; }
+
+.agency-row { display: grid; grid-template-columns: 1fr 140px 90px auto; gap: 12px; align-items: center; }
+.agency-row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+@media (max-width: 860px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .order { grid-template-columns: 1fr 1fr; }
+  .agency-row { grid-template-columns: 1fr 1fr; }
+  .tabs { margin-left: 0; }
+}

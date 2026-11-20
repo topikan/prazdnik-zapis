@@ -88,15 +88,25 @@
   }
 
   /* ---------- слоты (в демо занятость условная) ---------- */
+  function freeAt(date, time) {
+    if (cfg.occupancy) return Math.max(0, cfg.pairs - ((cfg.occupancy[date] || {})[time] || 0));
+    var m = multFor(date, time).mult, p = Math.min(0.92, 0.1 + 0.32 * (m - 1)), free = 0; // демо: условная занятость
+    for (var k = 0; k < cfg.pairs; k++) if (hash(slug + date + time + k) > p) free++;
+    return free;
+  }
+  function span() {
+    var prog = find(cfg.programs, state.program);
+    return Math.max(1, Math.ceil(((prog ? prog.minutes : 30) + (cfg.travelMinutes || 30)) / 60));
+  }
   function slotsFor(date) {
     var from = minutes(cfg.hours.from), to = minutes(cfg.hours.to);
     if (cfg.hours.lastDay && cfg.hours.lastDay.date === date) to = minutes(cfg.hours.lastDay.to);
-    var list = [];
+    var list = [], sp = span();
     for (var t = from; t <= to; t += 60) {
-      var time = hhmm(t), m = multFor(date, time).mult;
-      var p = Math.min(0.92, 0.1 + 0.32 * (m - 1)), free = 0;
-      for (var k = 0; k < cfg.pairs; k++) if (hash(slug + date + time + k) > p) free++;
-      list.push({ time: time, end: hhmm(t + 60), free: free });
+      var free = freeAt(date, hhmm(t));
+      // визит вместе с дорогой может занять несколько часов: все они должны быть свободны
+      for (var i = 1; i < sp && free > 0; i++) if (t + i * 60 <= to && freeAt(date, hhmm(t + i * 60)) < 1) free = 0;
+      list.push({ time: hhmm(t), end: hhmm(t + 60), free: free });
     }
     return list;
   }
@@ -108,7 +118,9 @@
     document.title = "Дед Мороз на дом — " + cfg.name;
     if (cfg.phone) { var a = $("agencyPhone"); a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; }
     $("demoNote").hidden = !cfg.demo;
-    if (q) { $("consentLink").href = "consent.html?a=" + encodeURIComponent(slug); $("privacyLink").href = "privacy.html?a=" + encodeURIComponent(slug); }
+    var qs = "?a=" + encodeURIComponent(slug);
+    $("consentLink").href = "consent.html" + qs;
+    $("privacyLink").href = cfg.legal && /^https:\/\//.test(cfg.legal.policyUrl || "") ? cfg.legal.policyUrl : "privacy.html" + qs;
   }
 
   function renderCharacters() {
@@ -242,7 +254,7 @@
     form.addEventListener("change", function (e) {
       var t = e.target;
       if (t.name === "character") { state.character = t.value; renderPrograms(); renderTimes(); renderBar(); }
-      else if (t.name === "program") { state.program = t.value; renderTimes(); renderBar(); }
+      else if (t.name === "program") { state.program = t.value; renderCalendar(); renderTimes(); renderBar(); }
       else if (t.name === "time") { state.time = t.value; renderBar(); }
       else if (t.name === "addon") { state.addons[t.value] = t.checked; renderBar(); }
       else if (t.name === "zone") { state.zone = t.value; renderBar(); }
@@ -302,12 +314,39 @@
         if (err.el.tagName === "INPUT") err.el.focus({ preventScroll: true });
         return;
       }
-      box.hidden = true; showDone();
+      box.hidden = true;
+      if (!cfg.live || cfg.demo) { showDone(); return; }
+      sendOrder();
     });
     function closeDone() { $("done").hidden = true; $("cta").focus(); }
     $("doneClose").addEventListener("click", closeDone);
     $("done").addEventListener("click", function (e) { if (e.target === this) closeDone(); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("done").hidden) closeDone(); });
+  }
+
+  function sendOrder() {
+    var f = $("order"), btn = $("cta");
+    btn.disabled = true; btn.textContent = "Отправляем…";
+    var payload = {
+      agency: slug, character: state.character, program: state.program, date: state.date, time: state.time,
+      kids: state.kids, addons: Object.keys(state.addons).filter(function (k) { return state.addons[k]; }), zone: state.zone,
+      name: f.elements.name.value, phone: f.elements.phone.value, address: f.elements.address.value, comment: f.elements.comment.value,
+      children: state.children, consent: f.elements.consent.checked, website: f.elements.website.value
+    };
+    fetch("api/order.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
+      .then(function (res) {
+        if (res.status === 200 && res.j.ok) { showDone(res.j); return; }
+        $("formError").textContent = res.j.error || "Не удалось отправить заявку. Попробуйте ещё раз или позвоните нам.";
+        $("formError").hidden = false;
+        if (res.status === 409) { state.time = null; reloadOccupancy(); $("step-date").scrollIntoView({ behavior: "smooth" }); }
+      })
+      .catch(function () { $("formError").textContent = "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз."; $("formError").hidden = false; })
+      .finally(function () { btn.disabled = false; btn.textContent = "Заказать"; });
+  }
+  function reloadOccupancy() {
+    fetch("api/agency.php?a=" + encodeURIComponent(slug), { cache: "no-store" }).then(function (r) { return r.json(); })
+      .then(function (d) { if (d.occupancy) { cfg.occupancy = d.occupancy; renderCalendar(); renderTimes(); renderBar(); } }).catch(function () {});
   }
 
   function validate() {
@@ -325,11 +364,12 @@
     return null;
   }
 
-  function showDone() {
+  function showDone(server) {
     var pr = calc(state.date, state.time), f = $("order");
+    if (server && server.lines) pr = { lines: server.lines, total: server.total };
     $("doneText").textContent = cfg.demo
       ? "Это демо-версия, поэтому заявка никуда не ушла. В рабочей версии она сразу придёт агентству, и с вами свяжутся для подтверждения."
-      : "Мы перезвоним по номеру " + f.elements.phone.value + ", чтобы подтвердить визит.";
+      : "Заявка № " + (server ? server.id : "") + " у агентства. Мы перезвоним по номеру " + f.elements.phone.value + ", чтобы подтвердить визит.";
     var kids = state.children.filter(function (c) { return c.name.trim(); }).map(function (c) { return c.name.trim() + (c.age ? ", " + c.age : ""); }).join("; ");
     var rows = [["Когда", human(state.date) + ", " + state.time]];
     if (kids) rows.push(["Дети", kids]);
@@ -355,9 +395,12 @@
     bind();
   }
 
+  var pathSlug = location.pathname.split("/").filter(Boolean).pop() || "";
   if (q) slug = q.toLowerCase().replace(/[^a-z0-9-]/g, "") || "demo";
-  fetch("agencies/" + slug + ".json", { cache: "no-cache" })
-    .then(function (r) { if (!r.ok) throw new Error("not found"); return r.json(); })
+  else if (/^[a-z0-9-]{2,40}$/.test(pathSlug) && pathSlug !== "prazdnik-zapis") slug = pathSlug;
+  function getJson(url) { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  getJson("api/agency.php?a=" + encodeURIComponent(slug))
+    .catch(function () { return getJson("agencies/" + slug + ".json"); })
     .then(init)
     .catch(function () {
       ["app", "bar"].forEach(function (id) { $(id).hidden = true; });

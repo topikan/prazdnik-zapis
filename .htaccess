@@ -1,0 +1,28 @@
+# Закрыть служебное от доступа из браузера
+<FilesMatch "^(config\.local\.php|config\.example\.php|README\.md)$">
+  Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(lib|\.git|\.github)(/.*)?$
+
+Options -Indexes
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  Header always set Strict-Transport-Security "max-age=31536000"
+</IfModule>
+
+# Всегда HTTPS
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  # Короткие ссылки агентств: bronprazdnik.ru/fabrika-skazok → страница записи
+  RewriteRule ^([a-z0-9-]{2,40})/$ /$1 [R=301,L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^([a-z0-9-]{2,40})$ index.html [L]
+</IfModule>

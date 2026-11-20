@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru" translate="no">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l7 10h-4l6 8h-5l6 7H6l6-7H7l6-8H9z' fill='%23163A2F'/%3E%3C/svg%3E">
+  <title>Админка — БронПраздник</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="login" class="login" hidden>
+    <form id="loginForm" class="card login-card">
+      <h1>Вход</h1>
+      <label>Логин<input name="login" autocomplete="username" required></label>
+      <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="err" id="loginErr" hidden></p>
+      <button class="btn">Войти</button>
+    </form>
+  </div>
+
+  <div id="app" hidden>
+    <header class="top">
+      <div class="top-in">
+        <div class="who">
+          <b id="agencyTitle">—</b>
+          <a id="publicLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Страница записи ↗</a>
+        </div>
+        <nav class="tabs" id="tabs">
+          <button data-tab="orders">Заявки</button>
+          <button data-tab="schedule">Расписание</button>
+          <button data-tab="prices">Цены и услуги</button>
+          <button data-tab="settings">Настройки</button>
+          <button data-tab="agencies" class="super-only" hidden>Агентства</button>
+        </nav>
+        <button class="link" id="logout">Выйти</button>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <p class="flash" id="flash" role="status" hidden></p>
+
+      <section id="tab-orders" class="tab" hidden>
+        <div class="bar">
+          <label>С <input type="date" id="ordFrom"></label>
+          <label>По <input type="date" id="ordTo"></label>
+          <label>Статус
+            <select id="ordStatus"><option value="">Все</option><option value="new">Новые</option><option value="confirmed">Подтверждённые</option><option value="done">Выполненные</option><option value="cancelled">Отменённые</option></select>
+          </label>
+          <button class="btn ghost" id="ordReload">Обновить</button>
+        </div>
+        <div id="orders"></div>
+      </section>
+
+      <section id="tab-schedule" class="tab" hidden>
+        <div class="bar">
+          <label>День <input type="date" id="schDate"></label>
+          <button class="btn ghost" id="schPrev">←</button>
+          <button class="btn ghost" id="schNext">→</button>
+        </div>
+        <div class="grid2">
+          <div class="card"><h2>Загрузка по часам</h2><div id="schSlots"></div></div>
+          <div class="card">
+            <h2>Закрыть время вручную</h2>
+            <p class="muted">Для заказов по телефону, болезни артиста или выходного. Закрытое время на сайте выбрать нельзя.</p>
+            <form id="blockForm" class="inline">
+              <select name="time" id="blockTime"></select>
+              <label>составов <input name="teams" type="number" min="1" value="1"></label>
+              <input name="note" placeholder="Заметка, например «заказ по телефону»" maxlength="100">
+              <button class="btn">Закрыть</button>
+            </form>
+            <div id="schBlocks"></div>
+            <h2>Визиты дня</h2>
+            <div id="schOrders"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-prices" class="tab" hidden>
+        <div id="pricesForm"></div>
+        <div class="save-bar"><button class="btn" id="savePrices">Сохранить цены и услуги</button></div>
+      </section>
+
+      <section id="tab-settings" class="tab" hidden>
+        <div id="settingsForm"></div>
+        <div class="save-bar"><button class="btn" id="saveSettings">Сохранить настройки</button></div>
+        <div class="card">
+          <h2>Сменить пароль</h2>
+          <form id="pwForm" class="inline">
+            <input name="old" type="password" placeholder="Текущий пароль" autocomplete="current-password" required>
+            <input name="new" type="password" placeholder="Новый пароль, от 10 символов" autocomplete="new-password" minlength="10" required>
+            <button class="btn">Сменить</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="tab-agencies" class="tab" hidden>
+        <div class="card">
+          <h2>Новое агентство</h2>
+          <form id="newAgency" class="inline">
+            <input name="name" placeholder="Название, например «Фабрика сказок»" required maxlength="80">
+            <input name="city" placeholder="Город" maxlength="60">
+            <input name="slug" placeholder="Адрес ссылки: fabrika-skazok" required pattern="[a-z0-9\-]{2,40}">
+            <button class="btn">Создать</button>
+          </form>
+          <p class="muted">Агентство создаётся с ценами и услугами из демо — потом поменяете их во вкладках.</p>
+        </div>
+        <div id="agencies"></div>
+      </section>
+    </main>
+  </div>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+config.local.php
+*.sqlite
+node_modules/
+_router.php

@@ -7,6 +7,8 @@
   var DOW_FULL = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
   var WHO_ART = { santa: ["i-santa"], duo: ["i-santa", "i-maiden"], trio: ["i-santa", "i-maiden", "i-snowman"] };
   var PROG_ICON = { gift: "i-giftbig", tree: "i-tree", ball: "i-ball" };
+  // Библиотека иконок для доп. услуг: все в одном линейном стиле
+  var ADDON_ICONS = ["sack", "camera", "letter", "bubbles", "candy", "cake", "balloon", "music", "snowflake", "car", "star", "video", "gift"];
 
   var cfg = null;
   var slug = "demo";
@@ -203,7 +205,7 @@
   function renderAddons() {
     $("addons").innerHTML = cfg.addons.map(function (a) {
       return '<label class="tile"><input type="checkbox" name="addon" value="' + esc(a.id) + '"' + (state.addons[a.id] ? " checked" : "") + ">" +
-        '<span class="tile-body"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#i-' + esc(a.icon) + '"/></svg><span class="tile-title">' + esc(a.title) + '</span><span class="tile-note">' + esc(a.note) + '</span><span class="tile-price">+' + rub(a.price) + "</span></span></label>";
+        '<span class="tile-body"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#i-add-' + (ADDON_ICONS.indexOf(a.icon) > -1 ? a.icon : "star") + '"/></svg><span class="tile-title">' + esc(a.title) + '</span><span class="tile-note">' + esc(a.note) + '</span><span class="tile-price">+' + rub(a.price) + "</span></span></label>";
     }).join("");
     $("zones").innerHTML = cfg.zones.map(function (z) {
       return '<label class="chip"><input type="radio" name="zone" value="' + esc(z.id) + '"' + (state.zone === z.id ? " checked" : "") + "><span>" + esc(z.title) + (z.price ? " +" + rub(z.price) : "") + "</span></label>";

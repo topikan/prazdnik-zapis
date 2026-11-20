@@ -55,7 +55,7 @@ p { margin: 0; }
 /* Шапка поверх первого экрана */
 .top { position: absolute; inset: 0 0 auto; z-index: 5; color: #fff; }
 .top-in { display: flex; align-items: center; gap: 40px; min-height: 88px; padding-top: env(safe-area-inset-top); }
-.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 800; font-size: 21px; letter-spacing: -0.02em; text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 800; font-size: 21px; letter-spacing: -0.02em; text-decoration: none; white-space: nowrap; }
 .brand svg { width: 36px; height: 36px; }
 .menu { display: flex; gap: 30px; font-size: 14px; font-weight: 600; }
 .menu a { text-decoration: none; opacity: .88; white-space: nowrap; }

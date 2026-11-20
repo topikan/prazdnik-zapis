@@ -176,7 +176,7 @@ html.no-anim { scroll-behavior: auto; }
 .final { position: relative; color: #fff; isolation: isolate; overflow: hidden; background: var(--night) url("img/winter.webp") center 40% / cover no-repeat; }
 .final::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(10, 19, 40, .25) 0%, rgba(10, 19, 40, .7) 45%, rgba(10, 19, 40, .92) 100%); }
 .final-in { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr); align-items: end; min-height: 440px; }
-.final-santa { display: block; width: 100%; max-width: 470px; height: auto; align-self: end; justify-self: center; margin-top: 40px; }
+.final-santa { display: block; width: 100%; max-width: 470px; height: auto; align-self: end; justify-self: center; margin: 40px 0 -12px; -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 98%); mask-image: linear-gradient(180deg, #000 70%, transparent 98%); }
 .final-text { padding: 60px 0 64px; align-self: center; }
 .final h2 { font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; }
 .final p { margin-top: 16px; font-size: 18px; color: rgba(255, 255, 255, .86); max-width: 460px; }

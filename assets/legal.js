@@ -18,7 +18,7 @@
       var mail = esc(L.email || "");
       var phone = esc(cfg.phone || "");
       var updated = esc(L.updated || "");
-      var back = "index.html?a=" + encodeURIComponent(slug);
+      var back = "zapis.html?a=" + encodeURIComponent(slug);
       var processor = esc(L.processor || "");
       document.getElementById("back").href = back;
       if (cfg.demo) document.getElementById("demoNote").hidden = false;

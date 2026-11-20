@@ -5,188 +5,90 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="google" content="notranslate">
   <meta name="theme-color" content="#FBF7F1">
-  <title>Заказать Деда Мороза на дом</title>
+  <title>Онлайн-запись на Деда Мороза для агентств праздников — БронПраздник</title>
+  <meta name="description" content="Страница записи для агентств праздников: родители сами выбирают программу, дату и время и сразу видят цену, а вы получаете готовую заявку.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l7 10h-4l6 8h-5l6 7H6l6-7H7l6-8H9z' fill='%23163A2F'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/landing.css">
 </head>
-<body>
-  <section class="hero" id="top">
-    <div class="wrap">
-      <div class="topline">
-        <span class="logo"><svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg><span id="agencyName">&nbsp;</span></span>
-        <a class="phone-pill" id="agencyPhone" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
+<body class="landing">
+  <header class="l-top wrap">
+    <span class="logo"><svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg><span>БронПраздник</span></span>
+    <a class="phone-pill" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
+  </header>
+
+  <section class="l-hero wrap">
+    <div class="l-hero-text">
+      <h1>Онлайн-запись на Деда Мороза для агентств праздников</h1>
+      <p class="lead">Родители сами выбирают, кто приедет, программу, дату и время, и сразу видят цену. Вам приходит готовая заявка без переписки «сколько стоит» и «а 30-го свободно?».</p>
+      <div class="l-cta">
+        <a class="cta dark" href="zapis.html?a=demo">Посмотреть демо</a>
+        <a class="l-link" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Обсудить подключение</a>
       </div>
-      <div class="star" aria-hidden="true"><i></i><svg viewBox="0 0 24 24"><use href="#i-star4"/></svg><i></i></div>
-      <h1>Дед Мороз<br>к вам домой</h1>
-      <p class="lead">Выберите, кто приедет, программу и время. <br>Цена посчитается сразу, без звонков.</p>
+    </div>
+    <figure class="phone">
+      <img src="assets/landing/demo-phone.webp" width="390" height="694" alt="Страница записи на телефоне: календарь с загрузкой по дням, свободное время с ценами и итог внизу">
+    </figure>
+  </section>
+
+  <section class="l-block wrap">
+    <h2 class="block-title">Что это решает</h2>
+    <div class="l-grid">
+      <div class="panel l-item">
+        <h3>Цена считается сама</h3>
+        <p>Состав персонажей, длительность, дата, время, количество детей, допы и выезд за город. Наценки на 31 декабря и на популярные часы тоже учитываются. Родитель видит итог до звонка.</p>
+      </div>
+      <div class="panel l-item">
+        <h3>Только свободное время</h3>
+        <p>Страница знает, сколько у вас составов и сколько уже занято. Занятое время выбрать нельзя, две заявки на последнее окно не пройдут. Дорога между адресами учитывается.</p>
+      </div>
+      <div class="panel l-item">
+        <h3>Все заявки в одном месте</h3>
+        <p>Вместо ВК, WhatsApp и трёх Telegram — кабинет со всеми заказами, телефонами, адресами и расписанием по часам. Заказ по телефону закрываете вручную в два клика.</p>
+      </div>
+      <div class="panel l-item">
+        <h3>Цены меняете сами</h3>
+        <p>Программы, цены, наценки по датам, допы и часы работы правятся в кабинете и сразу появляются на странице. Без программиста и без звонков мне.</p>
+      </div>
     </div>
   </section>
 
-  <main class="wrap" id="app">
-    <form id="order" novalidate>
+  <section class="l-block wrap">
+    <h2 class="block-title">Как подключиться</h2>
+    <ol class="l-steps">
+      <li class="panel"><b>Присылаете прайс</b><span>Программы, цены по датам, допы, сколько у вас составов и часы работы.</span></li>
+      <li class="panel"><b>Я настраиваю страницу</b><span>Ваши название, цвета, цены и реквизиты для документов о персональных данных. Отдаю ссылку и вход в кабинет.</span></li>
+      <li class="panel"><b>Ставите ссылку</b><span>В описание группы ВК, на сайт, в карточку 2ГИС и в ответы клиентам. Свой сайт не нужен.</span></li>
+    </ol>
+  </section>
 
-      <section class="step" id="step-who">
-        <div class="step-head"><h2><span class="n">1</span>Кто приедет</h2></div>
-        <div class="cards cards-who" id="characters" role="radiogroup" aria-label="Кто приедет"></div>
-      </section>
-
-      <section class="step" id="step-program">
-        <div class="step-head">
-          <h2><span class="n">2</span>Программа</h2>
-          <div class="kids">
-            <span class="kids-label">Количество детей</span>
-            <div class="stepper">
-              <button type="button" id="kidsMinus" aria-label="Меньше детей">−</button>
-              <output id="kidsValue" aria-live="polite">1</output>
-              <button type="button" id="kidsPlus" aria-label="Больше детей">+</button>
-            </div>
-          </div>
-        </div>
-        <div class="cards cards-program" id="programs" role="radiogroup" aria-label="Программа"></div>
-        <p class="kids-note" id="kidsNote"></p>
-      </section>
-
-      <section class="step" id="step-date">
-        <div class="step-head"><h2><span class="n">3</span>Дата и время</h2></div>
-        <div class="date-grid">
-          <div class="panel cal">
-            <div class="cal-head">
-              <button type="button" class="cal-nav" id="calPrev" aria-label="Предыдущий месяц"><svg viewBox="0 0 24 24"><use href="#i-left"/></svg></button>
-              <p class="cal-title" id="calTitle"></p>
-              <button type="button" class="cal-nav" id="calNext" aria-label="Следующий месяц"><svg viewBox="0 0 24 24"><use href="#i-right"/></svg></button>
-            </div>
-            <div class="dow"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-            <div class="days" id="days"></div>
-          </div>
-          <div class="times">
-            <p class="times-title" id="timesTitle">Выберите дату в календаре</p>
-            <p class="left-note" id="leftNote" hidden></p>
-            <div class="time-grid" id="times" role="radiogroup" aria-label="Время"></div>
-          </div>
-          <div class="panel warm price-card">
-            <p class="pc-label" id="pcLabel">Стоимость в эту дату</p>
-            <p class="pc-price" id="pcPrice">—</p>
-            <p class="pc-demand" id="pcDemand"></p>
-            <p class="pc-surge" id="pcSurge" hidden></p>
-            <ul class="legend">
-              <li><i class="d1"></i>Много свободного времени</li>
-              <li><i class="d2"></i>Половина времени занята</li>
-              <li><i class="d3"></i>Почти всё разобрано</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section class="step" id="step-extra">
-        <div class="step-head"><h2><span class="n">4</span>Дополнительно</h2></div>
-        <div class="tiles" id="addons"></div>
-        <div class="zones">
-          <span class="zones-label">Куда ехать</span>
-          <div class="chips" id="zones" role="radiogroup" aria-label="Куда ехать"></div>
-        </div>
-      </section>
-
-      <section class="step" id="step-contacts">
-        <div class="step-head"><h2><span class="n">5</span>Контакты</h2></div>
-        <div class="contact-grid">
-          <div class="fields">
-            <label class="field"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"/></svg><input name="name" maxlength="60" autocomplete="name" placeholder="Ваше имя" aria-label="Ваше имя" required></label>
-            <label class="field"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"/></svg><input name="phone" maxlength="18" type="tel" inputmode="tel" autocomplete="tel" placeholder="Телефон" aria-label="Телефон" required></label>
-            <label class="field"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pin"/></svg><input name="address" maxlength="200" autocomplete="street-address" placeholder="Адрес: улица, дом, подъезд, квартира" aria-label="Адрес" required></label>
-            <label class="field"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg><input name="comment" maxlength="500" placeholder="Пожелания: увлечения, чего боится, где подарки" aria-label="Пожелания"></label>
-          </div>
-          <div class="children">
-            <p class="children-title">Для кого праздник <span class="optional">необязательно</span></p>
-            <p class="children-hint">Дед Мороз обратится к детям по именам</p>
-            <div id="children"></div>
-            <button type="button" class="link-btn" id="addChild">+ Добавить ребёнка</button>
-          </div>
-          <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-          <div class="consent-box">
-            <label class="consent"><input type="checkbox" name="consent" required> <span>Даю <a href="consent.html" id="consentLink" target="_blank" rel="noopener noreferrer">согласие на обработку персональных данных</a></span></label>
-            <a class="policy" href="privacy.html" id="privacyLink" target="_blank" rel="noopener noreferrer">Политика обработки персональных данных</a>
-          </div>
-        </div>
-        <p class="form-error" id="formError" role="alert" hidden></p>
-      </section>
-    </form>
-
-    <p class="disclaimer" id="demoNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>Демо-версия: цены примерные, заявка никуда не отправляется.</p>
-  </main>
-
-  <div class="bar" id="bar">
-    <div class="bar-in">
-      <div class="breakdown" id="breakdown" hidden></div>
-      <div class="bar-row">
-        <button type="button" class="bar-sum" id="barSum" aria-expanded="false" aria-controls="breakdown">
-          <svg class="coins" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-coins"/></svg>
-          <span><span class="bar-label" id="barLabel">Итого</span><span class="bar-total" id="barTotal">—</span></span>
-        </button>
-        <div class="bar-msg" id="barMsg"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gift"/></svg><span>Праздник уже<br>ближе, чем кажется!</span></div>
-        <button type="submit" form="order" class="cta" id="cta">Заказать</button>
-      </div>
+  <section class="l-block wrap">
+    <h2 class="block-title">Частые вопросы</h2>
+    <div class="faq">
+      <details><summary>Нужен ли свой сайт?</summary><p>Нет. У вас будет своя ссылка вида bronprazdnik.ru/ваше-название. Если сайт есть, ссылку можно поставить на кнопку «Заказать».</p></details>
+      <details><summary>Что с персональными данными?</summary><p>Заявки хранятся на сервере в России. Для страницы готовы согласие на обработку данных и политика с вашими реквизитами. Проверьте их со своим юристом перед запуском.</p></details>
+      <details><summary>А если клиент закажет по телефону?</summary><p>Закрываете это время в кабинете, и на странице его уже нельзя будет выбрать.</p></details>
+      <details><summary>Можно ли принимать оплату на странице?</summary><p>Пока нет: заявка приходит вам, предоплату берёте так, как привыкли. Онлайн-предоплату через ваш платёжный сервис можно подключить отдельно.</p></details>
+      <details><summary>Сколько стоит?</summary><p>Подключение — от 5 000 ₽, зависит от количества программ и услуг. Напишите в Telegram, посчитаю под ваш прайс.</p></details>
     </div>
-  </div>
+  </section>
 
-  <div class="done" id="done" hidden>
-    <div class="done-card" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
-      <div class="topline">
-        <span class="logo"><svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg><span id="agencyName">&nbsp;</span></span>
-        <a class="phone-pill" id="agencyPhone" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
-      </div>
-      <div class="star" aria-hidden="true"><i></i><svg viewBox="0 0 24 24"><use href="#i-star4"/></svg><i></i></div>
-      <h2 id="doneTitle">Заявка принята</h2>
-      <p id="doneText"></p>
-      <div class="done-sum" id="doneSum"></div>
-      <button type="button" class="cta dark" id="doneClose">Хорошо</button>
+  <section class="l-final wrap">
+    <h2>Посмотрите, как это выглядит для родителей</h2>
+    <div class="l-cta center">
+      <a class="cta dark" href="zapis.html?a=demo">Открыть демо</a>
+      <a class="l-link" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
     </div>
-  </div>
+  </section>
 
-  <div class="fail" id="fail" hidden>
-    <div class="wrap"><h1>Страница не найдена</h1><p>Проверьте ссылку или свяжитесь с агентством напрямую.</p></div>
-  </div>
+  <footer class="l-foot wrap">
+    <span>БронПраздник · <a href="https://rodionfrontend.ru" target="_blank" rel="noopener noreferrer">Родион, разработка сайтов</a></span>
+    <a href="admin/">Вход для агентств</a>
+  </footer>
 
-  <svg class="sprite" aria-hidden="true">
-    <defs>
-      <symbol id="i-pine" viewBox="0 0 32 40"><path d="M16 2l6 9h-3.5l6.5 9h-4l7 10H4l7-10H7l6.5-9H10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 30v8M16 8v22M12 15l4 3 4-3M10 23l6 4 6-4" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
-      <symbol id="i-star4" viewBox="0 0 24 24"><path d="M12 1c.6 5.6 2.4 10 11 11-8.6 1-10.4 5.4-11 11-.6-5.6-2.4-10-11-11 8.6-1 10.4-5.4 11-11z" fill="currentColor"/></symbol>
-      <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.6 2.8l2.6.4 1.2 4.4-2 1.6a12 12 0 006.4 6.4l1.6-2 4.4 1.2.4 2.6a2 2 0 01-2 2.2A17.6 17.6 0 014.4 4.8a2 2 0 012.2-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
-      <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-      <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
-      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
-      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
-      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M12 11v6M12 7.5v.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></symbol>
-      <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 12v9h14v-9M12 8v13M12 8C9 8 7 7 7 5.2 7 3 10 3 12 8zm0 0c3 0 5-1 5-2.8C17 3 14 3 12 8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
-      <symbol id="i-coins" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="13" cy="8" rx="9" ry="3.5"/><path d="M4 8v4c0 2 4 3.5 9 3.5s9-1.5 9-3.5V8M4 12v4c0 2 4 3.5 9 3.5M4 16v4c0 2 4 3.5 9 3.5s9-1.5 9-3.5"/><ellipse cx="22" cy="20" rx="7" ry="3"/><path d="M15 20v4c0 1.7 3 3 7 3s7-1.3 7-3v-4"/></g></symbol>
-      <symbol id="i-santa" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 26c2-11 9-17 18-17 7 0 12 4 14 10l3 7"/><circle cx="52" cy="28" r="3"/><path d="M14 26h36"/><path d="M15 26c-1 3 0 5 2 6M49 26c1 3 0 5-2 6"/><circle cx="26" cy="33" r="1.2" fill="currentColor"/><circle cx="38" cy="33" r="1.2" fill="currentColor"/><path d="M30 37c1 1 3 1 4 0"/><path d="M17 33c-1 9 3 18 15 22 12-4 16-13 15-22"/><path d="M24 41c3 2 5 2 8 0 3 2 5 2 8 0"/><path d="M22 47c3 3 7 5 10 5s7-2 10-5"/></g></symbol>
-      <symbol id="i-maiden" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 27C17 17 22 10 32 4c10 6 15 13 15 23"/><path d="M17 27c5-2.5 25-2.5 30 0"/><path d="M21 22c4-7 18-7 22 0"/><circle cx="20" cy="25.5" r=".6" fill="currentColor"/><circle cx="26" cy="24.5" r=".6" fill="currentColor"/><circle cx="38" cy="24.5" r=".6" fill="currentColor"/><circle cx="44" cy="25.5" r=".6" fill="currentColor"/><path d="M32 11v8M28.5 13l7 4M35.5 13l-7 4"/><path d="M19 28c-1 3-1 6 0 9M45 28c1 3 1 6 0 9"/><path d="M20 30c0 9 5 15 12 15s12-6 12-15"/><path d="M23 30c3 2 6 1.5 9-1 3 2.5 6 3 9 1"/><circle cx="27.5" cy="35" r="1.2" fill="currentColor"/><circle cx="36.5" cy="35" r="1.2" fill="currentColor"/><path d="M29.5 40c1.5 1 3.5 1 5 0"/><path d="M44 36c3 2 4 5 2.5 8 2 2 2 5 0 7 1.5 2 1 4.5-1 6"/><path d="M45.5 57l-1.5 4M45.5 57l2 3.5"/><path d="M18 58c1-6 6-10 14-10s13 4 14 7"/><path d="M19 54c3 1 5-1 7 0s4 1 6 0 4-1 6 0 4 1 6 0"/></g></symbol>
-      <symbol id="i-snowman" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="20" r="9"/><circle cx="32" cy="44" r="14"/><path d="M24 11h16M27 11V4h10v7"/><circle cx="29" cy="19" r="1" fill="currentColor"/><circle cx="35" cy="19" r="1" fill="currentColor"/><path d="M32 22l6 2-6 1"/><circle cx="32" cy="40" r="1.2" fill="currentColor"/><circle cx="32" cy="47" r="1.2" fill="currentColor"/><path d="M18 36l-8-6M46 36l8-6"/></g></symbol>
-      <symbol id="i-tree" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M24 4l7 10h-4l8 11h-5l9 12H9l9-12h-5l8-11h-4z"/><path d="M24 37v7M19 44h10"/><circle cx="20" cy="22" r="1.4"/><circle cx="29" cy="30" r="1.4"/><circle cx="18" cy="32" r="1.4"/></g></symbol>
-      <symbol id="i-giftbig" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="7" y="17" width="34" height="8" rx="1"/><path d="M10 25v18h28V25M24 17v26M24 17c-6 0-10-2-10-5.5C14 7 20 7 24 17zm0 0c6 0 10-2 10-5.5C34 7 28 7 24 17z"/></g></symbol>
-      <symbol id="i-ball" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M24 4v6"/><circle cx="24" cy="27" r="16"/><path d="M8 27h32M24 11v32M12 17c8 4 16 4 24 0M12 37c8-4 16-4 24 0M16 13c-4 9-4 19 0 28M32 13c4 9 4 19 0 28"/></g></symbol>
-      <symbol id="i-beard" viewBox="0 0 32 32"><path d="M6 10c0 12 4 18 10 18s10-6 10-18c-3 3-7 4-10 4s-7-1-10-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 18c2 1.2 6 1.2 8 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
-      <symbol id="i-clock" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M16 9v7l5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
-      <symbol id="i-shield" viewBox="0 0 32 32"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M11 16l4 4 7-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-      <symbol id="i-magic" viewBox="0 0 32 32"><path d="M5 27L21 11M18 8l6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M24 2l1 3 3 1-3 1-1 3-1-3-3-1 3-1zM8 5l.7 2 2 .7-2 .7L8 10.4l-.7-2-2-.7 2-.7z" fill="currentColor"/></symbol>
-      <symbol id="i-add-sack" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11c2 3 10 3 12 0l-2.5 6.5"/><path d="M20.5 17.5h7"/><path d="M20.5 17.5C12.5 21 9 28 9 34c0 6 6 9 15 9s15-3 15-9c0-6-3.5-13-11.5-16.5"/><path d="M15 30c1 4 4 7 9 8"/><path d="M27 18.5c2.5 1.5 4 2.5 5 4"/></g></symbol>
-      <symbol id="i-add-camera" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="15" width="36" height="24" rx="5"/><path d="M17 15l3-5h8l3 5"/><circle cx="24" cy="27" r="7.5"/><circle cx="24" cy="27" r="3.5"/><path d="M35 20h2"/></g></symbol>
-      <symbol id="i-add-letter" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="12" width="36" height="25" rx="3"/><path d="M6 15l18 13 18-13"/><path d="M6 37l13-11M42 37L29 26"/></g></symbol>
-      <symbol id="i-add-bubbles" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="28" r="10"/><circle cx="33" cy="16" r="6"/><circle cx="35" cy="34" r="4.5"/><path d="M12.5 24c1.2-2.2 3.2-3.3 5.3-3.4"/><path d="M30.5 13.5c.8-.9 1.8-1.4 2.9-1.5"/></g></symbol>
-      <symbol id="i-add-candy" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="8"/><path d="M16.5 21l-8-5v16l8-5M31.5 21l8-5v16l-8-5"/><path d="M20 19.5c3 2 5 6 4 12"/></g></symbol>
-      <symbol id="i-add-cake" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40h32M10 40V26h28v14M14 26v-6h20v6"/><path d="M10 32c3 2 5 2 7 0s4-2 7 0 4 2 7 0 4-2 7 0"/><path d="M24 20v-5M24 10c1.5 1.5 1.5 3 0 4-1.5-1-1.5-2.5 0-4z"/></g></symbol>
-      <symbol id="i-add-balloon" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 30c-6 0-10-5.5-10-11.5S18.5 7 24 7s10 5.5 10 11.5S30 30 24 30z"/><path d="M22 30.5h4l-2 2.5z"/><path d="M24 33c-2 3 2 5 0 8s-1 4 0 5"/><path d="M19 15c1-2 2.5-3 4.5-3.5"/></g></symbol>
-      <symbol id="i-add-music" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 34V12l20-4v22"/><circle cx="13.5" cy="34" r="4.5"/><circle cx="33.5" cy="30" r="4.5"/><path d="M18 18l20-4"/></g></symbol>
-      <symbol id="i-add-snowflake" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6v36M8.4 15l31.2 18M8.4 33l31.2-18"/><path d="M19 9l5 4 5-4M19 39l5-4 5 4M8 22l6 2-2 6M40 22l-6 2 2 6M8 26l6-2M40 26l-6-2"/></g></symbol>
-      <symbol id="i-add-car" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 32v-6l4-9h28l4 9v6z"/><path d="M10 26h28M16 17l-2 9M32 17l2 9"/><circle cx="14" cy="34" r="3.5"/><circle cx="34" cy="34" r="3.5"/></g></symbol>
-      <symbol id="i-add-star" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M24 7l5 10.5 11.5 1.7-8.3 8.1 2 11.4L24 33.3l-10.2 5.4 2-11.4-8.3-8.1 11.5-1.7z"/></g></symbol>
-      <symbol id="i-add-video" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="14" width="26" height="20" rx="4"/><path d="M32 21l10-5v16l-10-5"/><circle cx="14" cy="21" r="2"/></g></symbol>
-      <symbol id="i-add-gift" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="17" width="34" height="8" rx="1"/><path d="M10 25v18h28V25M24 17v26M24 17c-6 0-10-2-10-5.5C14 7 20 7 24 17zm0 0c6 0 10-2 10-5.5C34 7 28 7 24 17z"/></g></symbol>
-    </defs>
-  </svg>
-
-  <script src="assets/app.js"></script>
+  <svg class="sprite" aria-hidden="true"><defs>
+    <symbol id="i-pine" viewBox="0 0 32 40"><path d="M16 2l6 9h-3.5l6.5 9h-4l7 10H4l7-10H7l6.5-9H10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 30v8M16 8v22M12 15l4 3 4-3M10 23l6 4 6-4" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+  </defs></svg>
 </body>
 </html>

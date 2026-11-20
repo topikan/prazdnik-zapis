@@ -153,7 +153,9 @@
   }
   // Баннер внизу: текст, кнопку и ссылку агентство задаёт в кабинете; без заголовка баннера нет
   function renderBanner() {
-    var b = cfg.banner || {}, title = b.title == null ? "Подарите детям настоящий Новый год!" : b.title;
+    // в демо баннер ведёт на главную сервиса; у агентств — их текст и ссылка (или баннера нет)
+    var b = cfg.banner || (cfg.demo ? { title: "Хотите такую запись для своего агентства?", text: "Родители сами выбирают программу, дату и время, а вам приходит готовая заявка.", button: "Узнать о сервисе", link: "home" } : {});
+    var title = b.title == null ? "Подарите детям настоящий Новый год!" : b.title;
     $("banner").hidden = !title;
     if (!title) return;
     $("bannerTitle").textContent = title;
@@ -161,7 +163,8 @@
     $("bannerBtnText").textContent = b.button || "Забронировать праздник";
     var link = b.link || "";
     var btn = $("bannerBtn");
-    if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
+    if (link === "home") { btn.href = location.hostname.endsWith("github.io") ? "index.html" : "./"; btn.dataset.top = ""; btn.removeAttribute("target"); }
+    else if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
     else { btn.href = "#hero"; btn.dataset.top = "1"; btn.removeAttribute("target"); }
   }
   function whoArt(c) {
@@ -194,7 +197,7 @@
     $("kidsMinus").disabled = state.kids <= 1 || (state.kids <= state.children.length && lastFilled);
     $("kidsPlus").disabled = state.kids >= cfg.kids.max;
     $("kidsNote").textContent = cfg.kids.extraPrice > 0 && cfg.kids.included < cfg.kids.max
-      ? "До " + cfg.kids.included + " " + plural(cfg.kids.included, "ребёнка", "детей", "детей") + " входит в цену, каждый следующий +" + rub(cfg.kids.extraPrice) + "."
+      ? "До " + cfg.kids.included + " " + plural(cfg.kids.included, "ребёнка", "детей", "детей") + " — в цене, дальше +" + rub(cfg.kids.extraPrice) + " за ребёнка"
       : "Количество детей на цену не влияет, до " + cfg.kids.max + " на один праздник.";
   }
 
@@ -330,9 +333,8 @@
       if (i + 1 === n) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
     });
     var last = n === STEPS, txt = last ? "Заказать" : "Далее";
-    ["nextBtn", "sumBtn", "barNext"].forEach(function (id) { $(id).firstChild.nodeValue = txt; });
-    $("backBtn").style.visibility = n > 1 ? "visible" : "hidden";
-    $("barBack").hidden = n === 1;
+    ["nextBtn", "sumBtn"].forEach(function (id) { $(id).firstChild.nodeValue = txt; });
+    $("backBtn").hidden = n === 1;
     showError(null);
     if (push) history.pushState({ step: n }, "");
     var top = $("order").getBoundingClientRect().top + window.scrollY - 16;
@@ -379,8 +381,8 @@
       renderKids(); renderTimes(); renderBar();
     });
     $("kidsPlus").addEventListener("click", function () { if (state.kids < cfg.kids.max) { state.kids++; renderKids(); renderTimes(); renderBar(); } });
-    ["nextBtn", "sumBtn", "barNext"].forEach(function (id) { $(id).addEventListener("click", next); });
-    ["backBtn", "barBack"].forEach(function (id) { $(id).addEventListener("click", back); });
+    ["nextBtn", "sumBtn"].forEach(function (id) { $(id).addEventListener("click", next); });
+    $("backBtn").addEventListener("click", back);
     $("stepsNav").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b || b.disabled) return;
       var n = +b.dataset.go; if (n === state.step) return;
@@ -439,7 +441,7 @@
     sendOrder();
   }
   function setBusy(on) {
-    ["nextBtn", "sumBtn", "barNext"].forEach(function (id) { $(id).disabled = on; $(id).firstChild.nodeValue = on ? "Отправляем…" : (state.step === STEPS ? "Заказать" : "Далее"); });
+    ["nextBtn", "sumBtn"].forEach(function (id) { $(id).disabled = on; $(id).firstChild.nodeValue = on ? "Отправляем…" : (state.step === STEPS ? "Заказать" : "Далее"); });
   }
   function sendOrder() {
     var f = $("order");
@@ -544,7 +546,7 @@
     .catch(function () { return getJson("agencies/" + slug + ".json"); })
     .then(init)
     .catch(function () {
-      ["app", "bar", "foot", "hero"].forEach(function (id) { $(id).hidden = true; });
+      ["app", "banner", "foot", "hero"].forEach(function (id) { $(id).hidden = true; });
       $("fail").hidden = false;
     });
 })();

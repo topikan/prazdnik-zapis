@@ -122,9 +122,14 @@
         </section>
 
         <p class="form-error" id="formError" role="alert" hidden></p>
-        <div class="step-actions">
-          <button type="button" class="btn btn-ghost" id="backBtn"><svg aria-hidden="true"><use href="#i-back"/></svg>Назад</button>
-          <button type="button" class="btn btn-main" id="nextBtn">Далее<svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+        <!-- Кнопки шага: внутри блока записи; на телефоне прилипают к низу экрана вместе с итогом -->
+        <div class="step-actions" id="actions">
+          <div class="breakdown" id="breakdown" hidden></div>
+          <div class="act-row">
+            <button type="button" class="act-sum" id="barSum" aria-expanded="false" aria-controls="breakdown"><span class="bar-label" id="barLabel">Итого</span><span class="bar-total" id="barTotal">—</span></button>
+            <button type="button" class="btn btn-ghost act-back" id="backBtn" aria-label="Назад"><svg aria-hidden="true"><use href="#i-back"/></svg><span>Назад</span></button>
+            <button type="button" class="btn btn-main act-next" id="nextBtn">Далее<svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+          </div>
         </div>
       </form>
 
@@ -139,15 +144,19 @@
       </aside>
     </div>
 
-    <section class="banner" id="banner" hidden>
+  </main>
+
+  <section class="banner" id="banner" hidden>
+    <div class="wrap banner-in">
       <div class="banner-text">
         <h2 id="bannerTitle"></h2>
         <p id="bannerText"></p>
         <a class="btn btn-main" id="bannerBtn" href="#"><span id="bannerBtnText"></span><svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
       </div>
       <img class="banner-img" src="assets/img/girl.webp" width="540" height="396" alt="" loading="lazy">
-    </section>
-  </main>
+    </div>
+  </section>
+
 
   <footer class="foot" id="foot">
     <div class="wrap foot-in">
@@ -156,17 +165,6 @@
       <span class="foot-links"><a href="consent.html" class="js-consent" target="_blank" rel="noopener noreferrer">Согласие на обработку данных</a><a href="privacy.html" class="js-privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a></span>
     </div>
   </footer>
-
-  <div class="bar" id="bar">
-    <div class="breakdown" id="breakdown" hidden></div>
-    <div class="bar-row">
-      <button type="button" class="bar-sum" id="barSum" aria-expanded="false" aria-controls="breakdown">
-        <span class="bar-label" id="barLabel">Итого</span><span class="bar-total" id="barTotal">—</span>
-      </button>
-      <button type="button" class="bar-back" id="barBack" aria-label="Назад"><svg aria-hidden="true"><use href="#i-back"/></svg></button>
-      <button type="button" class="btn btn-main bar-next" id="barNext">Далее<svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
-    </div>
-  </div>
 
   <div class="done" id="done" hidden>
     <div class="done-card" role="dialog" aria-modal="true" aria-labelledby="doneTitle">

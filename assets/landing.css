@@ -133,7 +133,8 @@ p { margin: 0; }
 /* Светлые блоки */
 .cream { background: var(--cream); }
 .sec-title { font-weight: 800; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; margin-bottom: 28px; }
-.feat { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 48px; padding-top: 40px; padding-bottom: 70px; align-items: start; }
+#features { padding: 40px 0 70px; }
+.feat { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 48px; align-items: start; }
 .feat-intro h2 { font-weight: 800; font-size: clamp(30px, 3.4vw, 40px); line-height: 1.12; }
 .rule { display: block; width: 64px; height: 3px; border-radius: 2px; background: var(--gold); margin: 22px 0; }
 .feat-intro p { color: var(--muted); font-size: 17px; }
@@ -159,7 +160,7 @@ p { margin: 0; }
   }
 }
 
-.faq-wrap { padding-bottom: 80px; }
+#faq-block { padding: 0 0 90px; }
 .faq-wrap .faq { max-width: 860px; }
 .faq { display: grid; gap: 12px; }
 .faq details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 0 24px; }
@@ -169,26 +170,27 @@ p { margin: 0; }
 .faq details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
 .faq details p { padding: 0 0 20px; color: var(--muted); }
 
-/* Баннер внизу */
-.final-wrap { padding-bottom: 0; }
-.final { position: relative; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr); align-items: end; min-height: 420px; border-radius: 28px 28px 0 0; overflow: hidden; color: #fff; isolation: isolate;
-  background: var(--night) url("img/winter.webp") center / cover no-repeat; }
-.final::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(10, 19, 40, .2) 0%, rgba(10, 19, 40, .7) 45%, rgba(10, 19, 40, .92) 100%); }
-.final-santa { display: block; width: 100%; max-width: 470px; height: auto; align-self: end; justify-self: center; margin-top: 30px; }
-.final-text { padding: 56px 56px 60px 0; align-self: center; }
+/* Баннер внизу: на всю ширину экрана */
+.final { position: relative; color: #fff; isolation: isolate; overflow: hidden; background: var(--night) url("img/winter.webp") center 40% / cover no-repeat; }
+.final::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(10, 19, 40, .25) 0%, rgba(10, 19, 40, .7) 45%, rgba(10, 19, 40, .92) 100%); }
+.final-in { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr); align-items: end; min-height: 440px; }
+.final-santa { display: block; width: 100%; max-width: 470px; height: auto; align-self: end; justify-self: center; margin-top: 40px; }
+.final-text { padding: 60px 0 64px; align-self: center; }
 .final h2 { font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.1; }
 .final p { margin-top: 16px; font-size: 18px; color: rgba(255, 255, 255, .86); max-width: 460px; }
 .final .cta-row { margin-top: 28px; }
 
 /* Подвал */
-.foot { background: var(--night); color: #fff; padding: 34px 0 26px; }
+.foot { background: var(--night); color: #fff; padding: 36px 0 28px; }
 .foot-in { display: flex; align-items: center; gap: 40px; padding-bottom: 26px; border-bottom: 1px solid rgba(255, 255, 255, .12); }
-.foot-menu { margin-left: auto; }
+.foot-menu { margin-left: auto; display: flex; gap: 30px; font-size: 14px; font-weight: 600; }
+.foot-menu a { text-decoration: none; opacity: .85; }
+.foot-menu a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 6px; }
 .foot-acts { display: flex; align-items: center; gap: 22px; padding-left: 26px; border-left: 1px solid rgba(255, 255, 255, .16); }
-.icon-link { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .08); }
+.icon-link { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .08); }
 .icon-link svg { width: 20px; height: 20px; }
 .icon-link:hover { background: rgba(255, 255, 255, .16); }
-.foot-bottom { display: flex; justify-content: space-between; gap: 20px; padding-top: 22px; font-size: 13px; color: rgba(255, 255, 255, .7); }
+.foot-bottom { display: flex; justify-content: space-between; gap: 20px; padding-top: 22px; font-size: 13px; color: rgba(255, 255, 255, .65); }
 
 /* Планшет */
 @media (max-width: 1060px) {
@@ -196,9 +198,9 @@ p { margin: 0; }
   .hero-in { grid-template-columns: 1fr; gap: 50px; }
   .demo-card { max-width: 560px; transform: none; }
   .feat { grid-template-columns: 1fr; gap: 28px; }
-  .foot-in { flex-wrap: wrap; }
-  .foot-menu { display: flex; order: 3; flex-basis: 100%; margin: 0; }
-  .foot-acts { margin-left: auto; }
+  .foot-in { display: grid; grid-template-columns: 1fr auto; gap: 24px 20px; }
+  .foot-menu { grid-column: 1 / -1; grid-row: 2; margin: 0; flex-wrap: wrap; gap: 12px 28px; }
+  .foot-acts { padding-left: 0; border-left: 0; }
 }
 /* Телефон */
 @media (max-width: 680px) {
@@ -224,12 +226,17 @@ p { margin: 0; }
   .strip > div { justify-content: flex-start; padding: 0; }
   .strip > div + div { border-left: 0; }
   .feat-grid, .steps { grid-template-columns: 1fr; }
-  .final { grid-template-columns: 1fr; border-radius: 22px 22px 0 0; }
-  .final-text { padding: 36px 22px 10px; order: -1; }
+  #features { padding: 28px 0 50px; }
+  #how { padding: 0 0 50px; }
+  #faq-block { padding-bottom: 56px; }
+  .final-in { grid-template-columns: 1fr; min-height: 0; }
+  .final-text { padding: 40px 0 8px; order: -1; }
   .final .btn { width: 100%; }
-  .final-santa { max-width: 320px; margin-top: 0; }
-  .foot-in { gap: 20px; }
-  .foot-menu { flex-wrap: wrap; gap: 14px 22px; }
-  .foot-acts { padding-left: 0; border-left: 0; }
-  .foot-bottom { flex-direction: column; gap: 6px; }
+  .final-santa { max-width: 300px; margin-top: 10px; }
+  .foot { padding: 30px 0 calc(24px + env(safe-area-inset-bottom)); }
+  .foot-in { gap: 22px 16px; padding-bottom: 22px; }
+  .foot-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; font-size: 15px; }
+  .foot-acts { gap: 16px; }
+  .foot-acts .login span { display: inline; }
+  .foot-bottom { flex-direction: column; gap: 6px; padding-top: 18px; }
 }

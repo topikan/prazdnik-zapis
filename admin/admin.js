@@ -56,7 +56,7 @@
     $("agencyTitle").textContent = me.agency ? me.agency.name : "Выберите агентство";
     var pl = $("publicLink");
     if (me.agency) { pl.href = "../" + me.agency.slug; pl.hidden = false; } else pl.hidden = true;
-    document.querySelectorAll("#tabs button").forEach(function (b) { if (b.dataset.tab !== "agencies") b.disabled = !me.agency; });
+    document.querySelectorAll("#tabs button").forEach(function (b) { if (b.dataset.tab !== "agencies" && b.dataset.tab !== "site") b.disabled = !me.agency; });
   }
 
   /* ---------- вкладки ---------- */
@@ -70,6 +70,7 @@
     if (t === "prices") renderPrices();
     if (t === "settings") renderSettings();
     if (t === "agencies") loadAgencies();
+    if (t === "site") loadSite();
   }
 
   /* ---------- заявки ---------- */
@@ -269,6 +270,39 @@
   $("pwForm").addEventListener("submit", function (e) {
     e.preventDefault(); var f = e.target;
     api("password", { old: f.old.value, "new": f["new"].value }).then(function () { f.reset(); flash("Пароль изменён"); }).catch(function (err) { flash(err.message, true); });
+  });
+
+  /* ---------- главная (владелец) ---------- */
+  var siteEd = {}, siteData = null;
+  var SITE_FIELDS = [
+    ["Первый экран", [["heroTitle", "Заголовок", "area"], ["heroLead", "Подзаголовок", "area"], ["demoButton", "Кнопка демо"], ["contactButton", "Кнопка связи"]]],
+    ["Ссылки", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Текст в подвале"], ["footerLink", "Ссылка в подвале"]]],
+    ["Заголовки блоков", [["itemsTitle", "Блок «Что это решает»"], ["stepsTitle", "Блок «Как подключиться»"], ["faqTitle", "Блок вопросов"], ["finalTitle", "Заголовок внизу"], ["finalDemoButton", "Кнопка демо внизу"], ["finalContactButton", "Кнопка связи внизу"]]]
+  ];
+  function loadSite() {
+    api("site_get").then(function (r) {
+      if (r.landing) return r.landing;
+      return fetch("../assets/landing.json", { cache: "no-store" }).then(function (x) { return x.json(); });
+    }).then(function (d) {
+      siteData = d;
+      var root = $("siteForm");
+      root.innerHTML = SITE_FIELDS.map(function (g) {
+        return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
+          var v = esc(d[f[0]] || "");
+          return "<label>" + esc(f[1]) + (f[2] === "area" ? '<textarea data-site="' + f[0] + '" rows="3">' + v + "</textarea>" : '<input data-site="' + f[0] + '" value="' + v + '">') + "</label>";
+        }).join("") + "</div></div>";
+      }).join("");
+      siteEd.items = rowsEditor("Карточки «Что это решает»", "", d.items, [{ k: "title", label: "Заголовок" }, { k: "text", label: "Текст" }], function () { return { title: "", text: "" }; });
+      siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение" }], function () { return { title: "", text: "" }; });
+      siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ" }], function () { return { q: "", a: "" }; });
+      [siteEd.items, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
+    }).catch(function (e) { flash(e.message, true); });
+  }
+  $("saveSite").addEventListener("click", function () {
+    var d = clone(siteData || {});
+    document.querySelectorAll("#siteForm [data-site]").forEach(function (i) { d[i.dataset.site] = i.value.trim(); });
+    d.items = siteEd.items.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get();
+    api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 
   /* ---------- агентства (владелец) ---------- */

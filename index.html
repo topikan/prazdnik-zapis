@@ -15,16 +15,16 @@
 <body class="landing">
   <header class="l-top wrap">
     <span class="logo"><svg viewBox="0 0 32 40" aria-hidden="true"><use href="#i-pine"/></svg><span>БронПраздник</span></span>
-    <a class="phone-pill" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
+    <a class="phone-pill" id="tgTop" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
   </header>
 
   <section class="l-hero wrap">
     <div class="l-hero-text">
-      <h1>Онлайн-запись на Деда Мороза для агентств праздников</h1>
-      <p class="lead">Родители сами выбирают, кто приедет, программу, дату и время, и сразу видят цену. Вам приходит готовая заявка без переписки «сколько стоит» и «а 30-го свободно?».</p>
+      <h1 id="heroTitle"></h1>
+      <p class="lead" id="heroLead"></p>
       <div class="l-cta">
-        <a class="cta dark" href="zapis.html?a=demo">Посмотреть демо</a>
-        <a class="l-link" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Обсудить подключение</a>
+        <a class="cta dark" id="demoButton" href="zapis.html?a=demo"></a>
+        <a class="l-link" id="contactButton" href="#" target="_blank" rel="noopener noreferrer"></a>
       </div>
     </div>
     <figure class="phone">
@@ -33,62 +33,36 @@
   </section>
 
   <section class="l-block wrap">
-    <h2 class="block-title">Что это решает</h2>
-    <div class="l-grid">
-      <div class="panel l-item">
-        <h3>Цена считается сама</h3>
-        <p>Состав персонажей, длительность, дата, время, количество детей, допы и выезд за город. Наценки на 31 декабря и на популярные часы тоже учитываются. Родитель видит итог до звонка.</p>
-      </div>
-      <div class="panel l-item">
-        <h3>Только свободное время</h3>
-        <p>Страница знает, сколько у вас составов и сколько уже занято. Занятое время выбрать нельзя, две заявки на последнее окно не пройдут. Дорога между адресами учитывается.</p>
-      </div>
-      <div class="panel l-item">
-        <h3>Все заявки в одном месте</h3>
-        <p>Вместо ВК, WhatsApp и трёх Telegram — кабинет со всеми заказами, телефонами, адресами и расписанием по часам. Заказ по телефону закрываете вручную в два клика.</p>
-      </div>
-      <div class="panel l-item">
-        <h3>Цены меняете сами</h3>
-        <p>Программы, цены, наценки по датам, допы и часы работы правятся в кабинете и сразу появляются на странице. Без программиста и без звонков мне.</p>
-      </div>
-    </div>
+    <h2 class="block-title" id="itemsTitle"></h2>
+    <div class="l-grid" id="items"></div>
   </section>
 
   <section class="l-block wrap">
-    <h2 class="block-title">Как подключиться</h2>
-    <ol class="l-steps">
-      <li class="panel"><b>Присылаете прайс</b><span>Программы, цены по датам, допы, сколько у вас составов и часы работы.</span></li>
-      <li class="panel"><b>Я настраиваю страницу</b><span>Ваши название, цвета, цены и реквизиты для документов о персональных данных. Отдаю ссылку и вход в кабинет.</span></li>
-      <li class="panel"><b>Ставите ссылку</b><span>В описание группы ВК, на сайт, в карточку 2ГИС и в ответы клиентам. Свой сайт не нужен.</span></li>
-    </ol>
+    <h2 class="block-title" id="stepsTitle"></h2>
+    <ol class="l-steps" id="steps"></ol>
   </section>
 
   <section class="l-block wrap">
-    <h2 class="block-title">Частые вопросы</h2>
-    <div class="faq">
-      <details><summary>Нужен ли свой сайт?</summary><p>Нет. У вас будет своя ссылка вида bronprazdnik.ru/ваше-название. Если сайт есть, ссылку можно поставить на кнопку «Заказать».</p></details>
-      <details><summary>Что с персональными данными?</summary><p>Заявки хранятся на сервере в России. Для страницы готовы согласие на обработку данных и политика с вашими реквизитами. Проверьте их со своим юристом перед запуском.</p></details>
-      <details><summary>А если клиент закажет по телефону?</summary><p>Закрываете это время в кабинете, и на странице его уже нельзя будет выбрать.</p></details>
-      <details><summary>Можно ли принимать оплату на странице?</summary><p>Пока нет: заявка приходит вам, предоплату берёте так, как привыкли. Онлайн-предоплату через ваш платёжный сервис можно подключить отдельно.</p></details>
-      <details><summary>Сколько стоит?</summary><p>Подключение — от 5 000 ₽, зависит от количества программ и услуг. Напишите в Telegram, посчитаю под ваш прайс.</p></details>
-    </div>
+    <h2 class="block-title" id="faqTitle"></h2>
+    <div class="faq" id="faq"></div>
   </section>
 
   <section class="l-final wrap">
-    <h2>Посмотрите, как это выглядит для родителей</h2>
+    <h2 id="finalTitle"></h2>
     <div class="l-cta center">
-      <a class="cta dark" href="zapis.html?a=demo">Открыть демо</a>
-      <a class="l-link" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
+      <a class="cta dark" id="finalDemoButton" href="zapis.html?a=demo"></a>
+      <a class="l-link" id="finalContactButton" href="#" target="_blank" rel="noopener noreferrer"></a>
     </div>
   </section>
 
   <footer class="l-foot wrap">
-    <span>БронПраздник · <a href="https://rodionfrontend.ru" target="_blank" rel="noopener noreferrer">Родион, разработка сайтов</a></span>
+    <a id="footer" href="#" target="_blank" rel="noopener noreferrer"></a>
     <a href="admin/">Вход для агентств</a>
   </footer>
 
   <svg class="sprite" aria-hidden="true"><defs>
     <symbol id="i-pine" viewBox="0 0 32 40"><path d="M16 2l6 9h-3.5l6.5 9h-4l7 10H4l7-10H7l6.5-9H10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 30v8M16 8v22M12 15l4 3 4-3M10 23l6 4 6-4" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
   </defs></svg>
+  <script src="assets/landing.js"></script>
 </body>
 </html>

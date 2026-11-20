@@ -17,6 +17,7 @@ $sql = [
 "CREATE TABLE IF NOT EXISTS orders (id $id, agency_id INT NOT NULL, visit_date DATE NOT NULL, visit_time CHAR(5) NOT NULL, span TINYINT NOT NULL DEFAULT 1, data $text NOT NULL, name VARCHAR(80) NOT NULL, phone VARCHAR(20) NOT NULL, address VARCHAR(255) NOT NULL, total INT NOT NULL, price_lines TEXT NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'new', created_at DATETIME NOT NULL)$tail",
 "CREATE TABLE IF NOT EXISTS blocks (id $id, agency_id INT NOT NULL, visit_date DATE NOT NULL, visit_time CHAR(5) NOT NULL, teams TINYINT NOT NULL DEFAULT 1, note VARCHAR(100) NOT NULL DEFAULT '', created_at DATETIME NOT NULL)$tail",
 "CREATE TABLE IF NOT EXISTS hits (id $id, kind VARCHAR(10) NOT NULL, key_hash CHAR(64) NOT NULL, created_at DATETIME NOT NULL)$tail",
+"CREATE TABLE IF NOT EXISTS settings (name VARCHAR(40) NOT NULL PRIMARY KEY, value $text NOT NULL)$tail",
 "CREATE INDEX idx_orders_day ON orders (agency_id, visit_date)",
 "CREATE INDEX idx_blocks_day ON blocks (agency_id, visit_date)",
 "CREATE INDEX idx_hits ON hits (kind, key_hash, created_at)",

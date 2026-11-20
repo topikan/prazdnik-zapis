@@ -118,6 +118,27 @@ switch ($action) {
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($c, JSON_UNESCAPED_UNICODE), $a['id']]);
         json_out(['ok' => true]);
 
+    // ----- главная страница (владелец) -----
+    case 'site_get':
+        need_super();
+        json_out(['landing' => setting_get('landing')]);
+
+    case 'site_save':
+        need_super();
+        $d = $in['landing'] ?? null;
+        if (!is_array($d) || trim((string)($d['heroTitle'] ?? '')) === '') fail('Заполните заголовок');
+        foreach (['telegram', 'footerLink'] as $k) if (!empty($d[$k]) && !preg_match('#^https://#', (string)$d[$k])) fail('Ссылки должны начинаться с https://');
+        if (!empty($d['demoSlug']) && !preg_match('/^[a-z0-9-]{2,40}$/', (string)$d['demoSlug'])) fail('Адрес демо: латиница, цифры и дефис');
+        $clean = function ($v, $max) { return mb_substr(trim((string)$v), 0, $max); };
+        $out = [];
+        foreach (['telegram', 'heroTitle', 'heroLead', 'demoButton', 'contactButton', 'itemsTitle', 'stepsTitle', 'faqTitle', 'finalTitle', 'finalDemoButton', 'finalContactButton', 'footer', 'footerLink', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
+        foreach (['items' => ['title', 'text'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
+            $out[$list] = [];
+            foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }
+        }
+        setting_set('landing', $out);
+        json_out(['ok' => true]);
+
     // ----- только владелец сервиса -----
     case 'agencies':
         need_super();

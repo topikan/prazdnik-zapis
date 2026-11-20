@@ -86,3 +86,24 @@ function start_session(): void {
     ]);
     session_start();
 }
+
+// Настройки сервиса (тексты главной и т. п.): таблица создаётся при первом обращении
+function ensure_settings(): void {
+    static $done = false; if ($done) return;
+    $text = is_mysql() ? 'MEDIUMTEXT' : 'TEXT';
+    $tail = is_mysql() ? ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci' : '';
+    db()->exec("CREATE TABLE IF NOT EXISTS settings (name VARCHAR(40) NOT NULL PRIMARY KEY, value $text NOT NULL)$tail");
+    $done = true;
+}
+function setting_get(string $name): ?array {
+    ensure_settings();
+    $st = db()->prepare('SELECT value FROM settings WHERE name = ?'); $st->execute([$name]);
+    $v = $st->fetchColumn();
+    return $v === false ? null : (json_decode($v, true) ?: null);
+}
+function setting_set(string $name, array $value): void {
+    ensure_settings();
+    $json = json_encode($value, JSON_UNESCAPED_UNICODE);
+    db()->prepare('DELETE FROM settings WHERE name = ?')->execute([$name]);
+    db()->prepare('INSERT INTO settings (name, value) VALUES (?, ?)')->execute([$name, $json]);
+}

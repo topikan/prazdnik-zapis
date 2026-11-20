@@ -13,7 +13,7 @@ if (!empty($in['website'])) json_out(['ok' => true, 'id' => 0]);
 
 rate_limit('order', 8, 600);
 
-$a = agency_by_slug((string)($in['agency'] ?? ''));
+$a = agency_by_slug(in_str($in, 'agency'));
 if (!$a || !$a['active']) fail('Агентство не найдено', 404);
 $cfg = $a['cfg'];
 if (!empty($cfg['demo'])) fail('Это демо-версия, заявки не принимаются', 403);
@@ -22,16 +22,16 @@ if (!empty($cfg['demo'])) fail('Это демо-версия, заявки не 
 $str = function ($v, int $max): string { return mb_substr(trim(preg_replace('/\s+/u', ' ', (string)$v)), 0, $max); };
 foreach (['character', 'program', 'date', 'time', 'zone', 'name', 'phone', 'address', 'comment'] as $k) if (isset($in[$k]) && !is_scalar($in[$k])) fail('Проверьте заполнение формы');
 $o = [
-    'character' => (string)($in['character'] ?? ''),
-    'program'   => (string)($in['program'] ?? ''),
-    'date'      => (string)($in['date'] ?? ''),
-    'time'      => (string)($in['time'] ?? ''),
+    'character' => in_str($in, 'character'),
+    'program'   => in_str($in, 'program'),
+    'date'      => in_str($in, 'date'),
+    'time'      => in_str($in, 'time'),
     'kids'      => (int)($in['kids'] ?? 1),
     'addons'    => array_values(array_filter((array)($in['addons'] ?? []), 'is_string')),
-    'zone'      => (string)($in['zone'] ?? ''),
+    'zone'      => in_str($in, 'zone'),
 ];
 $name = $str($in['name'] ?? '', 60);
-$phoneDigits = preg_replace('/\D/', '', (string)($in['phone'] ?? ''));
+$phoneDigits = preg_replace('/\D/', '', in_str($in, 'phone'));
 if (strlen($phoneDigits) === 11 && $phoneDigits[0] === '8') $phoneDigits = '7' . substr($phoneDigits, 1);
 $address = $str($in['address'] ?? '', 200);
 $comment = $str($in['comment'] ?? '', 500);
@@ -47,7 +47,7 @@ if (!find_item($cfg['zones'], $o['zone'])) fail('Выберите, куда ех
 if ($o['kids'] < 1 || $o['kids'] > (int)$cfg['kids']['max']) fail('Неверное количество детей');
 $known = array_column($cfg['addons'] ?? [], 'id');
 $o['addons'] = array_values(array_unique(array_intersect($o['addons'], $known)));
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || $o['date'] < $cfg['season']['start'] || $o['date'] > $cfg['season']['end']) fail('Эта дата недоступна');
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || !checkdate((int)substr($o['date'], 5, 2), (int)substr($o['date'], 8, 2), (int)substr($o['date'], 0, 4)) || $o['date'] < $cfg['season']['start'] || $o['date'] > $cfg['season']['end']) fail('Эта дата недоступна');
 if (!in_array($o['time'], slot_times($cfg, $o['date']), true)) fail('Это время недоступно');
 $lead = max(0, min(72, (int)($cfg['leadHours'] ?? 3)));
 if (agency_ts($cfg, $o['date'], $o['time']) < time() + $lead * 3600)
@@ -86,6 +86,12 @@ try {
     }
 
     $price = calc_price($cfg, $o, $free);
+    // Клиент видел одну цену, а пока он заполнял форму, время стали разбирать и цена выросла: не оформляем молча
+    $expected = $in['expectedTotal'] ?? null;
+    if (is_numeric($expected) && (int)$expected !== (int)$price['total']) {
+        if (is_mysql()) $pdo->rollBack(); else $pdo->exec('ROLLBACK');
+        json_out(['error' => 'Пока вы заполняли форму, цена на это время изменилась: теперь ' . number_format((int)$price['total'], 0, '', ' ') . ' ₽. Проверьте итог внизу и нажмите «Заказать» ещё раз.', 'priceChanged' => true, 'total' => $price['total']], 409);
+    }
     $data = ['character' => $o['character'], 'program' => $o['program'], 'kids' => $o['kids'], 'addons' => $o['addons'], 'zone' => $o['zone'], 'children' => $children, 'comment' => $comment];
     $pdo->prepare('INSERT INTO orders (agency_id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
         ->execute([$a['id'], $o['date'], $o['time'], $span, json_encode($data, JSON_UNESCAPED_UNICODE), $name, $phone, $address, $price['total'], json_encode($price['lines'], JSON_UNESCAPED_UNICODE), 'new', date('Y-m-d H:i:s')]);
@@ -108,6 +114,8 @@ if (random_int(1, 20) === 1) {
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 echo json_encode(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines']], JSON_UNESCAPED_UNICODE);
+ignore_user_abort(true);
 if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+elseif (function_exists('litespeed_finish_request')) litespeed_finish_request();
 try { notify_order($a, $id, $o, (int)$price['total']); } catch (Throwable $e) { error_log('notify: ' . $e->getMessage()); }
 exit;

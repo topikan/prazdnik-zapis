@@ -154,10 +154,20 @@
       document.querySelectorAll("#schSlots .meter i").forEach(function (i) { i.style.width = i.dataset.w + "%"; });
       $("closeDay").hidden = !r.slots.some(function (s) { return s.busy < s.total; });
       $("blockTime").innerHTML = r.slots.map(function (s) { return "<option" + (s.busy >= s.total ? " disabled" : "") + ">" + s.time + "</option>"; }).join("");
-      $("schBlocks").innerHTML = r.blocks.length ? r.blocks.map(function (b) {
-        var what = +b.teams >= cfg.pairs ? "закрыто полностью" : "занят" + (+b.teams > 1 ? "о " : " ") + trips(+b.teams);
-        return '<div class="list-row"><span><b>' + esc(b.visit_time) + "</b> · " + what + (b.note ? " · " + esc(b.note) : "") + '</span><button class="btn ghost small" data-block="' + b.id + '">Вернуть</button></div>';
+      // часы одного заказа по телефону показываем одной строкой: «12:00–14:00»
+      var groups = [], byGrp = {};
+      r.blocks.forEach(function (b) {
+        var key = b.grp ? "g" + b.grp : "i" + b.id;
+        if (!byGrp[key]) { byGrp[key] = { id: b.id, from: b.visit_time, to: b.visit_time, teams: +b.teams, note: b.note }; groups.push(byGrp[key]); }
+        else byGrp[key].to = b.visit_time;
+      });
+      $("schBlocks").innerHTML = groups.length ? groups.map(function (g) {
+        var what = g.teams >= cfg.pairs ? "закрыто полностью" : "занят" + (g.teams > 1 ? "о " : " ") + trips(g.teams);
+        var end = (parseInt(g.to, 10) + 1) % 24;
+        var when = g.from === g.to ? g.from : g.from + "–" + pad(end) + ":00";
+        return '<div class="list-row"><span><b>' + esc(when) + "</b> · " + what + (g.note ? " · " + esc(g.note) : "") + '</span><button class="btn ghost small" data-block="' + g.id + '">Вернуть</button></div>';
       }).join("") : '<p class="muted">Ничего не закрыто</p>';
+      $("blockProgram").innerHTML = cfg.programs.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.title) + ", " + esc(p.minutes) + " мин</option>"; }).join("");
       $("schOrders").innerHTML = r.orders.length ? r.orders.map(function (o) {
         return '<div class="list-row"><span><b>' + esc(o.visit_time) + "</b> " + esc(o.name) + " · " + esc(o.address) + '</span><span class="st st-' + esc(o.status) + '">' + STATUS[o.status] + "</span></div>";
       }).join("") : '<p class="muted">Заявок на этот день нет</p>';
@@ -181,7 +191,7 @@
   });
   $("blockForm").addEventListener("submit", function (e) {
     e.preventDefault(); var f = e.target;
-    api("block_add", { date: $("schDate").value, time: f.time.value, teams: 1, note: f.note.value || "Заказ по телефону" }).then(function () { f.note.value = ""; flash("Заказ записан, " + f.time.value + " занято на один выезд"); loadSchedule(); }).catch(function (err) { flash(err.message, true); });
+    api("block_add", { date: $("schDate").value, time: f.time.value, program: f.program.value, teams: 1, note: f.note.value || "Заказ по телефону" }).then(function () { f.note.value = ""; flash("Заказ записан: с " + f.time.value + " занят один выезд на время программы и дороги"); loadSchedule(); }).catch(function (err) { flash(err.message, true); });
   });
   $("schBlocks").addEventListener("click", function (e) {
     var id = e.target.dataset.block; if (!id) return;

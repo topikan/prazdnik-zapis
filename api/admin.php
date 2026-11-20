@@ -10,23 +10,39 @@ $in = $_SERVER['REQUEST_METHOD'] === 'POST' ? body_json() : [];
 $action = (string)($_GET['action'] ?? '');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 
+// «Знакомое устройство»: подписанная кука после удачного входа (без пароля и без доступа к кабинету)
+function device_sig(string $login, string $rnd): string { global $APP; return substr(hash_hmac('sha256', 'dev|' . mb_strtolower($login) . '|' . $rnd, (string)$APP['secret']), 0, 32); }
+function known_device(string $login): bool {
+    $parts = explode('.', (string)($_COOKIE['bp_dev'] ?? ''));
+    return count($parts) === 2 && preg_match('/^[a-f0-9]{16}$/', $parts[0]) && hash_equals(device_sig($login, $parts[0]), $parts[1]);
+}
+function remember_device(string $login): void {
+    $rnd = bin2hex(random_bytes(8));
+    setcookie('bp_dev', $rnd . '.' . device_sig($login, $rnd), ['expires' => time() + 365 * 86400, 'path' => '/', 'secure' => !is_local_host(), 'httponly' => true, 'samesite' => 'Strict']);
+}
+
 // ---------- вход ----------
 if ($action === 'login') {
     $login = is_scalar($in['login'] ?? null) ? mb_substr(trim((string)$in['login']), 0, 60) : '';
     $pass = is_scalar($in['password'] ?? null) ? (string)$in['password'] : '';
-    rate_limit('login', 8, 900);                                   // с одного адреса
-    rate_limit('loginu', 10, 900, 'u:' . mb_strtolower($login));    // на один логин с любых адресов
+    // Считаем только неудачные попытки: 8 с одного адреса и 30 на один логин за 15 минут.
+    // Так перебор пароля невозможен, а настоящего владельца нельзя «запереть» парой чужих попыток.
+    $ukey = 'u:' . mb_strtolower($login);
+    // С устройства, где этот логин уже входил, лимит на логин не действует: чужой перебор не запрёт владельца
+    $known = known_device($login);
+    if (fails_exceeded('login', 8, 900) || (!$known && fails_exceeded('loginu', 30, 900, $ukey))) fail('Слишком много неудачных попыток. Попробуйте через 15 минут.', 429);
     $st = db()->prepare('SELECT * FROM users WHERE login = ?');
     $st->execute([$login]);
     $u = $st->fetch();
     // проверяем пароль даже для несуществующего логина, чтобы по времени ответа нельзя было угадать логины
     $ok = password_verify($pass, $u ? $u['password_hash'] : '$2y$10$q5sdvpWX2/YTdl9MyGFC7OSeoTpADJYzKj5F00tnYaTMzjAhj5UGS');
-    if (!$u || !$ok) fail('Неверный логин или пароль', 401);
+    if (!$u || !$ok) { fail_hit('login'); fail_hit('loginu', $ukey); fail('Неверный логин или пароль', 401); }
     if ($u['role'] === 'agency') { $ag = agency_by_id((int)$u['agency_id']); if (!$ag) fail('Неверный логин или пароль', 401); }
     if (password_needs_rehash($u['password_hash'], PASSWORD_DEFAULT)) {
         $u['password_hash'] = password_hash($pass, PASSWORD_DEFAULT);
         db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$u['password_hash'], $u['id']]);
     }
+    remember_device($login);
     session_regenerate_id(true);
     $_SESSION = ['uid' => (int)$u['id'], 'role' => $u['role'], 'agency' => $u['agency_id'] ? (int)$u['agency_id'] : null,
         'csrf' => bin2hex(random_bytes(24)), 'fp' => pass_fp($u['password_hash']), 'seen' => time()];
@@ -60,7 +76,14 @@ function current_agency(): array {
     return $a;
 }
 function need_super(): void { global $isSuper; if (!$isSuper) fail('Нет доступа', 403); }
-function valid_date(string $d): string { if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) fail('Неверная дата'); return $d; }
+// Колонка-метка, объединяющая часы одного заказа по телефону; в старых базах добавляется при первом обращении
+function ensure_blocks_grp(): void {
+    static $done = false; if ($done) return;
+    try { db()->query('SELECT grp FROM blocks LIMIT 1'); }
+    catch (Throwable $e) { db()->exec("ALTER TABLE blocks ADD COLUMN grp VARCHAR(16) NOT NULL DEFAULT ''"); }
+    $done = true;
+}
+function valid_date(string $d): string { if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) || !checkdate((int)substr($d, 5, 2), (int)substr($d, 8, 2), (int)substr($d, 0, 4))) fail('Неверная дата'); return $d; }
 
 switch ($action) {
     case 'me': json_out(me());
@@ -68,11 +91,11 @@ switch ($action) {
     case 'logout': $_SESSION = []; session_destroy(); json_out(['ok' => true]);
 
     case 'password': // сменить свой пароль
-        $new = (string)($in['new'] ?? '');
+        $new = in_str($in, 'new');
         if (strlen($new) < 10) fail('Пароль не короче 10 символов');
         rate_limit('passwd', 10, 900);
         $st = db()->prepare('SELECT password_hash FROM users WHERE id = ?'); $st->execute([$_SESSION['uid']]);
-        if (!password_verify((string)($in['old'] ?? ''), (string)$st->fetchColumn())) fail('Старый пароль неверный');
+        if (!password_verify(in_str($in, 'old'), (string)$st->fetchColumn())) fail('Старый пароль неверный');
         if (strlen($new) > 200) fail('Слишком длинный пароль');
         $hash = password_hash($new, PASSWORD_DEFAULT);
         db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$hash, $_SESSION['uid']]);
@@ -82,8 +105,8 @@ switch ($action) {
     // ----- заявки -----
     case 'orders':
         $a = current_agency();
-        $from = valid_date((string)($in['from'] ?? date('Y-m-d')));
-        $to = valid_date((string)($in['to'] ?? $a['cfg']['season']['end']));
+        $from = valid_date(in_str($in, 'from', (string)(date('Y-m-d'))));
+        $to = valid_date(in_str($in, 'to', (string)($a['cfg']['season']['end'])));
         $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
         $st->execute([$a['id'], $from, $to]);
         $rows = [];
@@ -92,7 +115,7 @@ switch ($action) {
 
     case 'order_status':
         $a = current_agency();
-        $status = (string)($in['status'] ?? '');
+        $status = in_str($in, 'status');
         if (!in_array($status, ['new', 'confirmed', 'done', 'cancelled'], true)) fail('Неверный статус');
         $st = db()->prepare('UPDATE orders SET status = ? WHERE id = ? AND agency_id = ?');
         $st->execute([$status, (int)($in['id'] ?? 0), $a['id']]);
@@ -108,9 +131,10 @@ switch ($action) {
     // ----- расписание -----
     case 'schedule':
         $a = current_agency(); $cfg = $a['cfg'];
-        $date = valid_date((string)($in['date'] ?? date('Y-m-d', strtotime('+1 day'))));
+        $date = valid_date(in_str($in, 'date', date('Y-m-d', strtotime('+1 day'))));
         $occ = occupancy((int)$a['id'], $date, $date);
-        $st = db()->prepare('SELECT id, visit_time, teams, note FROM blocks WHERE agency_id = ? AND visit_date = ? ORDER BY visit_time');
+        ensure_blocks_grp();
+        $st = db()->prepare('SELECT id, visit_time, teams, note, grp FROM blocks WHERE agency_id = ? AND visit_date = ? ORDER BY visit_time, id');
         $st->execute([$a['id'], $date]);
         $blocks = $st->fetchAll();
         $st = db()->prepare("SELECT id, visit_time, span, name, address, status FROM orders WHERE agency_id = ? AND visit_date = ? AND status IN ('new','confirmed') ORDER BY visit_time");
@@ -122,17 +146,36 @@ switch ($action) {
 
     case 'block_add':
         $a = current_agency();
-        $date = valid_date((string)($in['date'] ?? ''));
-        $time = (string)($in['time'] ?? '');
-        if (!in_array($time, slot_times($a['cfg'], $date), true)) fail('Неверное время');
+        $date = valid_date(in_str($in, 'date'));
+        $time = is_scalar($in['time'] ?? null) ? (string)$in['time'] : '';
+        $times = slot_times($a['cfg'], $date);
+        if (!in_array($time, $times, true)) fail('Неверное время');
         $teams = max(1, min((int)$a['cfg']['pairs'], (int)($in['teams'] ?? 1)));
-        db()->prepare('INSERT INTO blocks (agency_id, visit_date, visit_time, teams, note, created_at) VALUES (?,?,?,?,?,?)')
-            ->execute([$a['id'], $date, $time, $teams, mb_substr((string)($in['note'] ?? ''), 0, 100), date('Y-m-d H:i:s')]);
+        // Заказ по телефону занимает столько часов, сколько длится программа вместе с дорогой — как заказ с сайта
+        $hours = 1;
+        if (is_scalar($in['program'] ?? null) && $in['program'] !== '') {
+            if (!find_item($a['cfg']['programs'], (string)$in['program'])) fail('Нет такой программы');
+            $hours = order_span($a['cfg'], (string)$in['program']);
+        }
+        $note = is_scalar($in['note'] ?? null) ? mb_substr(trim((string)$in['note']), 0, 100) : '';
+        ensure_blocks_grp();
+        $grp = bin2hex(random_bytes(8)); // общая метка для всех часов одного заказа
+        $ins = db()->prepare('INSERT INTO blocks (agency_id, visit_date, visit_time, teams, note, created_at, grp) VALUES (?,?,?,?,?,?,?)');
+        for ($i = 0; $i < $hours; $i++) {
+            $t = hhmm(minutes_of($time) + $i * 60);
+            if ($i > 0 && !in_array($t, $times, true)) break;
+            $ins->execute([$a['id'], $date, $t, $teams, $note, date('Y-m-d H:i:s'), $grp]);
+        }
         json_out(['ok' => true]);
 
-    case 'block_remove':
+    case 'block_remove': // убирает блокировку целиком, со всеми часами этого заказа
         $a = current_agency();
-        db()->prepare('DELETE FROM blocks WHERE id = ? AND agency_id = ?')->execute([(int)($in['id'] ?? 0), $a['id']]);
+        ensure_blocks_grp();
+        $st = db()->prepare('SELECT grp FROM blocks WHERE id = ? AND agency_id = ?');
+        $st->execute([(int)($in['id'] ?? 0), $a['id']]);
+        $g = $st->fetchColumn();
+        if ($g !== false && $g !== '') db()->prepare('DELETE FROM blocks WHERE agency_id = ? AND grp = ?')->execute([$a['id'], $g]);
+        else db()->prepare('DELETE FROM blocks WHERE id = ? AND agency_id = ?')->execute([(int)($in['id'] ?? 0), $a['id']]);
         json_out(['ok' => true]);
 
     // ----- настройки агентства -----
@@ -155,7 +198,7 @@ switch ($action) {
     // ----- логотип агентства -----
     case 'logo_upload':
         $a = current_agency();
-        if (!preg_match('~^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$~', (string)($in['data'] ?? ''), $m)) fail('Загрузите картинку PNG, JPG или WebP');
+        if (!preg_match('~^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$~', in_str($in, 'data'), $m)) fail('Загрузите картинку PNG, JPG или WebP');
         $bin = base64_decode($m[2], true);
         if ($bin === false || strlen($bin) > 600000) fail('Картинка слишком большая, нужна до 600 КБ');
         $info = @getimagesizefromstring($bin);
@@ -197,6 +240,9 @@ switch ($action) {
         if (!tg_ready()) fail('Уведомления в Telegram пока не настроены владельцем сервиса');
         $bot = tg_bot();
         if (!$bot) fail('Не удалось связаться с Telegram. Попробуйте через минуту.', 502);
+        foreach (db()->query("SELECT name, value FROM settings WHERE name LIKE 'tglink:%'")->fetchAll() as $row) {
+            if ((json_decode($row['value'], true)['exp'] ?? 0) < time()) db()->prepare('DELETE FROM settings WHERE name = ?')->execute([$row['name']]);
+        }
         $code = bin2hex(random_bytes(8));
         setting_set('tglink:' . $code, ['aid' => (int)$a['id'], 'exp' => time() + 3600]);
         json_out(['url' => 'https://t.me/' . $bot['username'] . '?start=' . $code]);
@@ -247,15 +293,15 @@ switch ($action) {
 
     case 'agency_create':
         need_super();
-        $slug = strtolower(trim((string)($in['slug'] ?? '')));
-        $name = trim((string)($in['name'] ?? ''));
+        $slug = strtolower(trim(in_str($in, 'slug')));
+        $name = trim(in_str($in, 'name'));
         if (!preg_match('/^[a-z0-9-]{2,40}$/', $slug)) fail('Адрес ссылки: латиница, цифры и дефис, от 2 символов');
         if (in_array($slug, ['admin', 'api', 'assets', 'agencies', 'install', 'lib', 'uploads', 'docs', 'data', 'zapis', 'consent', 'privacy', 'index', 'demo', 'www', 'mail'], true)) fail('Такой адрес занят системой');
         if (agency_by_slug($slug)) fail('Такой адрес уже есть');
         if ($name === '') fail('Укажите название');
         $tpl = json_decode(file_get_contents(APP_ROOT . '/agencies/demo.json'), true);
         $tpl['name'] = mb_substr($name, 0, 80);
-        $tpl['city'] = mb_substr(trim((string)($in['city'] ?? '')), 0, 60);
+        $tpl['city'] = mb_substr(trim(in_str($in, 'city')), 0, 60);
         $tpl['demo'] = false;
         $tpl['legal'] = ['operator' => '', 'inn' => '', 'ogrn' => '', 'address' => '', 'email' => '', 'keepMonths' => 12, 'updated' => date('d.m.Y'), 'policyUrl' => ''];
         db()->prepare('INSERT INTO agencies (slug, config, active, created_at) VALUES (?, ?, 1, ?)')->execute([$slug, json_encode($tpl, JSON_UNESCAPED_UNICODE), date('Y-m-d H:i:s')]);
@@ -278,12 +324,15 @@ switch ($action) {
         $a = agency_by_id((int)($in['id'] ?? 0));
         if (!$a) fail('Агентство не найдено', 404);
         if ($a['slug'] === 'demo') fail('Демо-агентство удалить нельзя: его показывают на главной');
-        if ((string)($in['confirm'] ?? '') !== $a['slug']) fail('Для удаления введите адрес агентства точно');
+        if (in_str($in, 'confirm') !== $a['slug']) fail('Для удаления введите адрес агентства точно');
         $pdo = db(); $aid = (int)$a['id'];
         $pdo->beginTransaction();
         foreach (['orders', 'blocks', 'users'] as $t) $pdo->prepare("DELETE FROM $t WHERE agency_id = ?")->execute([$aid]);
         $pdo->prepare('DELETE FROM agencies WHERE id = ?')->execute([$aid]);
+        $pdo->prepare('DELETE FROM settings WHERE name = ?')->execute(["tgchats:$aid"]);
         $pdo->commit();
+        $logo = (string)($a['cfg']['logo'] ?? '');
+        if (preg_match('~^uploads/logos/a' . $aid . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $logo)) @unlink(APP_ROOT . '/' . $logo);
         if ((int)($_SESSION['agency'] ?? 0) === $aid) unset($_SESSION['agency']);
         json_out(me());
 
@@ -291,7 +340,7 @@ switch ($action) {
         need_super();
         $aid = (int)($in['id'] ?? 0);
         if (!agency_by_id($aid)) fail('Агентство не найдено', 404);
-        $login = (string)($in['login'] ?? ''); $pass = (string)($in['password'] ?? '');
+        $login = in_str($in, 'login'); $pass = in_str($in, 'password');
         if (!preg_match('/^[a-zA-Z0-9_.-]{3,40}$/', $login)) fail('Логин: латиница и цифры, от 3 символов');
         if (strlen($pass) < 10) fail('Пароль не короче 10 символов');
         $st = db()->prepare('SELECT id, agency_id FROM users WHERE login = ?'); $st->execute([$login]); $u = $st->fetch();

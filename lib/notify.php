@@ -5,8 +5,9 @@
 function site_url(): string {
     global $APP;
     if (!empty($APP['site_url'])) return rtrim($APP['site_url'], '/');
-    $host = preg_replace('/[^a-z0-9.\-:]/i', '', $_SERVER['HTTP_HOST'] ?? 'bronprazdnik.ru');
-    return 'https://' . $host;
+    // Не берём адрес из заголовка Host: его можно подделать и подсунуть агентству ссылку на чужой сайт
+    if (is_local_host()) return 'http://' . preg_replace('/[^a-z0-9.\-:\[\]]/i', '', (string)$_SERVER['HTTP_HOST']);
+    return 'https://bronprazdnik.ru';
 }
 
 // Запрос к Telegram: напрямую или через реле в Google Apps Script.
@@ -28,7 +29,7 @@ function http_post_json(string $url, string $body, int $timeout): ?string {
 function tg_api(string $method, array $params = []): ?array {
     global $APP;
     if (tg_relay()) {
-        $r = http_post_json((string)$APP['tg_relay_url'], json_encode(['key' => (string)($APP['tg_relay_key'] ?? ''), 'method' => $method, 'params' => (object)$params], JSON_UNESCAPED_UNICODE), 15);
+        $r = http_post_json((string)$APP['tg_relay_url'], json_encode(['key' => (string)($APP['tg_relay_key'] ?? ''), 'method' => $method, 'params' => (object)$params], JSON_UNESCAPED_UNICODE), 10);
     } else {
         $token = (string)($APP['tg_bot_token'] ?? '');
         if ($token === '') return null;

@@ -60,6 +60,9 @@ function body_json(): array {
 // Настоящий адрес посетителя. На хостинге перед сайтом стоит прокси, и REMOTE_ADDR у всех может быть
 // адресом прокси — тогда лимиты срабатывали бы на всех посетителей сразу. Заголовкам прокси верим,
 // только если запрос пришёл с внутреннего адреса (подделать их снаружи тогда нельзя).
+// Строковое поле запроса: массив или объект вместо строки считается пустым значением
+function in_str(array $in, string $k, string $def = ''): string { return isset($in[$k]) && is_scalar($in[$k]) ? (string)$in[$k] : $def; }
+
 function client_ip(): string {
     $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '0');
     $internal = !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
@@ -75,6 +78,16 @@ function client_key(string $extra = ''): string {
     return hash_hmac('sha256', $extra !== '' ? $extra : client_ip(), $APP['secret']);
 }
 function is_local_host(): bool { return (bool)preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/', (string)($_SERVER['HTTP_HOST'] ?? '')); }
+
+// Счётчик неудач (например, неверных паролей): проверить, не превышен ли лимит, и записать новую неудачу
+function fails_exceeded(string $kind, int $max, int $seconds, string $key = ''): bool {
+    $st = db()->prepare('SELECT COUNT(*) FROM hits WHERE kind = ? AND key_hash = ? AND created_at > ?');
+    $st->execute([$kind, client_key($key), date('Y-m-d H:i:s', time() - $seconds)]);
+    return (int)$st->fetchColumn() >= $max;
+}
+function fail_hit(string $kind, string $key = ''): void {
+    db()->prepare('INSERT INTO hits (kind, key_hash, created_at) VALUES (?, ?, ?)')->execute([$kind, client_key($key), date('Y-m-d H:i:s')]);
+}
 
 // Ограничение частоты: не больше $max событий вида $kind за $seconds с одного адреса (или по ключу $key)
 function rate_limit(string $kind, int $max, int $seconds, string $key = ''): void {

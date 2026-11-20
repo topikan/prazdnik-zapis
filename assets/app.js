@@ -352,22 +352,40 @@
       agency: slug, character: state.character, program: state.program, date: state.date, time: state.time,
       kids: state.kids, addons: Object.keys(state.addons).filter(function (k) { return state.addons[k]; }), zone: state.zone,
       name: f.elements.name.value, phone: f.elements.phone.value, address: f.elements.address.value, comment: f.elements.comment.value,
-      children: state.children, consent: f.elements.consent.checked, website: f.elements.website.value
+      children: state.children, consent: f.elements.consent.checked, website: f.elements.website.value,
+      expectedTotal: (calc(state.date, state.time) || {}).total // сервер сверит: если цена успела измениться, спросим ещё раз
     };
     fetch("api/order.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       .then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
       .then(function (res) {
-        if (res.status === 200 && res.j.ok) { showDone(res.j); return; }
+        if (res.status === 200 && res.j.ok) {
+          showDone(res.j);
+          // время уже занято этой заявкой: сбрасываем выбор, чтобы повторное «Заказать» не отправило дубль
+          state.time = null; reloadOccupancy();
+          return;
+        }
         $("formError").textContent = res.j.error || "Не удалось отправить заявку. Попробуйте ещё раз или позвоните нам.";
         $("formError").hidden = false;
-        if (res.status === 409) { state.time = null; reloadOccupancy(); $("step-date").scrollIntoView({ behavior: "smooth" }); }
+        if (res.status === 409 && res.j.priceChanged) { reloadOccupancy(); $("formError").scrollIntoView({ behavior: "smooth", block: "center" }); }
+        else if (res.status === 409) { state.time = null; reloadOccupancy(); $("step-date").scrollIntoView({ behavior: "smooth" }); }
       })
       .catch(function () { $("formError").textContent = "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз."; $("formError").hidden = false; })
       .finally(function () { btn.disabled = false; btn.textContent = "Заказать"; });
   }
+  // Свежие занятость и цены агентства (могли измениться, пока страница была открыта)
   function reloadOccupancy() {
     fetch("api/agency.php?a=" + encodeURIComponent(slug), { cache: "no-store" }).then(function (r) { return r.json(); })
-      .then(function (d) { if (d.occupancy) { cfg.occupancy = d.occupancy; renderCalendar(); renderTimes(); renderBar(); } }).catch(function () {});
+      .then(function (d) {
+        if (!d.occupancy || !d.characters) return;
+        cfg = d;
+        if (!find(cfg.characters, state.character)) state.character = cfg.characters[0].id;
+        if (!find(cfg.programs, state.program)) state.program = cfg.programs[0].id;
+        if (!find(cfg.zones, state.zone)) state.zone = cfg.zones[0].id;
+        Object.keys(state.addons).forEach(function (k) { if (!find(cfg.addons, k)) delete state.addons[k]; });
+        if (state.kids > cfg.kids.max) state.kids = cfg.kids.max;
+        if (state.time && !(slotOf(state.date, state.time) || {}).free) state.time = null;
+        renderCharacters(); renderPrograms(); renderKids(); renderCalendar(); renderTimes(); renderAddons(); renderBar();
+      }).catch(function () {});
   }
 
   function validate() {

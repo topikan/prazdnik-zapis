@@ -182,9 +182,13 @@
     else if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
     else { btn.href = "#hero"; btn.dataset.top = "1"; btn.removeAttribute("target"); }
   }
+  // В демо вместо иконок — примерные фото; у агентств без своих фото остаются иконки
+  var DEMO_PHOTOS = { santa: "assets/img/demo/santa.webp", duo: "assets/img/demo/duo.webp", trio: "assets/img/demo/trio.webp" };
+  function photoOf(c) { return PHOTO_RE.test(c.photo || "") ? c.photo : (cfg.demo && DEMO_PHOTOS[c.icon]) || ""; }
   function whoArt(c) {
-    if (PHOTO_RE.test(c.photo || "")) return '<span class="who-art photo"><img src="' + esc(c.photo) + '" alt="" loading="lazy"></span>';
-    return '<span class="who-art">' + (WHO_ART[c.icon] || WHO_ART.santa).map(icon).join("") + "</span>";
+    var ph = photoOf(c), badge = c.badge ? '<span class="badge">' + esc(c.badge) + "</span>" : "";
+    if (ph) return '<span class="who-art photo"><img src="' + esc(ph) + '" alt="" loading="lazy">' + badge + "</span>";
+    return '<span class="who-art">' + (WHO_ART[c.icon] || WHO_ART.santa).map(icon).join("") + badge + "</span>";
   }
   var CHECK = '<span class="check" aria-hidden="true"><svg><use href="#i-check"/></svg></span>';
 
@@ -192,7 +196,7 @@
     var cheapest = cfg.programs[0].id;
     $("characters").innerHTML = cfg.characters.map(function (c) {
       return '<label class="card"><input type="radio" name="character" value="' + esc(c.id) + '"' + (state.character === c.id ? " checked" : "") + ">" +
-        '<span class="card-body">' + CHECK + (c.badge ? '<span class="badge">' + esc(c.badge) + "</span>" : "") + whoArt(c) +
+        '<span class="card-body">' + CHECK + whoArt(c) +
         '<span class="card-text"><span class="card-title">' + esc(c.title) + '</span><span class="card-note">' + esc(c.note) + '</span><span class="card-price">от ' + rub(cfg.prices[c.id][cheapest]) + "</span></span></span></label>";
     }).join("");
   }
@@ -315,7 +319,7 @@
     var lines = pr ? pr.lines.map(line).join("") : "";
     $("breakdown").innerHTML = lines; $("sumLines").innerHTML = lines;
     var c = find(cfg.characters, state.character) || {}, p = find(cfg.programs, state.program) || {}, z = find(cfg.zones, state.zone) || {};
-    $("sumWho").innerHTML = '<span class="sum-ava">' + (PHOTO_RE.test(c.photo || "") ? '<img src="' + esc(c.photo) + '" alt="">' : icon((WHO_ART[c.icon] || WHO_ART.santa)[0])) + "</span>" +
+    $("sumWho").innerHTML = '<span class="sum-ava">' + (photoOf(c) ? '<img src="' + esc(photoOf(c)) + '" alt="">' : icon((WHO_ART[c.icon] || WHO_ART.santa)[0])) + "</span>" +
       "<span><b>" + esc(c.title) + "</b><small>" + esc(p.title) + (p.minutes ? ", " + esc(p.minutes) + " мин" : "") + "</small></span>";
     var when = state.date ? short(state.date) + (state.time ? ", " + state.time : ", время не выбрано") : "Дата не выбрана";
     $("sumFacts").innerHTML = '<li class="' + (state.date && state.time ? "" : "muted") + '"><svg aria-hidden="true"><use href="#i-cal"/></svg>' + esc(when) + "</li>" +

@@ -119,10 +119,12 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .card input:checked + .card-body .check { background: var(--accent); border-color: var(--accent); }
 .card input:checked + .card-body .check svg { opacity: 1; }
 .badge { position: absolute; top: 10px; left: 10px; z-index: 2; background: var(--gold); color: #2B2210; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
-.who-art { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 150px; background: linear-gradient(180deg, #FBF3E6, #F3E6D2); color: var(--accent); padding: 14px 10px 8px; }
+.who-art { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 150px; background: linear-gradient(180deg, #FBF3E6, #F3E6D2); color: var(--accent); padding: 14px 10px 8px; }
 .who-art svg { width: 72px; height: 72px; }
 .who-art.photo { padding: 0; background: #F3E6D2; }
-.who-art.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.who-art.photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; display: block; }
+.who-art .badge { top: auto; bottom: 8px; left: 8px; }
+.who-art.photo { height: 170px; }
 .card-text { display: grid; gap: 4px; padding: 14px 16px 16px; }
 .card-title { font-weight: 800; font-size: 16px; line-height: 1.25; }
 .card-note { color: var(--muted); font-size: 13px; line-height: 1.4; }
@@ -245,7 +247,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .sum-who { display: flex; gap: 14px; align-items: center; }
 .sum-ava { width: 76px; height: 76px; border-radius: 16px; overflow: hidden; flex: none; background: linear-gradient(180deg, #FBF3E6, #F3E6D2); color: var(--accent); display: grid; place-items: center; }
 .sum-ava svg { width: 52px; height: 52px; }
-.sum-ava img { width: 100%; height: 100%; object-fit: cover; }
+.sum-ava img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
 .sum-who b { display: block; font-size: 17px; line-height: 1.25; }
 .sum-who small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
 .sum-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
@@ -336,6 +338,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
   .cards { gap: 10px; }
   .cards-who { grid-template-columns: 1fr 1fr; }
   .who-art { height: 92px; padding: 10px 6px 6px; }
+  .who-art.photo { height: 120px; padding: 0; }
   .who-art svg { width: 48px; height: 48px; }
   .card-text { padding: 9px 11px 11px; gap: 2px; }
   .card-title { font-size: 14px; }

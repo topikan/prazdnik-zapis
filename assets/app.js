@@ -48,14 +48,14 @@
   }
   function promoActive() { return cfg.promo && cfg.promo.percent && iso(today()) <= cfg.promo.until; }
 
-  // Наценка за спрос: чем меньше свободных артистов на это время, тем дороже
+  // Наценка за спрос: чем меньше свободных составов (пар, трио) на это время, тем дороже
   function surgeFor(free) {
     var share = free / cfg.pairs, best = { plus: 0, label: "" };
     (cfg.demandPricing || []).forEach(function (r) { if (share <= r.freeShareAtMost && r.plus > best.plus) best = r; });
     return best;
   }
   function slotOf(date, time) { var l = slotsFor(date); for (var i = 0; i < l.length; i++) if (l[i].time === time) return l[i]; return null; }
-  // Загрузка дня: доля занятых артистов по всем часам
+  // Загрузка дня: доля занятых составов по всем часам
   function dayLoad(date) {
     var l = slotsFor(date), busy = 0;
     l.forEach(function (s) { busy += cfg.pairs - s.free; });
@@ -160,7 +160,7 @@
       else {
         var lv = loadLevel(dayLoad(key));
         b.classList.add("d" + lv);
-        b.setAttribute("aria-label", human(key) + ", " + ["", "много свободных артистов", "половина занята", "почти всё занято"][lv]);
+        b.setAttribute("aria-label", human(key) + ", " + ["", "много свободного времени", "половина времени занята", "почти всё время занято"][lv]);
         b.setAttribute("aria-pressed", state.date === key ? "true" : "false");
       }
       box.appendChild(b);
@@ -195,7 +195,7 @@
     if (!state.date) {
       $("pcLabel").textContent = "Стоимость";
       $("pcPrice").textContent = pr ? "от " + rub(pr.total) : "—";
-      $("pcDemand").textContent = "Зависит от даты, времени и того, сколько артистов уже занято";
+      $("pcDemand").textContent = "Зависит от даты и от того, насколько разобрано время";
       return;
     }
     $("pcLabel").textContent = "Стоимость " + short(state.date) + (state.time ? ", " + state.time : "");
@@ -219,8 +219,8 @@
     var box = $("children"); box.innerHTML = "";
     state.children.forEach(function (c, i) {
       var row = el("div", "child");
-      row.innerHTML = '<input data-i="' + i + '" data-k="name" placeholder="Имя ребёнка" aria-label="Имя ребёнка ' + (i + 1) + '" value="' + esc(c.name) + '">' +
-        '<input data-i="' + i + '" data-k="age" inputmode="numeric" placeholder="Возраст" aria-label="Возраст ребёнка ' + (i + 1) + '" value="' + esc(c.age) + '">' +
+      row.innerHTML = '<input data-i="' + i + '" data-k="name" maxlength="40" placeholder="Имя ребёнка" aria-label="Имя ребёнка ' + (i + 1) + '" value="' + esc(c.name) + '">' +
+        '<input data-i="' + i + '" data-k="age" inputmode="numeric" maxlength="2" placeholder="Возраст" aria-label="Возраст ребёнка ' + (i + 1) + '" value="' + esc(c.age) + '">' +
         (state.children.length > 1 ? '<button type="button" data-remove="' + i + '" aria-label="Убрать ребёнка ' + (i + 1) + '">×</button>' : "<span></span>");
       box.appendChild(row);
     });
@@ -268,7 +268,7 @@
       var open = bd.hidden; bd.hidden = !open; this.setAttribute("aria-expanded", String(open));
     });
 
-    $("children").addEventListener("input", function (e) { var i = e.target.dataset.i; if (i != null) { state.children[i][e.target.dataset.k] = e.target.value; renderKids(); } });
+    $("children").addEventListener("input", function (e) { var i = e.target.dataset.i; if (i != null) { if (e.target.dataset.k === "age") e.target.value = e.target.value.replace(/\D/g, ""); state.children[i][e.target.dataset.k] = e.target.value; renderKids(); } });
     $("children").addEventListener("click", function (e) {
       var r = e.target.dataset.remove; if (r == null) return;
       state.children.splice(+r, 1); renderChildren(); renderKids();
@@ -304,7 +304,10 @@
       }
       box.hidden = true; showDone();
     });
-    $("doneClose").addEventListener("click", function () { $("done").hidden = true; });
+    function closeDone() { $("done").hidden = true; $("cta").focus(); }
+    $("doneClose").addEventListener("click", closeDone);
+    $("done").addEventListener("click", function (e) { if (e.target === this) closeDone(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("done").hidden) closeDone(); });
   }
 
   function validate() {
@@ -342,8 +345,9 @@
     state.character = popular.id;
     state.program = (cfg.programs[1] || cfg.programs[0]).id;
     state.zone = cfg.zones[0].id;
-    if (cfg.colors && cfg.colors.accent) document.documentElement.style.setProperty("--ink", cfg.colors.accent);
-    if (cfg.colors && cfg.colors.gold) document.documentElement.style.setProperty("--gold", cfg.colors.gold);
+    var hex = /^#[0-9a-f]{6}$/i;
+    if (cfg.colors && hex.test(cfg.colors.accent || "")) document.documentElement.style.setProperty("--ink", cfg.colors.accent);
+    if (cfg.colors && hex.test(cfg.colors.gold || "")) document.documentElement.style.setProperty("--gold", cfg.colors.gold);
     buildMonths();
     var t = today();
     months.forEach(function (m, i) { if (m.getFullYear() === t.getFullYear() && m.getMonth() === t.getMonth()) state.month = i; });
@@ -357,6 +361,6 @@
     .then(init)
     .catch(function () {
       ["app", "bar"].forEach(function (id) { $(id).hidden = true; });
-      document.querySelector(".hero").hidden = true; document.querySelector(".nav").hidden = true; $("fail").hidden = false;
+      document.querySelector(".hero").hidden = true; $("fail").hidden = false;
     });
 })();

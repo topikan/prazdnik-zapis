@@ -177,6 +177,20 @@ switch ($action) {
         db()->prepare('UPDATE agencies SET active = ? WHERE id = ?')->execute([!empty($in['active']) ? 1 : 0, (int)($in['id'] ?? 0)]);
         json_out(['ok' => true]);
 
+    case 'agency_delete': // удалить агентство вместе с заявками, блокировками и входом
+        need_super();
+        $a = agency_by_id((int)($in['id'] ?? 0));
+        if (!$a) fail('Агентство не найдено', 404);
+        if ($a['slug'] === 'demo') fail('Демо-агентство удалить нельзя: его показывают на главной');
+        if ((string)($in['confirm'] ?? '') !== $a['slug']) fail('Для удаления введите адрес агентства точно');
+        $pdo = db(); $aid = (int)$a['id'];
+        $pdo->beginTransaction();
+        foreach (['orders', 'blocks', 'users'] as $t) $pdo->prepare("DELETE FROM $t WHERE agency_id = ?")->execute([$aid]);
+        $pdo->prepare('DELETE FROM agencies WHERE id = ?')->execute([$aid]);
+        $pdo->commit();
+        if ((int)($_SESSION['agency'] ?? 0) === $aid) unset($_SESSION['agency']);
+        json_out(me());
+
     case 'agency_user': // создать или сбросить вход для агентства
         need_super();
         $aid = (int)($in['id'] ?? 0);

@@ -96,7 +96,7 @@ function tg_handle(array $msg): void {
         }
         tg_send($chat, 'Уведомления отключены. Подключить снова можно в личном кабинете.');
     } else {
-        tg_send($chat, "Это бот уведомлений о заявках БронПраздник.\n\nЧтобы получать заявки, откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram».");
+        tg_send($chat, "Это бот уведомлений о заявках БроньПраздник.\n\nЧтобы получать заявки, откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram».");
     }
 }
 function tg_send(int $chat, string $text): bool {
@@ -111,7 +111,7 @@ function notify_emails(array $cfg): array {
 }
 function send_mail(string $to, string $subject, string $text): bool {
     $host = parse_url(site_url(), PHP_URL_HOST) ?: 'bronprazdnik.ru';
-    $headers = "From: =?UTF-8?B?" . base64_encode('БронПраздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64";
+    $headers = "From: =?UTF-8?B?" . base64_encode('БроньПраздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64";
     return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', chunk_split(base64_encode($text)), $headers);
 }
 

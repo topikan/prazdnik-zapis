@@ -1,5 +1,5 @@
 /**
- * Реле Telegram для БронПраздник (Google Apps Script).
+ * Реле Telegram для БроньПраздник (Google Apps Script).
  * Сайт на российском хостинге отправляет запрос сюда, Google пересылает его в Telegram.
  *
  * Настройка:

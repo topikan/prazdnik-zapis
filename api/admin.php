@@ -126,6 +126,40 @@ switch ($action) {
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($c, JSON_UNESCAPED_UNICODE), $a['id']]);
         json_out(['ok' => true]);
 
+    // ----- логотип агентства -----
+    case 'logo_upload':
+        $a = current_agency();
+        if (!preg_match('~^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$~', (string)($in['data'] ?? ''), $m)) fail('Загрузите картинку PNG, JPG или WebP');
+        $bin = base64_decode($m[2], true);
+        if ($bin === false || strlen($bin) > 600000) fail('Картинка слишком большая, нужна до 600 КБ');
+        $info = @getimagesizefromstring($bin);
+        if (!$info || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_WEBP], true) || $info[0] > 2000 || $info[1] > 2000) fail('Не похоже на картинку PNG, JPG или WebP');
+        $dir = dirname(__DIR__) . '/uploads/logos';
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) fail('Не удалось сохранить файл на сервере', 500);
+        $name = 'a' . (int)$a['id'] . '-' . bin2hex(random_bytes(4));
+        // перекодируем через GD: в файле остаётся только картинка, без посторонних данных
+        $img = function_exists('imagecreatefromstring') ? @imagecreatefromstring($bin) : false;
+        if ($img && function_exists('imagewebp')) {
+            imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true);
+            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", 90); imagedestroy($img);
+        } else {
+            $file = $name . ['png' => '.png', 'jpeg' => '.jpg', 'webp' => '.webp'][$m[1]]; $ok = file_put_contents("$dir/$file", $bin) !== false;
+        }
+        if (!$ok) fail('Не удалось сохранить файл на сервере', 500);
+        $cfg = $a['cfg']; $old = (string)($cfg['logo'] ?? '');
+        $cfg['logo'] = "uploads/logos/$file";
+        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $a['id']]);
+        if (preg_match('~^uploads/logos/a' . (int)$a['id'] . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $old)) @unlink(dirname(__DIR__) . '/' . $old);
+        json_out(['logo' => $cfg['logo']]);
+
+    case 'logo_remove':
+        $a = current_agency();
+        $cfg = $a['cfg']; $old = (string)($cfg['logo'] ?? '');
+        unset($cfg['logo']);
+        db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $a['id']]);
+        if (preg_match('~^uploads/logos/a' . (int)$a['id'] . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $old)) @unlink(dirname(__DIR__) . '/' . $old);
+        json_out(['ok' => true]);
+
     // ----- уведомления -----
     case 'notify_get':
         $a = current_agency();

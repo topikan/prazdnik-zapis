@@ -48,6 +48,7 @@ a { color: inherit; }
 .nav-in { display: flex; align-items: center; gap: 40px; padding-top: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .logo { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 18px; line-height: 1.1; text-align: left; }
 .logo svg { width: 30px; height: 38px; flex: none; color: var(--ink); }
+.logo-img { display: block; height: 44px; width: auto; max-width: 140px; object-fit: contain; flex: none; }
 .links { display: flex; gap: 30px; font-size: 14px; }
 .links a { text-decoration: none; }
 .links a:hover { text-decoration: underline; text-underline-offset: 4px; }
@@ -309,6 +310,7 @@ h1 { font-family: var(--display); font-weight: 500; font-size: clamp(42px, 7vw, 
   .nav-in { gap: 12px; }
   .logo { font-size: 16px; }
   .logo svg { width: 24px; height: 30px; }
+  .logo-img { height: 36px; max-width: 110px; }
   .phone-pill { padding: 8px 12px; }
   .phone-pill span { display: none; }
   .hero { padding-top: 28px; }

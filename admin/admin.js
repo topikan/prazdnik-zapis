@@ -296,7 +296,11 @@
   function setPath(o, p, v) { var ks = p.split("."), last = ks.pop(); ks.forEach(function (k) { if (o[k] == null || typeof o[k] !== "object") o[k] = {}; o = o[k]; }); o[last] = v; }
   function renderSettings() {
     var root = $("settingsForm");
-    root.innerHTML = SETTINGS.map(function (g) {
+    var logoCard = '<div class="card"><h2>Логотип</h2><p class="muted">Появится на странице записи вместо ёлочки. Лучше квадратный или горизонтальный, на прозрачном или белом фоне: PNG, JPG или WebP.</p>' +
+      '<div class="logo-box"><div class="logo-prev" id="logoPrev">' + (cfg.logo ? '<img src="../' + esc(cfg.logo) + '" alt="Логотип">' : "<span>Нет логотипа</span>") + "</div>" +
+      '<div class="acts"><label class="btn ghost small file-btn">' + (cfg.logo ? "Заменить" : "Загрузить логотип") + '<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden></label>' +
+      (cfg.logo ? '<button class="btn danger small" type="button" id="logoRemove">Убрать</button>' : "") + "</div></div></div>";
+    root.innerHTML = logoCard + SETTINGS.map(function (g) {
       return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
         var v = getPath(cfg, f[0]); if (f[2] === "color" && !v) v = f[0] === "colors.gold" ? "#C9A24A" : "#163A2F";
         if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
@@ -313,6 +317,43 @@
     loadNotify();
   }
   var TIMEZONES = [["Europe/Kaliningrad", "Калининград (МСК−1)"], ["Europe/Moscow", "Москва (МСК)"], ["Europe/Samara", "Самара (МСК+1)"], ["Asia/Yekaterinburg", "Екатеринбург (МСК+2)"], ["Asia/Omsk", "Омск (МСК+3)"], ["Asia/Krasnoyarsk", "Красноярск, Новосибирск (МСК+4)"], ["Asia/Irkutsk", "Иркутск (МСК+5)"], ["Asia/Yakutsk", "Якутск (МСК+6)"], ["Asia/Vladivostok", "Владивосток (МСК+7)"], ["Asia/Magadan", "Магадан (МСК+8)"], ["Asia/Kamchatka", "Камчатка (МСК+9)"]];
+
+  /* ---------- логотип ---------- */
+  // Уменьшаем картинку в браузере до 400 px: файл лёгкий, страница записи грузится быстро
+  function shrinkImage(file) {
+    return new Promise(function (ok, bad) {
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return bad(new Error("Нужна картинка PNG, JPG или WebP"));
+      if (file.size > 15e6) return bad(new Error("Файл слишком большой"));
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var k = Math.min(1, 400 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        var data = c.toDataURL("image/webp", 0.92);
+        ok(data.indexOf("data:image/webp") === 0 ? data : c.toDataURL("image/png"));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); bad(new Error("Не получилось открыть картинку")); };
+      img.src = url;
+    });
+  }
+  $("settingsForm").addEventListener("change", function (e) {
+    if (e.target.id !== "logoFile" || !e.target.files[0]) return;
+    e.stopPropagation();
+    shrinkImage(e.target.files[0]).then(function (data) { return api("logo_upload", { data: data }); })
+      .then(function (r) { cfg.logo = r.logo; flash("Логотип загружен, он уже на странице записи"); renderLogo(); })
+      .catch(function (err) { flash(err.message, true); });
+  }, true);
+  function renderLogo() {
+    var box = document.querySelector(".logo-box"); if (!box) return;
+    $("logoPrev").innerHTML = cfg.logo ? '<img src="../' + esc(cfg.logo) + '" alt="Логотип">' : "<span>Нет логотипа</span>";
+    box.querySelector(".acts").innerHTML = '<label class="btn ghost small file-btn">' + (cfg.logo ? "Заменить" : "Загрузить логотип") + '<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden></label>' +
+      (cfg.logo ? '<button class="btn danger small" type="button" id="logoRemove">Убрать</button>' : "");
+  }
+  $("settingsForm").addEventListener("click", function (e) {
+    if (e.target.id !== "logoRemove" || !confirm("Убрать логотип? На странице записи снова будет ёлочка.")) return;
+    api("logo_remove").then(function () { delete cfg.logo; flash("Логотип убран"); renderLogo(); }).catch(function (err) { flash(err.message, true); });
+  });
 
   /* ---------- уведомления ---------- */
   function loadNotify() {
@@ -417,7 +458,7 @@
     ["input", "change", "changed"].forEach(function (ev) {
       sec.addEventListener(ev, function (e) {
         if (e.target.closest && e.target.closest(".save-bar, #pwForm, #tgActs")) return;
-        if (e.target.id === "notifyTest") return;
+        if (e.target.id === "notifyTest" || e.target.id === "logoFile" || e.target.id === "logoRemove") return;
         markDirty(t, true);
       }, true);
     });

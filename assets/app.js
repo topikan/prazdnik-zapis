@@ -129,9 +129,13 @@
 
   /* ---------- отрисовка ---------- */
   function renderStatic() {
-    $("agencyName").textContent = cfg.name;
     document.title = "Дед Мороз на дом — " + cfg.name;
-    if (cfg.phone) { var a = $("agencyPhone"); a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; }
+    document.querySelectorAll(".js-name").forEach(function (n) { n.textContent = cfg.name; });
+    if (cfg.phone) document.querySelectorAll(".js-phone").forEach(function (a) { a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; });
+    // свой логотип агентства вместо ёлочки
+    if (/^uploads\/logos\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.logo || "")) document.querySelectorAll(".logo-pine").forEach(function (svg) {
+      var img = document.createElement("img"); img.className = "logo-img"; img.src = cfg.logo; img.alt = ""; svg.replaceWith(img);
+    });
     $("demoNote").hidden = !cfg.demo;
     var qs = "?a=" + encodeURIComponent(slug);
     $("consentLink").href = "consent.html" + qs;

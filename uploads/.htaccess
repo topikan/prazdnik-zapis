@@ -1,0 +1,12 @@
+# Загруженные логотипы: отдаём только картинки, скрипты здесь не выполняются
+Options -Indexes
+<FilesMatch ".">
+  Require all denied
+</FilesMatch>
+<FilesMatch "(?i)\.(png|jpe?g|webp)$">
+  Require all granted
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Content-Security-Policy "default-src 'none'"
+</IfModule>

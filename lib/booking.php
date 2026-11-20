@@ -123,6 +123,7 @@ function validate_config(array $c): array {
     foreach ($c['characters'] as $ch) foreach ($c['programs'] as $p) {
         if (!isset($c['prices'][$ch['id']][$p['id']]) || !is_numeric($c['prices'][$ch['id']][$p['id']])) $err[] = "Нет цены: {$ch['title']} / {$p['title']}";
     }
+    if (!empty($c['logo']) && !preg_match('~^uploads/logos/[a-z0-9-]+\.(webp|png|jpe?g)$~', (string)$c['logo'])) $err[] = 'Неверный логотип';
     if (!empty($c['timezone']) && !isset(RU_TIMEZONES[$c['timezone']])) $err[] = 'Неизвестный часовой пояс';
     if (!empty($c['notify']['email'])) foreach (preg_split('/[\s,;]+/', trim($c['notify']['email'])) as $m) if (!filter_var($m, FILTER_VALIDATE_EMAIL)) $err[] = "Почта для уведомлений: проверьте адрес $m";
     foreach (['accent', 'gold'] as $k) if (!empty($c['colors'][$k]) && !preg_match('/^#[0-9a-fA-F]{6}$/', $c['colors'][$k])) $err[] = 'Цвет в формате #RRGGBB';

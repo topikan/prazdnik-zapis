@@ -16,6 +16,7 @@
     "accent": "#163A2F",
     "gold": "#C9A24A"
   },
+  "leadHours": 3,
   "season": {
     "start": "2026-12-01",
     "end": "2027-01-10"

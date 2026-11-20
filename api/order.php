@@ -45,8 +45,10 @@ if ($o['kids'] < 1 || $o['kids'] > (int)$cfg['kids']['max']) fail('Неверн�
 $known = array_column($cfg['addons'] ?? [], 'id');
 $o['addons'] = array_values(array_unique(array_intersect($o['addons'], $known)));
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || $o['date'] < $cfg['season']['start'] || $o['date'] > $cfg['season']['end']) fail('Эта дата недоступна');
-if ($o['date'] <= date('Y-m-d')) fail('Заказать можно начиная с завтрашнего дня');
 if (!in_array($o['time'], slot_times($cfg, $o['date']), true)) fail('Это время недоступно');
+$lead = max(0, min(72, (int)($cfg['leadHours'] ?? 3)));
+if (strtotime($o['date'] . ' ' . $o['time']) < time() + $lead * 3600)
+    fail($lead ? "Это время уже недоступно: заказ принимается минимум за $lead ч. Выберите другое." : 'Это время уже прошло. Выберите другое.');
 if ($name === '') fail('Укажите имя');
 if (strlen($phoneDigits) !== 11 || $phoneDigits[0] !== '7') fail('Проверьте номер телефона');
 if ($address === '') fail('Укажите адрес');

@@ -102,7 +102,12 @@
     var from = minutes(cfg.hours.from), to = minutes(cfg.hours.to);
     if (cfg.hours.lastDay && cfg.hours.lastDay.date === date) to = minutes(cfg.hours.lastDay.to);
     var list = [], sp = span();
+    // сегодня показываем только часы, до которых осталось не меньше leadHours
+    var lead = cfg.leadHours == null ? 3 : +cfg.leadHours, now = new Date(), earliest = -1;
+    if (date < iso(now)) return [];
+    if (date === iso(now)) earliest = now.getHours() * 60 + now.getMinutes() + lead * 60;
     for (var t = from; t <= to; t += 60) {
+      if (t < earliest) continue;
       var free = freeAt(date, hhmm(t));
       // визит вместе с дорогой может занять несколько часов: все они должны быть свободны
       for (var i = 1; i < sp && free > 0; i++) if (t + i * 60 <= to && freeAt(date, hhmm(t + i * 60)) < 1) free = 0;
@@ -159,7 +164,7 @@
     $("calTitle").textContent = MONTHS[m.getMonth()] + " " + m.getFullYear();
     $("calPrev").disabled = state.month === 0;
     $("calNext").disabled = state.month === months.length - 1;
-    var start = parse(cfg.season.start), end = parse(cfg.season.end), tomorrow = today(); tomorrow.setDate(tomorrow.getDate() + 1);
+    var start = parse(cfg.season.start), end = parse(cfg.season.end), first = today();
     var box = $("days"); box.innerHTML = "";
     var lead = (m.getDay() + 6) % 7;
     for (var i = 0; i < lead; i++) box.appendChild(el("span", "day empty"));
@@ -167,7 +172,7 @@
     for (var d = 1; d <= last; d++) {
       var date = new Date(m.getFullYear(), m.getMonth(), d), key = iso(date);
       var b = el("button", "day", String(d)); b.type = "button"; b.dataset.date = key;
-      if (date < start || date > end || date < tomorrow) { b.disabled = true; }
+      if (date < start || date > end || date < first) { b.disabled = true; }
       else if (!dayFree(key)) { b.disabled = true; b.classList.add("full"); b.setAttribute("aria-label", human(key) + ", всё занято"); }
       else {
         var lv = loadLevel(dayLoad(key));

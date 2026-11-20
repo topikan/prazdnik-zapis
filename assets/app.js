@@ -305,6 +305,7 @@
     document.title = "Дед Мороз на дом — " + cfg.name;
     if (cfg.phone) { var a = $("agencyPhone"); a.textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; }
     $("demoNote").hidden = !cfg.demo;
+    if (q) { $("consentLink").href = "consent.html?a=" + encodeURIComponent(slug); $("privacyLink").href = "privacy.html?a=" + encodeURIComponent(slug); }
     renderAll();
     bind();
   }

@@ -135,11 +135,10 @@ html.no-anim { scroll-behavior: auto; }
 .cream { background: var(--cream); }
 .sec-title { font-weight: 800; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; margin-bottom: 28px; }
 #features { padding: 40px 0 70px; }
-.feat { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 48px; align-items: start; }
-.feat-intro h2 { font-weight: 800; font-size: clamp(30px, 3.4vw, 40px); line-height: 1.12; }
-.rule { display: block; width: 64px; height: 3px; border-radius: 2px; background: var(--gold); margin: 22px 0; }
-.feat-intro p { color: var(--muted); font-size: 17px; }
-.feat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px 48px; flex-wrap: wrap; margin-bottom: 28px; }
+.sec-head .sec-title { margin: 0; max-width: 640px; }
+.sec-lead { max-width: 440px; color: var(--muted); font-size: 17px; }
+.feat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
 .f-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 26px 24px; display: grid; align-content: start; gap: 12px; }
 .f-ico { width: 52px; height: 52px; border-radius: 50%; background: var(--beige); color: var(--gold-ink); display: grid; place-items: center; }
 .f-ico svg { width: 26px; height: 26px; }
@@ -198,7 +197,7 @@ html.no-anim { scroll-behavior: auto; }
   .menu { display: none; }
   .hero-in { grid-template-columns: 1fr; gap: 50px; }
   .demo-card { max-width: 560px; transform: none; }
-  .feat { grid-template-columns: 1fr; gap: 28px; }
+  .feat-grid { grid-template-columns: repeat(2, 1fr); }
   .foot-in { display: grid; grid-template-columns: 1fr auto; gap: 24px 20px; }
   .foot-menu { grid-column: 1 / -1; grid-row: 2; margin: 0; flex-wrap: wrap; gap: 12px 28px; }
   .foot-acts { padding-left: 0; border-left: 0; }

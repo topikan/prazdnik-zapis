@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';
 require dirname(__DIR__) . '/lib/booking.php';
+require dirname(__DIR__) . '/lib/notify.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 $in = body_json();
@@ -47,7 +48,7 @@ $o['addons'] = array_values(array_unique(array_intersect($o['addons'], $known)))
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || $o['date'] < $cfg['season']['start'] || $o['date'] > $cfg['season']['end']) fail('Эта дата недоступна');
 if (!in_array($o['time'], slot_times($cfg, $o['date']), true)) fail('Это время недоступно');
 $lead = max(0, min(72, (int)($cfg['leadHours'] ?? 3)));
-if (strtotime($o['date'] . ' ' . $o['time']) < time() + $lead * 3600)
+if (agency_ts($cfg, $o['date'], $o['time']) < time() + $lead * 3600)
     fail($lead ? "Это время уже недоступно: заказ принимается минимум за $lead ч. Выберите другое." : 'Это время уже прошло. Выберите другое.');
 if ($name === '') fail('Укажите имя');
 if (strlen($phoneDigits) !== 11 || $phoneDigits[0] !== '7') fail('Проверьте номер телефона');
@@ -96,4 +97,10 @@ if (random_int(1, 20) === 1) {
     db()->prepare('DELETE FROM orders WHERE agency_id = ? AND visit_date < ?')->execute([$a['id'], date('Y-m-d', strtotime("-$months months"))]);
 }
 
-json_out(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines']]);
+// Ответ клиенту сразу, уведомления агентству — после, чтобы не задерживать страницу
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+echo json_encode(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines']], JSON_UNESCAPED_UNICODE);
+if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+try { notify_order($a, $id, $o, (int)$price['total']); } catch (Throwable $e) { error_log('notify: ' . $e->getMessage()); }
+exit;

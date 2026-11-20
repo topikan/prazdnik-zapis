@@ -17,6 +17,7 @@
     "gold": "#C9A24A"
   },
   "leadHours": 3,
+  "timezone": "Europe/Moscow",
   "season": {
     "start": "2026-12-01",
     "end": "2027-01-10"

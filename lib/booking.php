@@ -86,7 +86,7 @@ function calc_price(array $cfg, array $o, int $free): array {
     if ($surge['plus'] > 0) $lines[] = ['Наценка за спрос +' . round($surge['plus'] * 100) . '%', round100($program * $surge['plus'])];
     $extra = max(0, $o['kids'] - (int)$cfg['kids']['included']);
     if ($extra) $lines[] = ['Ещё ' . $extra . ' ' . plural_ru($extra, 'ребёнок', 'ребёнка', 'детей') . ' сверх ' . $cfg['kids']['included'], $extra * (int)$cfg['kids']['extraPrice']];
-    if (!empty($cfg['promo']['percent']) && date('Y-m-d') <= ($cfg['promo']['until'] ?? '')) {
+    if (!empty($cfg['promo']['percent']) && agency_today($cfg) <= ($cfg['promo']['until'] ?? '')) {
         $lines[] = ['Скидка за раннее бронирование −' . $cfg['promo']['percent'] . '%', -round100($program * $cfg['promo']['percent'] / 100)];
     }
     foreach ($cfg['addons'] ?? [] as $a) if (in_array($a['id'], $o['addons'], true)) $lines[] = [$a['title'], (int)$a['price']];
@@ -97,18 +97,34 @@ function calc_price(array $cfg, array $o, int $free): array {
 }
 
 // Проверка настроек агентства перед сохранением из админки
+// Часовые пояса России: агентство из Екатеринбурга видит «сегодня» и запас по времени по своему времени
+const RU_TIMEZONES = [
+    'Europe/Kaliningrad' => 'Калининград (МСК−1)', 'Europe/Moscow' => 'Москва (МСК)', 'Europe/Samara' => 'Самара (МСК+1)',
+    'Asia/Yekaterinburg' => 'Екатеринбург (МСК+2)', 'Asia/Omsk' => 'Омск (МСК+3)', 'Asia/Krasnoyarsk' => 'Красноярск, Новосибирск (МСК+4)',
+    'Asia/Irkutsk' => 'Иркутск (МСК+5)', 'Asia/Yakutsk' => 'Якутск (МСК+6)', 'Asia/Vladivostok' => 'Владивосток (МСК+7)',
+    'Asia/Magadan' => 'Магадан (МСК+8)', 'Asia/Kamchatka' => 'Камчатка (МСК+9)',
+];
+function agency_tz(array $cfg): DateTimeZone {
+    $tz = (string)($cfg['timezone'] ?? 'Europe/Moscow');
+    return new DateTimeZone(isset(RU_TIMEZONES[$tz]) ? $tz : 'Europe/Moscow');
+}
+function agency_today(array $cfg): string { return (new DateTime('now', agency_tz($cfg)))->format('Y-m-d'); }
+function agency_ts(array $cfg, string $date, string $time): int { return (new DateTime("$date $time", agency_tz($cfg)))->getTimestamp(); }
+
 function validate_config(array $c): array {
     $err = [];
     foreach (['name', 'season', 'hours', 'pairs', 'characters', 'programs', 'prices', 'kids', 'zones'] as $k) if (!isset($c[$k])) $err[] = "Нет поля $k";
     if ($err) return $err;
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $c['season']['start'] ?? '') || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $c['season']['end'] ?? '')) $err[] = 'Даты сезона в формате ГГГГ-ММ-ДД';
     if (!preg_match('/^\d{2}:\d{2}$/', $c['hours']['from'] ?? '') || !preg_match('/^\d{2}:\d{2}$/', $c['hours']['to'] ?? '')) $err[] = 'Часы работы в формате ЧЧ:ММ';
-    if ((int)$c['pairs'] < 1 || (int)$c['pairs'] > 50) $err[] = 'Количество составов от 1 до 50';
-    if (!count($c['characters']) || !count($c['programs'])) $err[] = 'Нужен хотя бы один состав персонажей и одна программа';
+    if ((int)$c['pairs'] < 1 || (int)$c['pairs'] > 50) $err[] = 'Выездов одновременно — от 1 до 50';
+    if (!count($c['characters']) || !count($c['programs'])) $err[] = 'Нужен хотя бы один вариант «Кто приедет» и одна программа';
     if (!count($c['zones'])) $err[] = 'Нужна хотя бы одна зона выезда';
     foreach ($c['characters'] as $ch) foreach ($c['programs'] as $p) {
         if (!isset($c['prices'][$ch['id']][$p['id']]) || !is_numeric($c['prices'][$ch['id']][$p['id']])) $err[] = "Нет цены: {$ch['title']} / {$p['title']}";
     }
+    if (!empty($c['timezone']) && !isset(RU_TIMEZONES[$c['timezone']])) $err[] = 'Неизвестный часовой пояс';
+    if (!empty($c['notify']['email'])) foreach (preg_split('/[\s,;]+/', trim($c['notify']['email'])) as $m) if (!filter_var($m, FILTER_VALIDATE_EMAIL)) $err[] = "Почта для уведомлений: проверьте адрес $m";
     foreach (['accent', 'gold'] as $k) if (!empty($c['colors'][$k]) && !preg_match('/^#[0-9a-fA-F]{6}$/', $c['colors'][$k])) $err[] = 'Цвет в формате #RRGGBB';
     return $err;
 }

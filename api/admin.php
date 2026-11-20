@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';
 require dirname(__DIR__) . '/lib/booking.php';
+require dirname(__DIR__) . '/lib/notify.php';
 
 start_session();
 $in = $_SERVER['REQUEST_METHOD'] === 'POST' ? body_json() : [];
@@ -117,6 +118,33 @@ switch ($action) {
         if ($errors) fail(implode('. ', $errors));
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($c, JSON_UNESCAPED_UNICODE), $a['id']]);
         json_out(['ok' => true]);
+
+    // ----- уведомления -----
+    case 'notify_get':
+        $a = current_agency();
+        json_out(['tgReady' => tg_ready(), 'tgChats' => count(tg_chats((int)$a['id']))]);
+
+    case 'tg_link':
+        $a = current_agency();
+        if (!tg_ready()) fail('Уведомления в Telegram пока не настроены владельцем сервиса');
+        $bot = tg_bot();
+        if (!$bot) fail('Не удалось связаться с Telegram. Попробуйте через минуту.', 502);
+        $code = bin2hex(random_bytes(8));
+        setting_set('tglink:' . $code, ['aid' => (int)$a['id'], 'exp' => time() + 3600]);
+        json_out(['url' => 'https://t.me/' . $bot['username'] . '?start=' . $code]);
+
+    case 'tg_off':
+        $a = current_agency();
+        tg_set_chats((int)$a['id'], []);
+        json_out(['ok' => true]);
+
+    case 'notify_test':
+        $a = current_agency();
+        rate_limit('ntest', 5, 600);
+        $sent = notify_agency($a, 'Проверка уведомлений', "Проверка: уведомления о заявках «" . ($a['cfg']['name'] ?? $a['slug']) . "» работают.
+
+Так будут приходить новые заявки.");
+        json_out($sent);
 
     // ----- главная страница (владелец) -----
     case 'site_get':

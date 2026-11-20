@@ -270,7 +270,7 @@
   /* ---------- настройки ---------- */
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
-    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "В особый день последний визит в", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Принимать заказ минимум за, часов", "number"]]],
+    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "В особый день последний визит в", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Принимать заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
@@ -280,10 +280,50 @@
     root.innerHTML = SETTINGS.map(function (g) {
       return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
         var v = getPath(cfg, f[0]); if (f[2] === "color" && !v) v = f[0] === "colors.gold" ? "#C9A24A" : "#163A2F";
+        if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
         return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
       }).join("") + "</div></div>";
-    }).join("") + (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
+    }).join("") +
+      '<div class="card"><h2>Уведомления о новых заявках</h2>' +
+      '<p class="muted">В уведомлении будут дата, время, программа и сумма. Имя, телефон и адрес клиента видны только здесь, во вкладке «Заявки».</p>' +
+      '<div class="notify-row"><b>Telegram</b><span id="tgStatus">Проверяю…</span></div><div class="notify-acts" id="tgActs"></div>' +
+      '<div class="fields"><label>Почта, можно несколько через запятую<input data-path="notify.email" type="text" placeholder="zayavki@agency.ru" value="' + esc(getPath(cfg, "notify.email") || "") + '"></label></div>' +
+      '<p class="muted">Новую почту сначала сохраните кнопкой внизу, потом проверьте.</p>' +
+      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' +
+      (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
+    loadNotify();
   }
+  var TIMEZONES = [["Europe/Kaliningrad", "Калининград (МСК−1)"], ["Europe/Moscow", "Москва (МСК)"], ["Europe/Samara", "Самара (МСК+1)"], ["Asia/Yekaterinburg", "Екатеринбург (МСК+2)"], ["Asia/Omsk", "Омск (МСК+3)"], ["Asia/Krasnoyarsk", "Красноярск, Новосибирск (МСК+4)"], ["Asia/Irkutsk", "Иркутск (МСК+5)"], ["Asia/Yakutsk", "Якутск (МСК+6)"], ["Asia/Vladivostok", "Владивосток (МСК+7)"], ["Asia/Magadan", "Магадан (МСК+8)"], ["Asia/Kamchatka", "Камчатка (МСК+9)"]];
+
+  /* ---------- уведомления ---------- */
+  function loadNotify() {
+    api("notify_get").then(function (r) {
+      var st = $("tgStatus"), acts = $("tgActs"); if (!st) return;
+      if (!r.tgReady) { st.textContent = "пока недоступно"; acts.innerHTML = ""; return; }
+      st.textContent = r.tgChats ? "подключено, чатов: " + r.tgChats : "не подключено";
+      acts.innerHTML = '<button class="btn small" type="button" id="tgConnect">' + (r.tgChats ? "Подключить ещё один чат" : "Подключить Telegram") + "</button>" +
+        (r.tgChats ? '<button class="btn danger small" type="button" id="tgOff">Отключить</button>' : "");
+    }).catch(function (e) { flash(e.message, true); });
+  }
+  $("settingsForm").addEventListener("click", function (e) {
+    var id = e.target.id;
+    if (id === "tgConnect") {
+      e.target.disabled = true;
+      api("tg_link").then(function (r) {
+        $("tgActs").innerHTML = '<a class="btn small" target="_blank" rel="noopener noreferrer" href="' + esc(r.url) + '">Открыть Telegram</a>' +
+          '<button class="btn ghost small" type="button" id="tgCheck">Я нажал «Старт»</button>' +
+          '<p class="muted">В Telegram нажмите «Старт» в боте. Ссылка работает один час. Каждый сотрудник может подключить свой Telegram.</p>';
+      }).catch(function (err) { e.target.disabled = false; flash(err.message, true); });
+    }
+    if (id === "tgCheck") loadNotify();
+    if (id === "tgOff" && confirm("Отключить уведомления в Telegram для всех подключённых чатов?")) api("tg_off").then(function () { flash("Telegram отключён"); loadNotify(); }).catch(function (err) { flash(err.message, true); });
+    if (id === "notifyTest") api("notify_test").then(function (r) {
+      var parts = [];
+      if (r.tg) parts.push("Telegram: " + r.tg);
+      if (r.email) parts.push("почта: " + r.email);
+      flash(parts.length ? "Проверочное уведомление отправлено (" + parts.join(", ") + ")" : "Некуда отправить: подключите Telegram или сохраните почту", !parts.length);
+    }).catch(function (err) { flash(err.message, true); });
+  });
   $("saveSettings").addEventListener("click", function () {
     var c = clone(cfg);
     document.querySelectorAll("#settingsForm [data-path]").forEach(function (i) {

@@ -117,3 +117,7 @@ label input, label select { color: var(--ink); font-size: 14px; }
 .dt-grid button.on { background: var(--ink); color: #fff; }
 @media (max-width: 560px) { .slot-row { grid-template-columns: 46px 1fr 92px 70px; } }
 #tab-schedule .card h2 + .muted, #tab-schedule .card form + h2, #tab-schedule .card div + h2 { margin-top: 18px; }
+.notify-row { display: flex; gap: 10px; align-items: baseline; margin: 4px 0 8px; }
+.notify-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.notify-acts p { flex-basis: 100%; margin: 4px 0 0; }
+a.btn { display: inline-block; text-decoration: none; }

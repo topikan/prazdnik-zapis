@@ -32,7 +32,16 @@
   function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
   function plural(n, a, b, c) { var n10 = n % 10, n100 = n % 100; if (n10 === 1 && n100 !== 11) return a; if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return b; return c; }
   function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return (h >>> 0) / 4294967295; }
-  function today() { var t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+  // «Сейчас» по часовому поясу агентства, а не по часам телефона клиента
+  function agencyNow() {
+    var d = new Date(), tz = cfg && cfg.timezone || "Europe/Moscow";
+    try {
+      var p = {}; new Intl.DateTimeFormat("en-GB", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+        .formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+      return { date: p.year + "-" + p.month + "-" + p.day, min: (+p.hour % 24) * 60 + +p.minute };
+    } catch (e) { return { date: iso(d), min: d.getHours() * 60 + d.getMinutes() }; }
+  }
+  function today() { return parse(agencyNow().date); }
 
   /* ---------- цены ---------- */
   function dateRule(date) {
@@ -103,9 +112,10 @@
     if (cfg.hours.lastDay && cfg.hours.lastDay.date === date) to = minutes(cfg.hours.lastDay.to);
     var list = [], sp = span();
     // сегодня показываем только часы, до которых осталось не меньше leadHours
-    var lead = cfg.leadHours == null ? 3 : +cfg.leadHours, now = new Date(), earliest = -1;
-    if (date < iso(now)) return [];
-    if (date === iso(now)) earliest = now.getHours() * 60 + now.getMinutes() + lead * 60;
+    var lead = cfg.leadHours == null ? 3 : +cfg.leadHours, now = agencyNow(), earliest = -1;
+    if (date < now.date) return [];
+    // минуты от начала этого дня, раньше которых записаться уже нельзя (работает и для запаса больше суток)
+    earliest = now.min + lead * 60 - Math.round((parse(date) - parse(now.date)) / 864e5) * 1440;
     for (var t = from; t <= to; t += 60) {
       if (t < earliest) continue;
       var free = freeAt(date, hhmm(t));

@@ -292,11 +292,20 @@ html.no-anim { scroll-behavior: auto; }
 .anim-toggle[aria-pressed="true"] svg { opacity: .5; }
 @media (max-width: 1380px) { .anim-toggle span { display: none; } .anim-toggle { width: 40px; height: 40px; padding: 0; justify-content: center; } }
 
-/* Узкие телефоны: в шапке только логотип, снег и вход; кнопка «Подключить» есть ниже на странице */
+/* Телефоны: в шапке логотип, «Войти» и «Регистрация»; кнопка снега уходит, чтобы всё поместилось */
+@media (max-width: 680px) {
+  .top-acts .login span { display: inline; }
+  .top-acts .login svg { display: none; }
+}
 @media (max-width: 480px) {
-  .top-acts .btn-red { display: none; }
-  .top-acts { gap: 10px; }
-  .brand { font-size: 17px; }
+  .top-acts .anim-toggle { display: none; }
+  .top-acts { gap: 12px; }
+  .brand { font-size: 16px; gap: 8px; }
+  .brand svg { width: 26px; height: 26px; }
+  .reg-top { padding: 0 14px; min-height: 38px; font-size: 13px; }
+}
+@media (max-width: 370px) {
+  .top .brand span { display: none; }
 }
 @media (max-width: 360px) { .foot-acts .login span { display: none; } .foot-menu { font-size: 14px; } }
 

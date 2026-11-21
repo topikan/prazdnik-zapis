@@ -41,8 +41,7 @@
     text("demoButtonText", d.demoButton); text("finalDemoText", d.finalDemoButton); text("finalContactText", d.finalContactButton);
     text("loginText", d.loginLink || "Вход для агентств");
     var tg = safeUrl(d.telegram, "https://t.me/rodionfrontend");
-    ["tgTop", "tgFoot", "finalContactButton"].forEach(function (id) { $(id).href = tg; });
-    if (d.contactButton) { document.querySelector("#tgTop .hide-s").textContent = d.contactButton; }
+    ["tgFoot", "finalContactButton"].forEach(function (id) { $(id).href = tg; });
     var demo = /^[a-z0-9-]{2,40}$/.test(d.demoSlug || "") ? d.demoSlug : "demo";
     var demoHref = location.hostname.endsWith("github.io") ? "zapis.html?a=" + demo : demo;
     ["demoButton", "finalDemoButton", "dcButton"].forEach(function (id) { $(id).href = demoHref; });

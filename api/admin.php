@@ -4,22 +4,14 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';
 require dirname(__DIR__) . '/lib/booking.php';
 require dirname(__DIR__) . '/lib/notify.php';
+require dirname(__DIR__) . '/lib/billing.php';
+require dirname(__DIR__) . '/lib/backup.php';
 
 start_session();
+ensure_billing_cols();
 $in = $_SERVER['REQUEST_METHOD'] === 'POST' ? body_json() : [];
 $action = (string)($_GET['action'] ?? '');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
-
-// «Знакомое устройство»: подписанная кука после удачного входа (без пароля и без доступа к кабинету)
-function device_sig(string $login, string $rnd): string { global $APP; return substr(hash_hmac('sha256', 'dev|' . mb_strtolower($login) . '|' . $rnd, (string)$APP['secret']), 0, 32); }
-function known_device(string $login): bool {
-    $parts = explode('.', (string)($_COOKIE['bp_dev'] ?? ''));
-    return count($parts) === 2 && preg_match('/^[a-f0-9]{16}$/', $parts[0]) && hash_equals(device_sig($login, $parts[0]), $parts[1]);
-}
-function remember_device(string $login): void {
-    $rnd = bin2hex(random_bytes(8));
-    setcookie('bp_dev', $rnd . '.' . device_sig($login, $rnd), ['expires' => time() + 365 * 86400, 'path' => '/', 'secure' => !is_local_host(), 'httponly' => true, 'samesite' => 'Strict']);
-}
 
 // ---------- вход ----------
 if ($action === 'login') {
@@ -42,10 +34,8 @@ if ($action === 'login') {
         $u['password_hash'] = password_hash($pass, PASSWORD_DEFAULT);
         db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$u['password_hash'], $u['id']]);
     }
-    remember_device($login);
-    session_regenerate_id(true);
-    $_SESSION = ['uid' => (int)$u['id'], 'role' => $u['role'], 'agency' => $u['agency_id'] ? (int)$u['agency_id'] : null,
-        'csrf' => bin2hex(random_bytes(24)), 'fp' => pass_fp($u['password_hash']), 'seen' => time()];
+    $u['login'] = $login;
+    session_login($u);
     json_out(me());
 }
 
@@ -68,8 +58,10 @@ $isSuper = $_SESSION['role'] === 'super';
 
 function me(): array {
     $agency = null;
-    if (!empty($_SESSION['agency'])) { $a = agency_by_id((int)$_SESSION['agency']); if ($a) $agency = ['id' => (int)$a['id'], 'slug' => $a['slug'], 'name' => $a['cfg']['name'] ?? $a['slug'], 'active' => (bool)$a['active']]; }
-    return ['role' => $_SESSION['role'], 'agency' => $agency, 'csrf' => $_SESSION['csrf']];
+    if (!empty($_SESSION['agency'])) { $a = agency_by_id((int)$_SESSION['agency']); if ($a) $agency = ['id' => (int)$a['id'], 'slug' => $a['slug'], 'name' => $a['cfg']['name'] ?? $a['slug'], 'active' => (bool)$a['active'], 'billing' => billing_state($a)]; }
+    $land = setting_get('landing') ?: [];
+    $contact = preg_match('#^https://[^\s<>"]+$#', (string)($land['telegram'] ?? '')) ? $land['telegram'] : 'https://t.me/rodionfrontend';
+    return ['role' => $_SESSION['role'], 'agency' => $agency, 'csrf' => $_SESSION['csrf'], 'contact' => $contact, 'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽')];
 }
 function current_agency(): array {
     if (empty($_SESSION['agency'])) fail('Выберите агентство', 400);
@@ -80,7 +72,19 @@ function current_agency(): array {
 function need_super(): void { global $isSuper; if (!$isSuper) fail('Нет доступа', 403); }
 // Удаляет загруженный файл агентства (только свой и только из папок загрузок)
 function remove_upload(int $aid, string $path): void {
-    if (preg_match('~^uploads/(logos|heroes|chars)/a' . $aid . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $path)) @unlink(APP_ROOT . '/' . $path);
+    if (preg_match('~^uploads/(logos|heroes|chars|portfolio)/a' . $aid . '-[a-f0-9]+\.(webp|png|jpe?g)$~', $path) || preg_match('~^uploads/videos/a' . $aid . '-[a-f0-9]+\.(mp4|webm)$~', $path)) @unlink(APP_ROOT . '/' . $path);
+}
+// Владельцу сообщаем о том, что появляется на страницах агентств (свой домен — своя ответственность)
+function tell_owner(array $a, string $what): void {
+    global $isSuper;
+    if ($isSuper || !empty($a['cfg']['demo'])) return;
+    notify_owner_throttled('up:' . $a['id'] . ':' . $what, 'Изменения у агентства', '«' . ($a['cfg']['name'] ?? $a['slug']) . "» $what\n\nПосмотреть: " . site_url() . '/' . $a['slug']);
+}
+function save_cfg(int $aid, array $cfg): void { db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $aid]); }
+function portfolio_counts(array $cfg): array {
+    $p = 0; $v = 0;
+    foreach ($cfg['portfolio']['items'] ?? [] as $it) { if (($it['t'] ?? '') === 'photo') $p++; else $v++; }
+    return [$p, $v];
 }
 // Отметка «предоплата получена» у заявки; в старых базах колонка добавляется при первом обращении
 function ensure_orders_paid(): void {
@@ -212,6 +216,8 @@ switch ($action) {
         if (!$isSuper) $c['demo'] = $a['cfg']['demo'] ?? false; // демо-режим меняет только владелец сервиса
         $c['logo'] = $a['cfg']['logo'] ?? '';                   // логотип и фон меняются только загрузкой файла
         $c['heroImage'] = $a['cfg']['heroImage'] ?? '';
+        // фото и видео портфолио добавляются и убираются своими действиями; здесь меняются только «показывать» и заголовок
+        $c['portfolio'] = ['enabled' => !empty($c['portfolio']['enabled']), 'title' => $c['portfolio']['title'] ?? '', 'items' => $a['cfg']['portfolio']['items'] ?? []];
         $errors = [];
         $clean = normalize_config($c, $errors);
         if ($errors) fail(implode('. ', array_slice(array_values(array_unique($errors)), 0, 5)));
@@ -225,6 +231,8 @@ switch ($action) {
         unset($ch);
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($clean, JSON_UNESCAPED_UNICODE), $aid]);
         foreach (glob(APP_ROOT . '/uploads/chars/a' . $aid . '-*') ?: [] as $f) if (!in_array('uploads/chars/' . basename($f), $used, true)) @unlink($f);
+        $oldLink = (string)($a['cfg']['banner']['link'] ?? ''); $newLink = (string)($clean['banner']['link'] ?? '');
+        if ($newLink !== '' && $newLink !== $oldLink && !$isSuper && empty($clean['demo'])) notify_owner('Новая ссылка в баннере', '«' . $clean['name'] . "» поставило ссылку в баннере:\n$newLink\n\nСтраница: " . site_url() . '/' . $a['slug']);
         json_out(['ok' => true, 'config' => $clean]);
 
     // ----- картинки агентства: логотип, фон первого экрана, фото составов -----
@@ -232,8 +240,9 @@ switch ($action) {
     case 'image_upload':
         $a = current_agency(); $aid = (int)$a['id'];
         $kind = in_str($in, 'kind');
-        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'char' => 'chars'];
-        $maxSide = ['logo' => 2000, 'hero' => 4000, 'char' => 3000];
+        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'char' => 'chars', 'port' => 'portfolio'];
+        $maxSide = ['logo' => 2000, 'hero' => 4000, 'char' => 3000, 'port' => 3000];
+        if ($kind === 'port' && portfolio_counts($a['cfg'])[0] >= PORTFOLIO_MAX_PHOTOS) fail('В портфолио уже ' . PORTFOLIO_MAX_PHOTOS . ' фото. Удалите какое-нибудь, чтобы добавить новое.');
         if (!isset($dirs[$kind])) fail('Неизвестный вид картинки');
         $charId = in_str($in, 'char');
         if ($kind === 'char' && !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $charId)) fail('Не выбран состав');
@@ -249,13 +258,20 @@ switch ($action) {
         $img = function_exists('imagecreatefromstring') ? @imagecreatefromstring($bin) : false;
         if ($img && function_exists('imagewebp')) {
             imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true);
-            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", $kind === 'hero' ? 82 : 88); imagedestroy($img);
+            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", in_array($kind, ['hero', 'port'], true) ? 82 : 88); imagedestroy($img);
         } else {
             $file = $name . ['png' => '.png', 'jpeg' => '.jpg', 'webp' => '.webp'][$m[1]]; $ok = file_put_contents("$dir/$file", $bin) !== false;
         }
         if (!$ok) fail('Не удалось сохранить файл на сервере', 500);
         $path = 'uploads/' . $dirs[$kind] . '/' . $file;
         $cfg = $a['cfg'];
+        if ($kind === 'port') {
+            $cfg['portfolio'] = is_array($cfg['portfolio'] ?? null) ? $cfg['portfolio'] : ['enabled' => true, 'title' => '', 'items' => []];
+            $cfg['portfolio']['items'][] = ['t' => 'photo', 'src' => $path];
+            save_cfg($aid, $cfg);
+            tell_owner($a, 'загрузило фото в портфолио');
+            json_out(['path' => $path, 'portfolio' => $cfg['portfolio']]);
+        }
         if ($kind === 'char') {
             // если состав уже сохранён, сразу ставим фото; новый состав получит его при сохранении цен
             foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); $ch['photo'] = $path; }
@@ -266,7 +282,80 @@ switch ($action) {
             $cfg[$field] = $path;
         }
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $aid]);
+        tell_owner($a, $kind === 'logo' ? 'загрузило логотип' : ($kind === 'hero' ? 'загрузило фон страницы' : 'загрузило фото состава'));
         json_out(['path' => $path, 'logo' => $path]);
+
+    // ----- портфолио: видео файлом, ролик с VK или Rutube, удаление -----
+    case 'video_upload':
+        $a = current_agency(); $aid = (int)$a['id'];
+        if (portfolio_counts($a['cfg'])[1] >= PORTFOLIO_MAX_VIDEOS) fail('В портфолио уже ' . PORTFOLIO_MAX_VIDEOS . ' видео. Удалите какое-нибудь, чтобы добавить новое.');
+        $f = $_FILES['file'] ?? null;
+        if (!is_array($f) || is_array($f['error'] ?? null)) fail('Выберите файл видео');
+        if (in_array($f['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) fail('Файл больше, чем разрешает хостинг (' . ini_get('upload_max_filesize') . '). Нужно до 50 МБ.');
+        if ($f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) fail('Файл не загрузился. Попробуйте ещё раз.');
+        if ($f['size'] > VIDEO_MAX_BYTES) fail('Видео больше 50 МБ. Сократите ролик или вставьте ссылку на VK Видео или Rutube.');
+        $head = (string)file_get_contents($f['tmp_name'], false, null, 0, 16);
+        if (substr($head, 4, 4) === 'ftyp' && substr($head, 8, 2) !== 'qt') $ext = 'mp4';
+        elseif (substr($head, 0, 4) === "\x1A\x45\xDF\xA3") $ext = 'webm';
+        else fail('Нужно видео MP4 или WebM. Ролики с iPhone (MOV) сначала сохраните как MP4 или загрузите на VK Видео.');
+        $dir = APP_ROOT . '/uploads/videos';
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) fail('Не удалось сохранить файл на сервере', 500);
+        $path = 'uploads/videos/a' . $aid . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
+        if (!move_uploaded_file($f['tmp_name'], APP_ROOT . '/' . $path)) fail('Не удалось сохранить файл на сервере', 500);
+        @chmod(APP_ROOT . '/' . $path, 0644);
+        $a = current_agency(); $cfg = $a['cfg']; // заново: пока шла загрузка, настройки могли поменяться
+        $cfg['portfolio'] = is_array($cfg['portfolio'] ?? null) ? $cfg['portfolio'] : ['enabled' => true, 'title' => '', 'items' => []];
+        $cfg['portfolio']['items'][] = ['t' => 'video', 'src' => $path];
+        save_cfg($aid, $cfg);
+        tell_owner($a, 'загрузило видео в портфолио');
+        json_out(['portfolio' => $cfg['portfolio']]);
+
+    case 'portfolio_embed':
+        $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
+        if (portfolio_counts($cfg)[1] >= PORTFOLIO_MAX_VIDEOS) fail('В портфолио уже ' . PORTFOLIO_MAX_VIDEOS . ' видео. Удалите какое-нибудь, чтобы добавить новое.');
+        $src = embed_from_url(mb_substr(in_str($in, 'url'), 0, 2000));
+        if (!$src || !embed_ok($src)) fail('Не похоже на ссылку на ролик VK Видео или Rutube. Скопируйте адрес страницы с роликом или код вставки.');
+        foreach ($cfg['portfolio']['items'] ?? [] as $it) if (($it['src'] ?? '') === $src) fail('Этот ролик уже есть в портфолио');
+        $cfg['portfolio'] = is_array($cfg['portfolio'] ?? null) ? $cfg['portfolio'] : ['enabled' => true, 'title' => '', 'items' => []];
+        $cfg['portfolio']['items'][] = ['t' => 'embed', 'src' => $src, 'provider' => str_contains($src, 'rutube.ru') ? 'rutube' : 'vk'];
+        save_cfg($aid, $cfg);
+        tell_owner($a, "добавило ролик в портфолио:\n$src");
+        json_out(['portfolio' => $cfg['portfolio']]);
+
+    case 'portfolio_remove':
+        $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
+        $src = in_str($in, 'src'); $items = [];
+        foreach ($cfg['portfolio']['items'] ?? [] as $it) { if (($it['src'] ?? '') === $src) { if (($it['t'] ?? '') !== 'embed') remove_upload($aid, $src); continue; } $items[] = $it; }
+        $cfg['portfolio']['items'] = $items;
+        save_cfg($aid, $cfg);
+        json_out(['portfolio' => $cfg['portfolio']]);
+
+    case 'portfolio_move': // сдвинуть фото или видео в списке
+        $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
+        $items = $cfg['portfolio']['items'] ?? []; $src = in_str($in, 'src'); $dir = (int)($in['dir'] ?? 0) < 0 ? -1 : 1;
+        foreach ($items as $i => $it) if (($it['src'] ?? '') === $src && isset($items[$i + $dir])) { [$items[$i], $items[$i + $dir]] = [$items[$i + $dir], $items[$i]]; break; }
+        $cfg['portfolio']['items'] = array_values($items);
+        save_cfg($aid, $cfg);
+        json_out(['portfolio' => $cfg['portfolio']]);
+
+    // ----- копии заявок -----
+    case 'orders_export':
+        $a = current_agency();
+        json_out(['filename' => 'zayavki-' . safe_file_part($a['slug']) . '-' . date('Y-m-d') . '.csv', 'csv' => orders_csv($a)]);
+
+    case 'backup_info':
+        $a = current_agency();
+        json_out(['zip' => zip_password_ok(), 'tgChats' => count(tg_chats((int)$a['id'])), 'emails' => count(notify_emails($a['cfg']))]);
+
+    case 'backup_test': // отправить копию прямо сейчас, чтобы проверить
+        $a = current_agency();
+        rate_limit('bktest', 4, 3600);
+        if (!zip_password_ok()) fail('Сервер не умеет делать архивы с паролем. Напишите владельцу сервиса.');
+        $r = backup_agency($a);
+        if ($r['skipped'] === 'off') fail('Включите отправку в Telegram или на почту и сохраните настройки');
+        if ($r['skipped'] === 'empty') fail('Заявок пока нет — отправлять нечего');
+        if ($r['skipped'] === 'zip') fail('Не удалось собрать архив. Проверьте, что пароль не короче 6 символов, и сохраните настройки.');
+        json_out($r);
 
     case 'logo_remove': $in['kind'] = 'logo';
     case 'image_remove':
@@ -329,7 +418,10 @@ switch ($action) {
         if (!empty($d['demoSlug']) && !preg_match('/^[a-z0-9-]{2,40}$/', (string)$d['demoSlug'])) fail('Адрес демо: латиница, цифры и дефис');
         $clean = function ($v, $max) { return mb_substr(trim((string)$v), 0, $max); };
         $out = [];
-        foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'heroLead', 'demoButton', 'contactButton', 'loginLink', 'itemsTitle', 'itemsLead', 'stepsTitle', 'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
+        foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'heroLead', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'itemsTitle', 'itemsLead', 'stepsTitle',
+            'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'seatsLeft', 'seatsTotal', 'priceNote',
+            'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
+        $out['v'] = 2;
         foreach (['strip' => ['title'], 'items' => ['title', 'text'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }
@@ -341,9 +433,10 @@ switch ($action) {
     case 'agencies':
         need_super();
         $rows = [];
-        foreach (db()->query('SELECT a.id, a.slug, a.config, a.active, a.created_at, (SELECT COUNT(*) FROM orders o WHERE o.agency_id = a.id) AS orders_count, (SELECT login FROM users u WHERE u.agency_id = a.id LIMIT 1) AS login FROM agencies a ORDER BY a.id DESC') as $r) {
+        foreach (db()->query('SELECT a.id, a.slug, a.config, a.active, a.created_at, a.paid_until, a.trial_until, a.email, (SELECT COUNT(*) FROM orders o WHERE o.agency_id = a.id) AS orders_count, (SELECT login FROM users u WHERE u.agency_id = a.id LIMIT 1) AS login FROM agencies a ORDER BY a.id DESC') as $r) {
             $cfg = json_decode($r['config'], true) ?: [];
-            $rows[] = ['id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
+            $r['cfg'] = $cfg;
+            $rows[] = ['billing' => billing_state($r), 'phone' => $cfg['phone'] ?? '', 'email' => $r['email'], 'id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
         }
         json_out(['agencies' => $rows]);
 
@@ -351,17 +444,71 @@ switch ($action) {
         need_super();
         $slug = strtolower(trim(in_str($in, 'slug')));
         $name = trim(in_str($in, 'name'));
-        if (!preg_match('/^[a-z0-9-]{2,40}$/', $slug)) fail('Адрес ссылки: латиница, цифры и дефис, от 2 символов');
-        if (in_array($slug, ['admin', 'api', 'assets', 'agencies', 'install', 'lib', 'uploads', 'docs', 'data', 'zapis', 'consent', 'privacy', 'index', 'demo', 'www', 'mail'], true)) fail('Такой адрес занят системой');
-        if (agency_by_slug($slug)) fail('Такой адрес уже есть');
+        if (($p = slug_problem($slug)) !== '') fail($p);
         if ($name === '') fail('Укажите название');
-        $tpl = json_decode(file_get_contents(APP_ROOT . '/agencies/demo.json'), true);
-        $tpl['name'] = mb_substr($name, 0, 80);
-        $tpl['city'] = mb_substr(trim(in_str($in, 'city')), 0, 60);
-        $tpl['demo'] = false;
-        $tpl['legal'] = ['operator' => '', 'inn' => '', 'ogrn' => '', 'address' => '', 'email' => '', 'keepMonths' => 12, 'updated' => date('d.m.Y'), 'policyUrl' => ''];
-        db()->prepare('INSERT INTO agencies (slug, config, active, created_at) VALUES (?, ?, 1, ?)')->execute([$slug, json_encode($tpl, JSON_UNESCAPED_UNICODE), date('Y-m-d H:i:s')]);
-        json_out(['ok' => true, 'id' => (int)db()->lastInsertId()]);
+        $id = create_agency($slug, $name, trim(in_str($in, 'city')), '', '', true, trial_for_new());
+        json_out(['ok' => true, 'id' => $id]);
+
+    case 'agency_paid': // отметить оплату: до какой даты работает страница (пусто — снять отметку)
+        need_super();
+        $a = agency_by_id((int)($in['id'] ?? 0));
+        if (!$a) fail('Агентство не найдено', 404);
+        $until = in_str($in, 'until');
+        if ($until !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $until) || !checkdate((int)substr($until, 5, 2), (int)substr($until, 8, 2), (int)substr($until, 0, 4)))) fail('Неверная дата');
+        db()->prepare('UPDATE agencies SET paid_until = ? WHERE id = ?')->execute([$until, (int)$a['id']]);
+        json_out(['ok' => true]);
+
+    // ----- настройки владельца: регистрация, свой Telegram, копии всех заявок -----
+    case 'owner_get':
+        need_super();
+        $last = setting_get('cronlast') ?: [];
+        json_out(['reg' => (setting_get('reg') ?: ['open' => true, 'manual' => false]), 'backup' => (setting_get('ownerbackup') ?: ['tg' => false, 'email' => false, 'password' => '']),
+            'email' => owner_email(), 'tgReady' => tg_ready(), 'tgChats' => count(tg_chats(0)), 'zip' => zip_password_ok(), 'billing' => billing_settings(),
+            'cronUrl' => site_url() . '/api/cron.php?key=' . cron_key(), 'cronLast' => ($last['day'] ?? '') ? ru_date($last['day']) . ' в ' . ($last['at'] ?? '') : '',
+            'uploadMax' => ini_get('upload_max_filesize'), 'postMax' => ini_get('post_max_size')]);
+
+    case 'owner_save':
+        need_super();
+        $email = trim(in_str($in, 'email'));
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) fail('Проверьте почту владельца');
+        $bk = is_array($in['backup'] ?? null) ? $in['backup'] : [];
+        $pw = is_scalar($bk['password'] ?? null) ? mb_substr((string)$bk['password'], 0, 100) : '';
+        if ((!empty($bk['tg']) || !empty($bk['email'])) && strlen($pw) < 6) fail('Пароль для архива — не короче 6 символов');
+        $bl = is_array($in['billing'] ?? null) ? $in['billing'] : [];
+        foreach (['freeEnd', 'seasonEnd'] as $k) if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($bl[$k] ?? ''))) fail('Укажите даты бесплатного периода и конца сезона');
+        setting_set('owner', ['email' => $email]);
+        setting_set('reg', ['open' => !empty($in['reg']['open']), 'manual' => !empty($in['reg']['manual'])]);
+        setting_set('ownerbackup', ['tg' => !empty($bk['tg']), 'email' => !empty($bk['email']), 'password' => $pw]);
+        setting_set('billing', ['freeEnd' => $bl['freeEnd'], 'seasonEnd' => $bl['seasonEnd']]);
+        json_out(['ok' => true]);
+
+    case 'tg_link_owner':
+        need_super();
+        if (!tg_ready()) fail('Telegram не настроен в config.local.php');
+        $bot = tg_bot();
+        if (!$bot) fail('Не удалось связаться с Telegram. Попробуйте через минуту.', 502);
+        $code = bin2hex(random_bytes(8));
+        setting_set('tglink:' . $code, ['aid' => 0, 'exp' => time() + 3600]);
+        json_out(['url' => 'https://t.me/' . $bot['username'] . '?start=' . $code]);
+
+    case 'owner_poll': // проверить, нажал ли владелец «Старт» в боте
+        need_super();
+        if (tg_ready() && tg_link_pending()) { try { tg_poll(); } catch (Throwable $e) { error_log('tg_poll: ' . $e->getMessage()); } }
+        json_out(['tgChats' => count(tg_chats(0))]);
+
+    case 'owner_tg_off':
+        need_super();
+        tg_set_chats(0, []);
+        json_out(['ok' => true]);
+
+    case 'owner_backup_test':
+        need_super();
+        rate_limit('bktest', 4, 3600);
+        $r = backup_owner();
+        if ($r['skipped'] === 'off') fail('Включите отправку и сохраните настройки');
+        if ($r['skipped'] === 'empty') fail('Заявок пока нет — отправлять нечего');
+        if ($r['skipped'] === 'zip') fail('Не удалось собрать архив с паролем на этом сервере');
+        json_out($r);
 
     case 'agency_open': // зайти в агентство как владелец сервиса
         need_super();
@@ -387,7 +534,7 @@ switch ($action) {
         $pdo->prepare('DELETE FROM agencies WHERE id = ?')->execute([$aid]);
         $pdo->prepare('DELETE FROM settings WHERE name = ?')->execute(["tgchats:$aid"]);
         $pdo->commit();
-        foreach (['logos', 'heroes', 'chars'] as $d) foreach (glob(APP_ROOT . "/uploads/$d/a$aid-*") ?: [] as $f) @unlink($f);
+        foreach (['logos', 'heroes', 'chars', 'portfolio', 'videos'] as $d) foreach (glob(APP_ROOT . "/uploads/$d/a$aid-*") ?: [] as $f) @unlink($f);
         if ((int)($_SESSION['agency'] ?? 0) === $aid) unset($_SESSION['agency']);
         json_out(me());
 

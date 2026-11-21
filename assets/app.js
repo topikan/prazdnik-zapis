@@ -165,6 +165,8 @@
     document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent.html" + qs; });
     document.querySelectorAll(".js-privacy").forEach(function (a) { a.href = policy; });
     renderBanner();
+    renderPortfolio();
+    renderGuide();
   }
   // Баннер внизу: текст, кнопку и ссылку агентство задаёт в кабинете; без заголовка баннера нет
   function renderBanner() {
@@ -182,6 +184,117 @@
     else if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
     else { btn.href = "#hero"; btn.dataset.top = "1"; btn.removeAttribute("target"); }
   }
+  /* ---------- портфолио: фото и видео агентства, просмотр на весь экран ---------- */
+  var PF_PHOTO = /^uploads\/portfolio\/[a-z0-9-]+\.(webp|png|jpe?g)$/, PF_VIDEO = /^uploads\/videos\/[a-z0-9-]+\.(mp4|webm)$/;
+  var PF_EMBED = /^https:\/\/(rutube\.ru\/play\/embed\/[a-f0-9]{32}(\?p=[A-Za-z0-9_-]{1,64})?|vk\.com\/video_ext\.php\?oid=-?\d{1,20}&id=\d{1,20}(&hash=[a-f0-9]{1,40})?)$/;
+  var pfItems = [], lbIndex = 0;
+  function renderPortfolio() {
+    var pf = cfg.portfolio || {};
+    pfItems = (pf.items || []).filter(function (it) {
+      return (it.t === "photo" && PF_PHOTO.test(it.src)) || (it.t === "video" && PF_VIDEO.test(it.src)) || (it.t === "embed" && PF_EMBED.test(it.src));
+    });
+    // в демо показываем примерные фото, чтобы было видно, как выглядит блок
+    if (cfg.demo && !pfItems.length) pfItems = ["santa", "duo", "trio"].map(function (k) { return { t: "photo", src: "assets/img/demo/" + k + ".webp" }; });
+    var on = cfg.demo || (pf.enabled && pfItems.length);
+    $("portfolio").hidden = !on;
+    if (!on) return;
+    $("pfTitle").textContent = pf.title || "Наши праздники";
+    // сетка подстраивается под количество: 1–4 в ряд; при 5 и больше первое фото крупнее
+    $("pfGrid").dataset.n = Math.min(pfItems.length, 4);
+    $("pfGrid").classList.toggle("pf-big", pfItems.length >= 5);
+    $("pfGrid").innerHTML = pfItems.map(function (it, i) {
+      var inner = it.t === "photo" ? '<img src="' + esc(it.src) + '" alt="" loading="lazy">'
+        : it.t === "video" ? '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>'
+        : '<span class="pf-embed">' + (/rutube/.test(it.src) ? "Rutube" : "VK Видео") + '</span><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>';
+      return '<button type="button" class="pf-item pf-' + it.t + '" data-pf="' + i + '" aria-label="' + (it.t === "photo" ? "Открыть фото " : "Смотреть видео ") + (i + 1) + '">' + inner + "</button>";
+    }).join("");
+  }
+  function lbShow(i) {
+    lbIndex = (i + pfItems.length) % pfItems.length;
+    var it = pfItems[lbIndex], st = $("lbStage");
+    st.innerHTML = "";
+    var el;
+    if (it.t === "photo") { el = document.createElement("img"); el.src = it.src; el.alt = ""; }
+    else if (it.t === "video") { el = document.createElement("video"); el.src = it.src; el.controls = true; el.autoplay = true; el.playsInline = true; }
+    else { el = document.createElement("iframe"); el.src = it.src; el.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture"; el.setAttribute("allowfullscreen", ""); el.title = "Видео"; }
+    st.appendChild(el);
+    $("lbCount").textContent = pfItems.length > 1 ? (lbIndex + 1) + " из " + pfItems.length : "";
+    $("lbPrev").hidden = $("lbNext").hidden = pfItems.length < 2;
+  }
+  function lbOpen(i) { lbShow(i); $("lb").hidden = false; document.body.classList.add("lb-open"); $("lbClose").focus(); }
+  function lbClose() { $("lb").hidden = true; $("lbStage").innerHTML = ""; document.body.classList.remove("lb-open"); var b = document.querySelector('[data-pf="' + lbIndex + '"]'); if (b) b.focus(); }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-pf]") : null;
+    if (b) { lbOpen(+b.dataset.pf); return; }
+    if (e.target.id === "lbClose" || e.target.id === "lb") lbClose();
+    if (e.target.id === "lbPrev") lbShow(lbIndex - 1);
+    if (e.target.id === "lbNext") lbShow(lbIndex + 1);
+  });
+  document.addEventListener("keydown", function (e) {
+    if ($("lb").hidden) return;
+    if (e.key === "Escape") lbClose();
+    if (e.key === "ArrowLeft") lbShow(lbIndex - 1);
+    if (e.key === "ArrowRight") lbShow(lbIndex + 1);
+  });
+  (function () { // листание пальцем
+    var x0 = null;
+    $("lb").addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    $("lb").addEventListener("touchend", function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50 && pfItems.length > 1) lbShow(lbIndex + (dx < 0 ? 1 : -1)); });
+  })();
+
+  /* ---------- пояснения в демо: что агентство может настроить ---------- */
+  var NOTES = [
+    ["#hero h1", "Фон, логотип и название — ваши"],
+    ["#characters", "Составы, фото и подписи меняете сами"],
+    ["#programs", "Программы, длительность и цены — из вашего прайса"],
+    ["#step-2 .date-grid", "Занятое время скрывается само: учитываются заявки и заказы по телефону"],
+    ["#addons", "Допы и районы выезда с вашими ценами"],
+    ["#step-4 .contact-grid", "Заявка придёт вам в Telegram и на почту, контакты клиента — в панели"],
+    ["#summary h2", "Цена считается по вашему прайсу, с наценками на праздничные даты"],
+    ["#portfolio .pf-title", "Фото и видео ваших аниматоров. Блок можно выключить"],
+    ["#banner .banner-text h2", "Баннер: свой текст, кнопка и ссылка. Можно выключить"]
+  ];
+  function renderGuide() {
+    var bar = $("guideBar"), tog = $("notesToggle");
+    if (cfg.preview) { // агентство смотрит свою выключенную или закрытую страницу
+      bar.hidden = false; bar.classList.add("is-preview"); document.body.classList.add("has-guide");
+      $("guideText").textContent = cfg.preview === "off" ? "Предпросмотр: страница выключена и не видна клиентам" : "Предпросмотр: запись закрыта до оплаты, клиенты видят только ваш телефон";
+      $("guideSub").textContent = "Эту плашку видите только вы";
+      return;
+    }
+    if (!cfg.demo) return;
+    bar.hidden = false; tog.hidden = false; document.body.classList.add("has-guide");
+    NOTES.forEach(function (n) {
+      var t = document.querySelector(n[0]); if (!t) return;
+      var tip = document.createElement("p"); tip.className = "note-tip"; tip.textContent = n[1];
+      t.parentNode.insertBefore(tip, t);
+    });
+    var KEY = "bp-no-notes", off = false;
+    try { off = localStorage.getItem(KEY) === "1"; } catch (e) {}
+    function apply() {
+      document.documentElement.classList.toggle("no-notes", off);
+      tog.setAttribute("aria-pressed", off ? "true" : "false");
+      tog.textContent = off ? "Показать пояснения" : "Отключить пояснения";
+    }
+    apply();
+    tog.addEventListener("click", function () { off = !off; try { localStorage.setItem(KEY, off ? "1" : "0"); } catch (e) {} apply(); });
+  }
+
+  // Запись закрыта до оплаты: только название, оформление и телефон
+  function initClosed(data) {
+    cfg = data;
+    document.title = cfg.name || "Онлайн-запись";
+    document.querySelectorAll(".js-name").forEach(function (n) { n.textContent = cfg.name || ""; });
+    if (cfg.phone) document.querySelectorAll(".js-phone").forEach(function (a) { a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; });
+    if (/^uploads\/logos\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.logo || "")) document.querySelectorAll(".logo-mark").forEach(function (svg) { var img = document.createElement("img"); img.className = "logo-img"; img.src = cfg.logo; img.alt = ""; svg.replaceWith(img); });
+    if (/^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.heroImage || "")) { var hero = $("hero"); hero.classList.add("custom"); hero.style.backgroundImage = "url(" + cfg.heroImage + ")"; }
+    var qs = "?a=" + encodeURIComponent(slug);
+    document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent.html" + qs; });
+    document.querySelectorAll(".js-privacy").forEach(function (a) { a.href = "privacy.html" + qs; });
+    $("app").hidden = true; $("closed").hidden = false;
+    document.querySelector("#hero .lead").textContent = "Онлайн-запись временно недоступна. Позвоните нам, чтобы заказать праздник.";
+  }
+
   // В демо вместо иконок — примерные фото; у агентств без своих фото остаются иконки
   var DEMO_PHOTOS = { santa: "assets/img/demo/santa.webp", duo: "assets/img/demo/duo.webp", trio: "assets/img/demo/trio.webp" };
   function photoOf(c) { return PHOTO_RE.test(c.photo || "") ? c.photo : (cfg.demo && DEMO_PHOTOS[c.icon]) || ""; }
@@ -544,6 +657,7 @@
 
   /* ---------- запуск ---------- */
   function init(data) {
+    if (data && data.closed) { initClosed(data); return; }
     cfg = data;
     var popular = cfg.characters.filter(function (c) { return c.badge; })[0] || cfg.characters[0];
     state.character = popular.id;

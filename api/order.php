@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';
 require dirname(__DIR__) . '/lib/booking.php';
 require dirname(__DIR__) . '/lib/notify.php';
+require dirname(__DIR__) . '/lib/billing.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 $in = body_json();
@@ -17,6 +18,8 @@ $a = agency_by_slug(in_str($in, 'agency'));
 if (!$a || !$a['active']) fail('Агентство не найдено', 404);
 $cfg = $a['cfg'];
 if (!empty($cfg['demo'])) fail('Это демо-версия, заявки не принимаются', 403);
+ensure_billing_cols();
+if (billing_closed($a)) fail('Онлайн-запись временно недоступна.' . (!empty($cfg['phone']) ? ' Позвоните, пожалуйста: ' . $cfg['phone'] : ''), 403);
 
 // --- проверка полей ---
 $str = function ($v, int $max): string { return mb_substr(trim(preg_replace('/\s+/u', ' ', (string)$v)), 0, $max); };

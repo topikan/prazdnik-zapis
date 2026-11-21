@@ -61,7 +61,27 @@
     if (!me.agency) { setTab(me.role === "super" ? "agencies" : "orders"); renderHeader(); return; }
     api("config_get").then(function (r) { cfg = r.config; slug = r.slug; renderHeader(); setTab(tab === "agencies" && me.role !== "super" ? "orders" : tab); });
   }
+  function ruDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v.slice(8, 10) + "." + v.slice(5, 7) + "." + v.slice(0, 4) : ""; }
+  function days(n) { return n + " " + plural(n, "день", "дня", "дней"); }
+  // Плашка об оплате и проверке страницы: видна агентству над вкладками
+  function renderBill() {
+    var bar = $("billBar"), a = me.agency;
+    if (!a || !a.billing || a.billing.status === "demo") { bar.hidden = true; return; }
+    var b = a.billing, cls = "bill", html = "";
+    var pay = ' <a class="btn small" href="' + esc(me.contact) + '" target="_blank" rel="noopener noreferrer">Написать об оплате</a>';
+    var price = esc(me.price || "3 000 ₽"), season = ruDate(b.seasonEnd);
+    if (!a.active) { cls += " info"; html = "<span><b>Страница на проверке.</b> Скоро откроем её для клиентов. Пока настройте цены и оформление — по ссылке «Страница записи» видно, как она выглядит.</span>"; }
+    else if (b.status === "free") {
+      cls += b.daysLeft <= 3 ? " warn" : " info";
+      html = "<span><b>Бесплатный доступ: ещё " + days(b.daysLeft) + "</b>, по " + ruDate(b.lastDay) + " включительно. Дальше — " + price + " до конца сезона (" + season + ").</span>" + (b.daysLeft <= 3 ? pay : "");
+    }
+    else if (b.status === "paid") { if (b.daysLeft > 3) { bar.hidden = true; return; } cls += " warn"; html = "<span><b>Оплачено по " + ruDate(b.paidUntil) + "</b>, осталось " + days(b.daysLeft) + ".</span>" + pay; }
+    else if (b.status === "grace") { cls += " bad"; html = "<span><b>Срок доступа закончился.</b> Страница записи закроется " + ruDate(b.closesOn) + " (через " + days(b.daysLeft) + "). Оплатите " + price + ", чтобы клиенты могли записываться до " + season + ".</span>" + pay; }
+    else if (b.status === "closed") { cls += " bad"; html = "<span><b>Страница записи закрыта.</b> Клиенты видят только ваш телефон. Заявки и настройки сохранены, после оплаты всё сразу включится.</span>" + pay; }
+    bar.className = cls; bar.innerHTML = html; bar.hidden = !html;
+  }
   function renderHeader() {
+    renderBill();
     $("agencyTitle").textContent = me.agency ? me.agency.name : "Выберите агентство";
     var pl = $("publicLink");
     if (me.agency) { pl.href = "../" + me.agency.slug; pl.hidden = false; } else pl.hidden = true;
@@ -83,7 +103,7 @@
     if (t === "schedule") loadSchedule();
     if (t === "prices") renderPrices();
     if (t === "settings") renderSettings();
-    if (t === "agencies") loadAgencies();
+    if (t === "agencies") { loadAgencies(); loadOwner(); }
     if (t === "site") loadSite();
   }
 
@@ -93,6 +113,14 @@
     if (!$("ordTo").value && cfg) setDate($("ordTo"), cfg.season.end);
   }
   ["ordReload"].forEach(function (id) { $(id).addEventListener("click", loadOrders); });
+  $("ordExport").addEventListener("click", function () {
+    api("orders_export").then(function (r) {
+      var url = URL.createObjectURL(new Blob([r.csv], { type: "text/csv;charset=utf-8" })), a = document.createElement("a");
+      a.href = url; a.download = r.filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      flash("Таблица скачана: все заявки за сезон, открывается в Excel");
+    }).catch(function (e) { flash(e.message, true); });
+  });
   ["ordFrom", "ordTo", "ordStatus"].forEach(function (id) { $(id).addEventListener("change", loadOrders); });
 
   function years(a) { var n = parseInt(a, 10); return String(+a) === String(a).trim() && n > 0 && n < 19 ? n + " " + plural(n, "год", "года", "лет") : a; }
@@ -328,7 +356,19 @@
       '<div><h3>Логотип</h3><p class="muted">Вместо снежинки рядом с названием. PNG, JPG или WebP, лучше на прозрачном фоне.</p>' + imgBox("logo", "", cfg.logo) + "</div>" +
       '<div><h3>Фон первого экрана</h3><p class="muted">Своя фотография вместо общей зимней картинки. Лучше горизонтальная, от 1600 px в ширину.</p>' + imgBox("hero", "", cfg.heroImage) + "</div>" +
       "</div></div>";
-    root.innerHTML = logoCard + SETTINGS.map(function (g) {
+    var pfCard = '<div class="card" id="pfCard"><h2>Портфолио</h2><p class="muted">Фото и видео ваших праздников внизу страницы записи. До 20 фото и 5 видео. Видео — файлом MP4 до 50 МБ или ссылкой на ролик VK Видео и Rutube.</p>' +
+      '<div class="fields"><label class="row wide"><input type="checkbox" data-path="portfolio.enabled"' + (getPath(cfg, "portfolio.enabled") ? " checked" : "") + "> Показывать портфолио на странице записи</label>" +
+      '<label class="wide">Заголовок блока<input data-path="portfolio.title" maxlength="80" placeholder="Наши праздники" value="' + esc(getPath(cfg, "portfolio.title") || "") + '"></label></div>' +
+      '<div class="no-dirty"><div class="acts pf-acts"><label class="btn ghost small file-btn">Добавить фото<input type="file" id="pfPhotos" accept="image/png,image/jpeg,image/webp" multiple hidden></label>' +
+      '<label class="btn ghost small file-btn">Загрузить видео<input type="file" id="pfVideo" accept="video/mp4,video/webm" hidden></label></div>' +
+      '<div class="inline pf-url"><input id="pfUrl" placeholder="Ссылка на ролик VK Видео или Rutube" maxlength="2000"><button class="btn ghost small" id="pfAddUrl" type="button">Добавить ролик</button></div>' +
+      '<p class="pf-progress" id="pfProgress" hidden></p><div class="pf-list" id="pfList"></div></div></div>';
+    var bkCard = '<div class="card"><h2>Копия заявок каждую ночь</h2><p class="muted">Таблица всех заявок в архиве с паролем. Без пароля архив не откроет никто, даже если файл попадёт к чужим. Telegram — в чаты из уведомлений выше, почта — на адреса для уведомлений. Скачать таблицу можно в любой момент кнопкой «Скачать в Excel» во вкладке «Заявки».</p>' +
+      '<div class="fields"><label class="row"><input type="checkbox" data-path="backup.tg"' + (getPath(cfg, "backup.tg") ? " checked" : "") + "> Присылать в Telegram</label>" +
+      '<label class="row"><input type="checkbox" data-path="backup.email"' + (getPath(cfg, "backup.email") ? " checked" : "") + "> Присылать на почту</label>" +
+      '<label>Пароль от архива, от 6 символов. Запишите его<input data-path="backup.password" type="text" autocomplete="off" spellcheck="false" maxlength="100" value="' + esc(getPath(cfg, "backup.password") || "") + '"></label></div>' +
+      '<p class="muted" id="bkInfo"></p><div class="acts no-dirty"><button class="btn ghost small" id="bkTest" type="button">Отправить копию сейчас</button></div></div>';
+    root.innerHTML = logoCard + pfCard + SETTINGS.map(function (g) {
       return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
         var v = getPath(cfg, f[0]); if (f[0] === "travelMinutes" && v == null) v = 30; if (f[0] === "leadHours" && v == null) v = 3;
         if (f[2] === "color" && (!v || v.toUpperCase() === "#163A2F" || v.toUpperCase() === "#C9A24A")) v = f[0] === "colors.gold" ? "#D9B26A" : "#B3203A";
@@ -345,10 +385,72 @@
       '<div class="notify-row"><b>Telegram</b><span id="tgStatus">Проверяю…</span></div><div class="notify-acts" id="tgActs"></div>' +
       '<div class="fields"><label>Почта, можно несколько через запятую<input data-path="notify.email" type="text" placeholder="zayavki@agency.ru" value="' + esc(getPath(cfg, "notify.email") || "") + '"></label></div>' +
       '<p class="muted">Новую почту сначала сохраните кнопкой внизу, потом проверьте.</p>' +
-      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' +
+      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' + bkCard +
       (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
     loadNotify();
+    renderPfList();
+    api("backup_info").then(function (r) {
+      var el = $("bkInfo"); if (!el) return;
+      el.textContent = !r.zip ? "Сервер пока не умеет делать архивы с паролем, поэтому копии не отправляются. Напишите владельцу сервиса." : "Сейчас подключено: Telegram-чатов — " + r.tgChats + ", адресов почты — " + r.emails + ".";
+    }).catch(function () {});
   }
+  /* ---------- портфолио ---------- */
+  function renderPfList() {
+    var box = $("pfList"); if (!box) return;
+    var items = (cfg.portfolio && cfg.portfolio.items) || [];
+    box.innerHTML = items.length ? items.map(function (it, i) {
+      var prev = it.t === "photo" ? '<img src="../' + esc(it.src) + '" alt="">' : it.t === "video" ? '<video src="../' + esc(it.src) + '#t=0.5" preload="metadata" muted></video><span class="pf-tag">Видео</span>' : '<span class="pf-tag">' + (/rutube/.test(it.src) ? "Rutube" : "VK Видео") + "</span>";
+      return '<div class="pf-cell"><div class="pf-prev">' + prev + '</div><div class="pf-btns">' +
+        '<button type="button" data-pfmove="-1" data-src="' + esc(it.src) + '" aria-label="Левее"' + (i ? "" : " disabled") + ">←</button>" +
+        '<button type="button" data-pfmove="1" data-src="' + esc(it.src) + '" aria-label="Правее"' + (i < items.length - 1 ? "" : " disabled") + ">→</button>" +
+        '<button type="button" class="pf-del" data-pfdel="' + esc(it.src) + '" aria-label="Удалить">×</button></div></div>';
+    }).join("") : '<p class="muted">Пока пусто. Добавьте фото с праздников или видео.</p>';
+  }
+  function pfSet(r) { cfg.portfolio = r.portfolio; renderPfList(); }
+  function pfProgress(t) { var p = $("pfProgress"); if (!p) return; p.textContent = t || ""; p.hidden = !t; }
+  function uploadVideo(file) {
+    return new Promise(function (ok, bad) {
+      var fd = new FormData(); fd.append("file", file);
+      var x = new XMLHttpRequest();
+      x.open("POST", "../api/admin.php?action=video_upload");
+      x.setRequestHeader("X-CSRF", me.csrf);
+      x.upload.onprogress = function (e) { if (e.lengthComputable) pfProgress("Загружаю видео: " + Math.round(e.loaded / e.total * 100) + "%"); };
+      x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText); } catch (e) { j = { error: x.status === 413 ? "Файл больше, чем разрешает хостинг" : "Сервер ответил с ошибкой (код " + x.status + ")" }; } if (x.status >= 200 && x.status < 300) ok(j); else bad(new Error(j.error || "Ошибка")); };
+      x.onerror = function () { bad(new Error("Нет связи с сервером. Проверьте интернет.")); };
+      x.send(fd);
+    });
+  }
+  document.addEventListener("change", function (e) {
+    if (e.target.id === "pfPhotos" && e.target.files.length) {
+      var files = Array.prototype.slice.call(e.target.files), done = 0;
+      e.target.value = "";
+      files.reduce(function (p, f) {
+        return p.then(function () { pfProgress("Загружаю фото " + (done + 1) + " из " + files.length + "…"); return shrinkImage(f, 1920); })
+          .then(function (data) { return api("image_upload", { kind: "port", data: data }); })
+          .then(function (r) { done++; pfSet(r); });
+      }, Promise.resolve()).then(function () { pfProgress(""); flash("Фото добавлены, они уже на странице записи" + (cfg.portfolio.enabled ? "" : ". Включите «Показывать портфолио» и сохраните настройки")); })
+        .catch(function (err) { pfProgress(""); flash(err.message, true); });
+    }
+    if (e.target.id === "pfVideo" && e.target.files[0]) {
+      var f = e.target.files[0]; e.target.value = "";
+      if (f.size > 50 * 1024 * 1024) { flash("Видео больше 50 МБ. Сократите ролик или вставьте ссылку на VK Видео или Rutube.", true); return; }
+      uploadVideo(f).then(function (r) { pfProgress(""); pfSet(r); flash("Видео загружено"); }).catch(function (err) { pfProgress(""); flash(err.message, true); });
+    }
+  });
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.id === "pfAddUrl") {
+      var u = $("pfUrl").value.trim(); if (!u) { flash("Вставьте ссылку на ролик", true); return; }
+      api("portfolio_embed", { url: u }).then(function (r) { $("pfUrl").value = ""; pfSet(r); flash("Ролик добавлен"); }).catch(function (err) { flash(err.message, true); });
+    }
+    if (t.dataset && t.dataset.pfdel) { if (!confirm("Убрать из портфолио?")) return; api("portfolio_remove", { src: t.dataset.pfdel }).then(pfSet).catch(function (err) { flash(err.message, true); }); }
+    if (t.dataset && t.dataset.pfmove) api("portfolio_move", { src: t.dataset.src, dir: +t.dataset.pfmove }).then(pfSet).catch(function (err) { flash(err.message, true); });
+    if (t.id === "bkTest") {
+      t.disabled = true;
+      api("backup_test").then(function (r) { var p = []; if (r.tg) p.push("Telegram: " + r.tg); if (r.email) p.push("почта: " + r.email); flash(p.length ? "Копия отправлена (" + p.join(", ") + ")" : "Не удалось отправить: проверьте, что Telegram или почта подключены в уведомлениях", !p.length); })
+        .catch(function (err) { flash(err.message, true); }).finally(function () { t.disabled = false; });
+    }
+  });
   var TIMEZONES = [["Europe/Kaliningrad", "Калининград (МСК−1)"], ["Europe/Moscow", "Москва (МСК)"], ["Europe/Samara", "Самара (МСК+1)"], ["Asia/Yekaterinburg", "Екатеринбург (МСК+2)"], ["Asia/Omsk", "Омск (МСК+3)"], ["Asia/Krasnoyarsk", "Красноярск, Новосибирск (МСК+4)"], ["Asia/Irkutsk", "Иркутск (МСК+5)"], ["Asia/Yakutsk", "Якутск (МСК+6)"], ["Asia/Vladivostok", "Владивосток (МСК+7)"], ["Asia/Magadan", "Магадан (МСК+8)"], ["Asia/Kamchatka", "Камчатка (МСК+9)"]];
 
   /* ---------- картинки: логотип, фон, фото составов ---------- */
@@ -456,7 +558,8 @@
   /* ---------- главная (владелец) ---------- */
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
-    ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["heroLead", "Подзаголовок", "area"], ["demoButton", "Кнопка демо"], ["loginLink", "Ссылка «Вход для агентств»"], ["contactButton", "Красная кнопка в шапке"]]],
+    ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["heroLead", "Подзаголовок", "area"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"], ["contactButton", "Красная кнопка в шапке"]]],
+    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidSum", "Цена (показывается и в плашке у агентств)"], ["pricePaidText", "Платно: текст", "area"], ["seatsLeft", "Осталось мест по этой цене (пусто — не показывать)"], ["seatsTotal", "Всего мест по этой цене"], ["priceNote", "Строка под карточками", "area"]]],
     ["Блок возможностей", [["itemsTitle", "Заголовок"], ["itemsLead", "Текст под заголовком", "area"], ["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
     ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
@@ -471,6 +574,8 @@
         // тексты, сохранённые до нового дизайна, дополняем новыми полями по умолчанию
         if (!saved) return def;
         if (saved.heroBadge == null) saved = { telegram: saved.telegram, demoSlug: saved.demoSlug, items: saved.items, steps: saved.steps, faq: saved.faq };
+        // сохранённые до бесплатного периода: первый экран, шаги и вопросы берём новые (как на самой главной)
+        if ((+saved.v || 0) < 2) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "regButton", "ctaNote", "demoButton", "contactButton", "strip", "itemsLead", "items", "steps", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
         Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
         return saved;
       });
@@ -500,15 +605,68 @@
     api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 
+  /* ---------- настройки сервиса (владелец) ---------- */
+  var ownerData = null;
+  function loadOwner() {
+    api("owner_get").then(function (o) {
+      ownerData = o;
+      $("ownerBox").innerHTML = '<div class="card owner"><h2>Настройки сервиса</h2><div class="owner-grid">' +
+        '<div><h3>Ваш Telegram</h3><p class="muted">Новые регистрации, загрузки фото и видео, ссылки в баннерах агентств и ночная копия всех заявок.</p><p id="ownTgStatus"></p><div class="acts" id="ownTgActs"></div></div>' +
+        '<div><h3>Регистрация агентств</h3><label class="row"><input type="checkbox" id="ownRegOpen"' + (o.reg.open !== false ? " checked" : "") + "> Регистрация на сайте открыта</label>" +
+        '<label class="row"><input type="checkbox" id="ownRegManual"' + (o.reg.manual ? " checked" : "") + "> Новые страницы включаю вручную</label>" +
+        '<p class="muted">Если включить вторую галочку, страница нового агентства не видна клиентам, пока вы не нажмёте «Включить».</p></div>' +
+        '<div><h3>Оплата</h3><label>Первый платный день<input type="date" id="ownFree" value="' + esc(o.billing.freeEnd) + '"></label><label>Конец сезона<input type="date" id="ownSeason" value="' + esc(o.billing.seasonEnd) + '"></label>' +
+        '<p class="muted">После окончания срока 3 дня отсрочки, потом страница записи закрывается.</p></div>' +
+        '<div><h3>Копия всех заявок</h3><label class="row"><input type="checkbox" id="ownBkTg"' + (o.backup.tg ? " checked" : "") + "> В мой Telegram</label>" +
+        '<label class="row"><input type="checkbox" id="ownBkMail"' + (o.backup.email ? " checked" : "") + '> На мою почту</label>' +
+        '<label>Пароль от архива<input id="ownBkPass" autocomplete="off" spellcheck="false" value="' + esc(o.backup.password || "") + '"></label>' +
+        '<label>Моя почта<input id="ownEmail" type="email" value="' + esc(o.email || "") + '"></label>' + (o.zip ? "" : '<p class="muted bad-text">Сервер не умеет делать архивы с паролем: копии не отправляются.</p>') + "</div>" +
+        '</div><div class="acts"><button class="btn" id="ownSave" type="button">Сохранить настройки сервиса</button><button class="btn ghost small" id="ownBkTest" type="button">Отправить копию сейчас</button></div>' +
+        '<details class="cron"><summary>Ночная отправка копий: настроить один раз на хостинге</summary>' +
+        '<ol><li>Панель reg.ru → ваш сайт → «Планировщик заданий» (cron) → «Создать задание».</li><li>Время: каждый день в 03:00.</li><li>Команда (скопируйте целиком):</li></ol>' +
+        '<div class="inline"><input id="cronCmd" readonly value="' + esc('wget -q -O /dev/null "' + o.cronUrl + '"') + '"><button class="btn ghost small" id="cronCopy" type="button">Скопировать</button></div>' +
+        '<p class="muted">Последний запуск: ' + esc(o.cronLast || "ещё не было") + ". Загрузка файлов на хостинге: до " + esc(o.uploadMax) + " (нужно 60M для видео до 50 МБ).</p></details></div>";
+      renderOwnTg(o.tgChats);
+    }).catch(function (e) { $("ownerBox").innerHTML = '<div class="card empty"><b>Не удалось загрузить настройки сервиса</b><p class="muted">' + esc(e.message) + "</p></div>"; });
+  }
+  function renderOwnTg(n) {
+    if (!$("ownTgStatus")) return;
+    if (!ownerData.tgReady) { $("ownTgStatus").textContent = "Telegram не настроен в config.local.php"; $("ownTgActs").innerHTML = ""; return; }
+    $("ownTgStatus").textContent = n ? "Подключено, чатов: " + n : "Не подключено";
+    $("ownTgActs").innerHTML = '<button class="btn small" type="button" id="ownTgLink">' + (n ? "Подключить ещё чат" : "Подключить Telegram") + "</button>" + (n ? '<button class="btn danger small" type="button" id="ownTgOff">Отключить</button>' : "");
+  }
+  $("ownerBox").addEventListener("click", function (e) {
+    var id = e.target.id;
+    if (id === "ownTgLink") api("tg_link_owner").then(function (r) {
+      $("ownTgActs").innerHTML = '<a class="btn small" target="_blank" rel="noopener noreferrer" href="' + esc(r.url) + '">Открыть Telegram</a><button class="btn ghost small" type="button" id="ownTgCheck">Я нажал «Старт»</button>';
+    }).catch(function (err) { flash(err.message, true); });
+    if (id === "ownTgCheck") api("owner_poll").then(function (r) { renderOwnTg(r.tgChats); flash(r.tgChats ? "Telegram подключён" : "Пока не вижу подключения. Нажмите «Старт» в боте и проверьте ещё раз", !r.tgChats); }).catch(function (err) { flash(err.message, true); });
+    if (id === "ownTgOff" && confirm("Отключить уведомления владельца в Telegram?")) api("owner_tg_off").then(function () { renderOwnTg(0); }).catch(function (err) { flash(err.message, true); });
+    if (id === "cronCopy") { var c = $("cronCmd"); c.select(); try { navigator.clipboard.writeText(c.value); } catch (x) { document.execCommand("copy"); } e.target.textContent = "Скопировано"; }
+    if (id === "ownSave") api("owner_save", {
+      email: $("ownEmail").value.trim(), reg: { open: $("ownRegOpen").checked, manual: $("ownRegManual").checked },
+      backup: { tg: $("ownBkTg").checked, email: $("ownBkMail").checked, password: $("ownBkPass").value },
+      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value }
+    }).then(function () { flash("Настройки сервиса сохранены"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
+    if (id === "ownBkTest") api("owner_backup_test").then(function (r) { flash("Копия отправлена (Telegram: " + r.tg + ", почта: " + r.email + ")", !(r.tg || r.email)); }).catch(function (err) { flash(err.message, true); });
+  });
+
   /* ---------- агентства (владелец) ---------- */
+  var BILL_LABEL = { free: ["st-new", "бесплатно по "], paid: ["st-confirmed", "оплачено по "], grace: ["st-warn", "не оплачено, закроется "], closed: ["st-cancelled", "закрыто за неоплату"] };
+  function billBadge(b) {
+    var l = BILL_LABEL[b && b.status]; if (!l) return "";
+    var d = b.status === "free" ? ruDate(b.lastDay) : b.status === "paid" ? ruDate(b.paidUntil) : b.status === "grace" ? ruDate(b.closesOn) : "";
+    return ' <span class="st ' + l[0] + '">' + l[1] + d + "</span>";
+  }
   function loadAgencies() {
     api("agencies").then(function (r) {
       $("agencies").innerHTML = r.agencies.map(function (a) {
-        return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.demo ? ' <span class="st st-new">демо</span>' : "") + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') + (a.demo || a.legal ? "" : ' <span class="st st-warn" title="Без них согласие и политика на странице записи неполные">нет реквизитов</span>') +
-          '<br><small class="muted">/' + esc(a.slug) + (a.city ? " · " + esc(a.city) : "") + " · вход: " + esc(a.login || "не создан") + "</small></div>" +
+        return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.demo ? ' <span class="st st-new">демо</span>' : billBadge(a.billing)) + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') + (a.demo || a.legal ? "" : ' <span class="st st-warn" title="Без них согласие и политика на странице записи неполные">нет реквизитов</span>') +
+          '<br><small class="muted">/' + esc(a.slug) + (a.city ? " · " + esc(a.city) : "") + " · вход: " + esc(a.login || "не создан") + (a.phone ? " · " + esc(a.phone) : "") + "</small></div>" +
           "<div class=\"ag-count\"><b>" + a.orders + "</b> " + plural(a.orders, "заявка", "заявки", "заявок") + "</div>" +
           '<div class="acts"><button class="btn small" data-open="' + a.id + '">Открыть</button>' +
           '<button class="btn ghost small" data-user="' + a.id + '" data-login="' + esc(a.login || a.slug) + '" data-slug="' + esc(a.slug) + '">Вход для агентства</button>' +
+          (a.demo ? "" : '<button class="btn ghost small" data-paid="' + a.id + '" data-until="' + esc((a.billing && a.billing.paidUntil) || "") + '" data-season="' + esc((a.billing && a.billing.seasonEnd) || "") + '">Оплата</button>') +
           '<button class="btn ' + (a.active ? "danger" : "ghost") + ' small" data-toggle="' + a.id + '" data-active="' + (a.active ? 0 : 1) + '">' + (a.active ? "Выключить" : "Включить") + "</button>" +
           (a.slug === "demo" ? "" : '<button class="btn danger small" data-del="' + a.id + '" data-slug="' + esc(a.slug) + '">Удалить</button>') + "</div></div>";
       }).join("") || '<div class="card empty">Агентств пока нет</div>';
@@ -525,7 +683,7 @@
     var sec = $("tab-" + t);
     ["input", "change", "changed"].forEach(function (ev) {
       sec.addEventListener(ev, function (e) {
-        if (e.target.closest && e.target.closest(".save-bar, #pwForm, #tgActs")) return;
+        if (e.target.closest && e.target.closest(".save-bar, #pwForm, #tgActs, .no-dirty")) return;
         if (e.target.id === "notifyTest" || e.target.classList.contains("img-file") || e.target.classList.contains("img-remove")) return;
         markDirty(t, true);
       }, true);
@@ -648,6 +806,16 @@
 
   $("agencies").addEventListener("click", function (e) {
     var t = e.target;
+    if (t.dataset.paid) {
+      var cur = t.dataset.until || t.dataset.season;
+      var v = prompt("Оплачено по какую дату включительно? ДД.ММ.ГГГГ\n\nЧтобы снять отметку об оплате, сотрите дату. Без оплаты навсегда: 31.12.2099", isoToRu(cur));
+      if (v === null) return;
+      v = v.trim();
+      var until = v === "" ? "" : ruToIso(v);
+      if (until === null) { flash("Дата в формате ДД.ММ.ГГГГ, например " + isoToRu(t.dataset.season), true); return; }
+      api("agency_paid", { id: +t.dataset.paid, until: until }).then(function () { flash(until ? "Оплата отмечена по " + v : "Отметка об оплате снята"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
+      return;
+    }
     if (t.dataset.open) api("agency_open", { id: +t.dataset.open }).then(function (m) { start(m); tab = "orders"; }).catch(function (err) { flash(err.message, true); });
     if (t.dataset.toggle) api("agency_toggle", { id: +t.dataset.toggle, active: t.dataset.active === "1" }).then(loadAgencies);
     if (t.dataset.del) {

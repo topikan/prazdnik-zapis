@@ -223,6 +223,55 @@ function normalize_config(array $c, array &$err): array {
         $o['banner'] = ['title' => $str($bn['title'] ?? '', 120), 'text' => $str($bn['text'] ?? '', 300), 'button' => $str($bn['button'] ?? '', 40), 'link' => $str($bn['link'] ?? '', 300)];
         if ($o['banner']['link'] !== '' && !preg_match('~^(https://[^\s<>"]+|tel:\+?[0-9()\s-]{5,20})$~', $o['banner']['link'])) $err[] = 'Ссылка кнопки баннера: адрес с https:// или телефон вида tel:+79991234567';
     }
+    // Портфолио: фото и видео агентства на странице записи. Файлы добавляются и убираются отдельными действиями.
+    $pf = is_array($c['portfolio'] ?? null) ? $c['portfolio'] : [];
+    $o['portfolio'] = ['enabled' => !empty($pf['enabled']), 'title' => $str($pf['title'] ?? '', 80), 'items' => []];
+    $np = 0; $nv = 0;
+    foreach ($list($pf['items'] ?? [], PORTFOLIO_MAX_PHOTOS + PORTFOLIO_MAX_VIDEOS) as $x) {
+        $it = portfolio_item_clean($x); if (!$it) continue;
+        if ($it['t'] === 'photo') { if (++$np > PORTFOLIO_MAX_PHOTOS) continue; } elseif (++$nv > PORTFOLIO_MAX_VIDEOS) continue;
+        $o['portfolio']['items'][] = $it;
+    }
+    // Ночная копия заявок: архив с паролем в Telegram и/или на почту
+    $bk = is_array($c['backup'] ?? null) ? $c['backup'] : [];
+    $o['backup'] = ['tg' => !empty($bk['tg']), 'email' => !empty($bk['email']), 'password' => is_scalar($bk['password'] ?? null) ? mb_substr((string)$bk['password'], 0, 100) : ''];
+    if (($o['backup']['tg'] || $o['backup']['email']) && strlen($o['backup']['password']) < 6) $err[] = 'Пароль для архива с копией заявок — не короче 6 символов';
     return $o;
+}
+
+const PORTFOLIO_MAX_PHOTOS = 20;
+const PORTFOLIO_MAX_VIDEOS = 5;
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+function portfolio_item_clean($x): ?array {
+    if (!is_array($x)) return null;
+    $t = $x['t'] ?? ''; $src = is_string($x['src'] ?? null) ? $x['src'] : '';
+    if ($t === 'photo' && preg_match('~^uploads/portfolio/[a-z0-9-]+\.(webp|png|jpe?g)$~', $src)) return ['t' => 'photo', 'src' => $src];
+    if ($t === 'video' && preg_match('~^uploads/videos/[a-z0-9-]+\.(mp4|webm)$~', $src)) return ['t' => 'video', 'src' => $src];
+    if ($t === 'embed' && embed_ok($src)) return ['t' => 'embed', 'src' => $src, 'provider' => str_contains($src, 'rutube.ru') ? 'rutube' : 'vk'];
+    return null;
+}
+// Ролик можно вставить только с VK Видео и Rutube, и только по адресу их плеера
+function embed_ok(string $src): bool {
+    return (bool)preg_match('~^https://rutube\.ru/play/embed/[a-f0-9]{32}(\?p=[A-Za-z0-9_-]{1,64})?$~', $src)
+        || (bool)preg_match('~^https://vk\.com/video_ext\.php\?oid=-?\d{1,20}&id=\d{1,20}(&hash=[a-f0-9]{1,40})?$~', $src);
+}
+// Ссылка на ролик или код вставки → адрес плеера. Понимает vk.com, vkvideo.ru, rutube.ru (обычные ролики и shorts).
+function embed_from_url(string $u): ?string {
+    $u = trim(html_entity_decode($u, ENT_QUOTES));
+    if (preg_match('~src=["\']([^"\']+)["\']~i', $u, $m)) $u = $m[1]; // вставили код <iframe …>
+    if (preg_match('~^(?:https?:)?//rutube\.ru/(?:video|shorts|play/embed)/(?:private/)?([a-f0-9]{32})/?(?:\?(?:.*&)?p=([A-Za-z0-9_-]{1,64}))?~i', $u, $m)) {
+        return 'https://rutube.ru/play/embed/' . strtolower($m[1]) . (!empty($m[2]) ? '?p=' . $m[2] : '');
+    }
+    if (preg_match('~^(?:https?:)?//(?:www\.|m\.)?(?:vk\.com|vk\.ru|vkvideo\.ru)/video_ext\.php\?(.+)$~i', $u, $m)) {
+        parse_str(html_entity_decode($m[1]), $q);
+        if (isset($q['oid'], $q['id']) && preg_match('/^-?\d+$/', (string)$q['oid']) && preg_match('/^\d+$/', (string)$q['id'])) {
+            $h = (isset($q['hash']) && preg_match('/^[a-f0-9]{1,40}$/', (string)$q['hash'])) ? '&hash=' . $q['hash'] : '';
+            return 'https://vk.com/video_ext.php?oid=' . $q['oid'] . '&id=' . $q['id'] . $h;
+        }
+    }
+    if (preg_match('~^(?:https?://)?(?:www\.|m\.)?(?:vk\.com|vk\.ru|vkvideo\.ru)/.*?video(-?\d{1,20})_(\d{1,20})~i', $u, $m)) {
+        return 'https://vk.com/video_ext.php?oid=' . $m[1] . '&id=' . $m[2];
+    }
+    return null;
 }
 function validate_config(array $c): array { $err = []; normalize_config($c, $err); return array_values(array_unique($err)); }

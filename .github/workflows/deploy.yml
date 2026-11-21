@@ -43,3 +43,5 @@ jobs:
             uploads/logos/**
             uploads/heroes/**
             uploads/chars/**
+            uploads/portfolio/**
+            uploads/videos/**

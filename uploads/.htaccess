@@ -1,9 +1,9 @@
-# Загруженные логотипы: отдаём только картинки, скрипты здесь не выполняются
+# Загрузки агентств: отдаём только картинки и видео, скрипты здесь не выполняются
 Options -Indexes
 <FilesMatch ".">
   Require all denied
 </FilesMatch>
-<FilesMatch "(?i)\.(png|jpe?g|webp)$">
+<FilesMatch "(?i)\.(png|jpe?g|webp|mp4|webm)$">
   Require all granted
 </FilesMatch>
 <IfModule mod_headers.c>

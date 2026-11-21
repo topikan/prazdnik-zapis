@@ -165,3 +165,43 @@ function setting_set(string $name, array $value): void {
     db()->prepare('DELETE FROM settings WHERE name = ?')->execute([$name]);
     db()->prepare('INSERT INTO settings (name, value) VALUES (?, ?)')->execute([$name, $json]);
 }
+
+// «Знакомое устройство»: подписанная кука после удачного входа (без пароля и без доступа к кабинету)
+function device_sig(string $login, string $rnd): string { global $APP; return substr(hash_hmac('sha256', 'dev|' . mb_strtolower($login) . '|' . $rnd, (string)$APP['secret']), 0, 32); }
+function known_device(string $login): bool {
+    $parts = explode('.', (string)($_COOKIE['bp_dev'] ?? ''));
+    return count($parts) === 2 && preg_match('/^[a-f0-9]{16}$/', $parts[0]) && hash_equals(device_sig($login, $parts[0]), $parts[1]);
+}
+function remember_device(string $login): void {
+    $rnd = bin2hex(random_bytes(8));
+    setcookie('bp_dev', $rnd . '.' . device_sig($login, $rnd), ['expires' => time() + 365 * 86400, 'path' => '/', 'secure' => !is_local_host(), 'httponly' => true, 'samesite' => 'Strict']);
+}
+// Открыть сессию кабинета для пользователя (после входа или регистрации)
+function session_login(array $u): void {
+    start_session();
+    remember_device((string)$u['login']);
+    session_regenerate_id(true);
+    $_SESSION = ['uid' => (int)$u['id'], 'role' => $u['role'], 'agency' => $u['agency_id'] ? (int)$u['agency_id'] : null,
+        'csrf' => bin2hex(random_bytes(24)), 'fp' => pass_fp($u['password_hash']), 'seen' => time()];
+}
+// Кто открыл страницу: только если у посетителя уже есть кука кабинета (новую сессию не заводим)
+function session_peek(): array {
+    if (empty($_COOKIE['bp_admin']) || !preg_match('/^[A-Za-z0-9,-]{20,128}$/', (string)$_COOKIE['bp_admin'])) return [];
+    start_session();
+    $s = $_SESSION;
+    session_write_close();
+    if (empty($s['uid'])) return [];
+    $st = db()->prepare('SELECT role, agency_id, password_hash FROM users WHERE id = ?'); $st->execute([(int)$s['uid']]);
+    $u = $st->fetch();
+    if (!$u || $u['role'] !== ($s['role'] ?? '') || !hash_equals(pass_fp($u['password_hash']), (string)($s['fp'] ?? ''))) return [];
+    return ['role' => $u['role'], 'agency' => $u['role'] === 'super' ? (int)($s['agency'] ?? 0) : (int)$u['agency_id']];
+}
+// Письмо с текстом (коды подтверждения и т. п.)
+function mail_text(string $to, string $subject, string $text): bool {
+    global $APP;
+    $host = parse_url((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), PHP_URL_HOST) ?: 'bronprazdnik.ru';
+    $headers = "From: =?UTF-8?B?" . base64_encode('Бронь Праздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64";
+    if (!empty($APP['mail_log'])) { @file_put_contents((string)$APP['mail_log'], date('c') . " $to | $subject\n$text\n\n", FILE_APPEND); return true; } // для проверки на своём компьютере
+    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', chunk_split(base64_encode($text)), $headers);
+}
+

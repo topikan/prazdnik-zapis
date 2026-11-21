@@ -12,7 +12,7 @@ $text = $my ? 'MEDIUMTEXT' : 'TEXT';
 $tail = $my ? ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci' : '';
 
 $sql = [
-"CREATE TABLE IF NOT EXISTS agencies (id $id, slug VARCHAR(40) NOT NULL UNIQUE, config $text NOT NULL, active TINYINT NOT NULL DEFAULT 1, created_at DATETIME NOT NULL)$tail",
+"CREATE TABLE IF NOT EXISTS agencies (id $id, slug VARCHAR(40) NOT NULL UNIQUE, config $text NOT NULL, active TINYINT NOT NULL DEFAULT 1, created_at DATETIME NOT NULL, paid_until VARCHAR(10) NOT NULL DEFAULT '', trial_until VARCHAR(10) NOT NULL DEFAULT '', email VARCHAR(120) NOT NULL DEFAULT '')$tail",
 "CREATE TABLE IF NOT EXISTS users (id $id, agency_id INT NULL, login VARCHAR(60) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, role VARCHAR(10) NOT NULL, created_at DATETIME NOT NULL)$tail",
 "CREATE TABLE IF NOT EXISTS orders (id $id, agency_id INT NOT NULL, visit_date DATE NOT NULL, visit_time CHAR(5) NOT NULL, span TINYINT NOT NULL DEFAULT 1, data $text NOT NULL, name VARCHAR(80) NOT NULL, phone VARCHAR(20) NOT NULL, address VARCHAR(255) NOT NULL, total INT NOT NULL, price_lines TEXT NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'new', paid TINYINT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL)$tail",
 "CREATE TABLE IF NOT EXISTS blocks (id $id, agency_id INT NOT NULL, visit_date DATE NOT NULL, visit_time CHAR(5) NOT NULL, teams TINYINT NOT NULL DEFAULT 1, note VARCHAR(100) NOT NULL DEFAULT '', created_at DATETIME NOT NULL, grp VARCHAR(16) NOT NULL DEFAULT '')$tail",

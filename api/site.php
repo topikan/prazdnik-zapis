@@ -3,5 +3,5 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';
 $d = setting_get('landing');
-if (!$d) fail('Нет текстов', 404);
+if (!$d) json_out(new stdClass()); // текстов ещё нет: главная возьмёт тексты по умолчанию
 json_out($d);

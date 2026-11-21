@@ -6,19 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l7 10h-4l6 8h-5l6 7H6l6-7H7l6-8H9z' fill='%23163A2F'/%3E%3C/svg%3E">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
   <title>Админка — Бронь Праздник</title>
   <link rel="stylesheet" href="admin.css?v=dev">
 </head>
 <body>
   <div id="login" class="login" hidden>
     <form id="loginForm" class="card login-card">
-      <div class="login-brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3l7 10h-4l6 8h-5l6 7H6l6-7H7l6-8H9z" fill="currentColor"/></svg>Бронь Праздник</div>
+      <div class="login-brand"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><g id="lf-arm"><path d="M24 24V4M24 10.5l-4.6-4.6M24 10.5l4.6-4.6M24 17.5l-6.2-4.6M24 17.5l6.2-4.6"/></g><use href="#lf-arm" transform="rotate(60 24 24)"/><use href="#lf-arm" transform="rotate(120 24 24)"/><use href="#lf-arm" transform="rotate(180 24 24)"/><use href="#lf-arm" transform="rotate(240 24 24)"/><use href="#lf-arm" transform="rotate(300 24 24)"/></g></svg>Бронь Праздник</div>
       <h1>Вход в личный кабинет</h1>
-      <label>Логин<input name="login" autocomplete="username" required></label>
+      <label>Почта или логин<input name="login" autocomplete="username" required></label>
       <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
       <p class="err" id="loginErr" hidden></p>
       <button class="btn">Войти</button>
+      <p class="login-links"><a href="../register.html#reset">Забыли пароль?</a><a href="../register.html">Зарегистрировать агентство</a></p>
     </form>
   </div>
 
@@ -43,6 +44,7 @@
 
     <main class="wrap">
       <p class="flash" id="flash" role="status" hidden></p>
+      <div class="bill" id="billBar" hidden></div>
 
       <section id="tab-orders" class="tab" hidden>
         <div class="bar">
@@ -52,6 +54,7 @@
             <select id="ordStatus"><option value="">Все</option><option value="new">Новые</option><option value="confirmed">Подтверждённые</option><option value="done">Выполненные</option><option value="cancelled">Отменённые</option></select>
           </label>
           <button class="btn ghost" id="ordReload">Обновить</button>
+          <button class="btn ghost" id="ordExport" type="button">Скачать в Excel</button>
           <span class="bar-note" id="ordSummary" role="status"></span>
         </div>
         <div id="orders"></div>
@@ -112,6 +115,7 @@
       </section>
 
       <section id="tab-agencies" class="tab" hidden>
+        <div id="ownerBox"></div>
         <div class="card">
           <h2>Новое агентство</h2>
           <form id="newAgency" class="inline">

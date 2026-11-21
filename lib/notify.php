@@ -87,6 +87,14 @@ function tg_handle(array $msg): void {
     if (preg_match('~^/start(?:@\w+)?\s+([a-f0-9]{16})$~', $text, $m)) {
         $link = setting_get('tglink:' . $m[1]);
         db()->prepare('DELETE FROM settings WHERE name = ?')->execute(['tglink:' . $m[1]]);
+        // aid = 0 — это владелец сервиса: ему приходят новые регистрации, загрузки и копии всех заявок
+        if ($link && ($link['exp'] ?? 0) >= time() && (int)$link['aid'] === 0) {
+            $chats = tg_chats(0);
+            if (!in_array($chat, $chats, true)) $chats[] = $chat;
+            tg_set_chats(0, array_slice($chats, -5));
+            tg_send($chat, "Готово! Сюда будут приходить уведомления владельца: новые агентства, загрузки и ночные копии заявок.\n\nОтключить: /stop");
+            return;
+        }
         $a = $link && ($link['exp'] ?? 0) >= time() ? agency_by_id((int)$link['aid']) : null;
         if (!$a) { tg_send($chat, "Ссылка устарела. Откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram» ещё раз."); return; }
         $chats = tg_chats((int)$a['id']);
@@ -108,16 +116,61 @@ function tg_send(int $chat, string $text): bool {
     return !empty($r['ok']);
 }
 
+// Файл в Telegram (копия заявок). Через реле файл передаётся в base64, реле само собирает отправку.
+function tg_send_document(int $chat, string $filename, string $bytes, string $caption): bool {
+    global $APP;
+    if (tg_relay()) {
+        $r = http_post_json((string)$APP['tg_relay_url'], json_encode(['key' => (string)($APP['tg_relay_key'] ?? ''), 'method' => 'sendDocument',
+            'params' => ['chat_id' => $chat, 'caption' => $caption], 'file' => ['name' => $filename, 'mime' => 'application/zip', 'b64' => base64_encode($bytes)]], JSON_UNESCAPED_UNICODE), 60);
+    } else {
+        $token = (string)($APP['tg_bot_token'] ?? '');
+        if ($token === '' || !function_exists('curl_init')) return false;
+        $ch = curl_init("https://api.telegram.org/bot$token/sendDocument");
+        curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 60,
+            CURLOPT_POSTFIELDS => ['chat_id' => (string)$chat, 'caption' => $caption, 'document' => new CURLStringFile($bytes, $filename, 'application/zip')]]);
+        $r = curl_exec($ch); curl_close($ch);
+        $r = is_string($r) ? $r : null;
+    }
+    $j = $r ? json_decode($r, true) : null;
+    if (empty($j['ok'])) { error_log('telegram sendDocument: ' . mb_substr((string)$r, 0, 300)); return false; }
+    return true;
+}
+// Письмо с вложением (копия заявок архивом)
+function send_mail_file(string $to, string $subject, string $text, string $filename, string $bytes): bool {
+    global $APP;
+    if (!empty($APP['mail_log'])) { @file_put_contents((string)$APP['mail_log'], date('c') . " $to | $subject | вложение $filename, " . strlen($bytes) . " байт\n$text\n\n", FILE_APPEND); return true; }
+    $host = parse_url(site_url(), PHP_URL_HOST) ?: 'bronprazdnik.ru';
+    $b = 'b' . bin2hex(random_bytes(12));
+    $headers = "From: =?UTF-8?B?" . base64_encode('Бронь Праздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"$b\"";
+    $body = "--$b\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($text))
+        . "--$b\r\nContent-Type: application/zip; name=\"$filename\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"$filename\"\r\n\r\n" . chunk_split(base64_encode($bytes))
+        . "--$b--\r\n";
+    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+}
+
+// Уведомление владельцу сервиса: в его Telegram (подключается во вкладке «Агентства») и на почту из настроек
+function owner_email(): string { global $APP; $m = (string)((setting_get('owner') ?: [])['email'] ?? ($APP['owner_email'] ?? '')); return filter_var($m, FILTER_VALIDATE_EMAIL) ? $m : ''; }
+function notify_owner(string $subject, string $text): void {
+    try {
+        foreach (tg_chats(0) as $chat) tg_send($chat, $text);
+        if (owner_email() !== '') send_mail(owner_email(), $subject, $text);
+    } catch (Throwable $e) { error_log('notify_owner: ' . $e->getMessage()); }
+}
+// Не чаще раза в 15 минут на одно агентство: чтобы 20 загруженных фото не стали 20 сообщениями
+function notify_owner_throttled(string $key, string $subject, string $text): void {
+    $name = 'own:' . substr(hash('sha256', $key), 0, 20);
+    $last = (int)((setting_get($name) ?: [])['t'] ?? 0);
+    if (time() - $last < 900) return;
+    setting_set($name, ['t' => time()]);
+    notify_owner($subject, $text);
+}
+
 function notify_emails(array $cfg): array {
     $raw = trim((string)($cfg['notify']['email'] ?? ''));
     if ($raw === '') return [];
     return array_slice(array_values(array_filter(preg_split('/[\s,;]+/', $raw), function ($m) { return filter_var($m, FILTER_VALIDATE_EMAIL); })), 0, 3);
 }
-function send_mail(string $to, string $subject, string $text): bool {
-    $host = parse_url(site_url(), PHP_URL_HOST) ?: 'bronprazdnik.ru';
-    $headers = "From: =?UTF-8?B?" . base64_encode('Бронь Праздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64";
-    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', chunk_split(base64_encode($text)), $headers);
-}
+function send_mail(string $to, string $subject, string $text): bool { return mail_text($to, $subject, $text); }
 
 // Возвращает, куда удалось отправить: ['tg' => n, 'email' => n]
 function notify_agency(array $a, string $subject, string $text): array {

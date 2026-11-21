@@ -2,7 +2,7 @@
 <html lang="ru" translate="no">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self'; frame-src https://rutube.ru https://vk.com; base-uri 'none'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="google" content="notranslate">
@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="assets/style.css?v=dev">
 </head>
 <body class="booking">
+  <div class="guide-bar" id="guideBar" hidden><span id="guideText">Так эту страницу увидит ваш клиент</span><small id="guideSub">Жёлтые пометки — только в демо, у вас их не будет</small><button type="button" class="notes-toggle" id="notesToggle" aria-pressed="false" hidden>Отключить пояснения</button></div>
   <header class="hero" id="hero">
     <div class="snow" aria-hidden="true"></div>
     <img class="hero-santa" id="heroSanta" src="assets/img/santa.webp" width="549" height="566" alt="">
@@ -149,6 +150,31 @@
 
   </main>
 
+  <section class="closed-box" id="closed" hidden>
+    <div class="wrap">
+      <div class="closed-card">
+        <h2>Онлайн-запись временно недоступна</h2>
+        <p>Чтобы заказать праздник, позвоните агентству — там подскажут свободное время.</p>
+        <a class="btn btn-main js-phone" href="#" hidden><svg aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="portfolio" id="portfolio" hidden>
+    <div class="wrap">
+      <h2 class="pf-title" id="pfTitle">Наши праздники</h2>
+      <div class="pf-grid" id="pfGrid"></div>
+    </div>
+  </section>
+
+  <div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Фото и видео">
+    <button type="button" class="lb-close" id="lbClose" aria-label="Закрыть">×</button>
+    <button type="button" class="lb-nav lb-prev" id="lbPrev" aria-label="Назад">‹</button>
+    <div class="lb-stage" id="lbStage"></div>
+    <button type="button" class="lb-nav lb-next" id="lbNext" aria-label="Дальше">›</button>
+    <p class="lb-count" id="lbCount"></p>
+  </div>
+
   <section class="banner" id="banner" hidden>
     <div class="wrap banner-in">
       <div class="banner-text">
@@ -192,6 +218,7 @@
       <symbol id="i-flake" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><g id="flake-arm"><path d="M24 24V4M24 10.5l-4.6-4.6M24 10.5l4.6-4.6M24 17.5l-6.2-4.6M24 17.5l6.2-4.6"/></g><use href="#flake-arm" transform="rotate(60 24 24)"/><use href="#flake-arm" transform="rotate(120 24 24)"/><use href="#flake-arm" transform="rotate(180 24 24)"/><use href="#flake-arm" transform="rotate(240 24 24)"/><use href="#flake-arm" transform="rotate(300 24 24)"/></g></symbol>
       <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></g><rect x="7" y="13" width="3" height="3" rx=".6" fill="currentColor"/></symbol>
       <symbol id="i-kids" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.6 3-5.5 6-5.5s5.4 1.9 6 5.5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16 14.6c2.6 0 4.4 1.6 5 4.4"/></g></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
       <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>

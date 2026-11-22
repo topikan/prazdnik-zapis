@@ -353,7 +353,7 @@ switch ($action) {
         if (!zip_password_ok()) fail('Сервер не умеет делать архивы с паролем. Напишите владельцу сервиса.');
         $r = backup_agency($a);
         if ($r['skipped'] === 'off') fail('Включите отправку в Telegram или на почту и сохраните настройки');
-        if ($r['skipped'] === 'empty') fail('Заявок пока нет — отправлять нечего');
+        if ($r['skipped'] === 'empty') { if (!$r['tg'] && !$r['email']) fail('Заявок пока нет, и отправить сообщение не удалось: проверьте, что ваш Telegram подключён'); json_out($r + ['empty' => true]); }
         if ($r['skipped'] === 'zip') fail('Не удалось собрать архив. Проверьте, что пароль не короче 6 символов, и сохраните настройки.');
         json_out($r);
 
@@ -515,7 +515,7 @@ switch ($action) {
         rate_limit('bktest', 4, 3600);
         $r = backup_owner();
         if ($r['skipped'] === 'off') fail('Включите отправку и сохраните настройки');
-        if ($r['skipped'] === 'empty') fail('Заявок пока нет — отправлять нечего');
+        if ($r['skipped'] === 'empty') { if (!$r['tg'] && !$r['email']) fail('Заявок пока нет, и отправить сообщение не удалось: проверьте, что ваш Telegram подключён'); json_out($r + ['empty' => true]); }
         if ($r['skipped'] === 'zip') fail('Не удалось собрать архив с паролем на этом сервере');
         json_out($r);
 

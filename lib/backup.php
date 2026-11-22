@@ -77,8 +77,14 @@ function backup_owner(): array {
         $a = agency_by_id((int)$id);
         if ($a && empty($a['cfg']['demo']) && orders_count((int)$a['id'])) $files[safe_file_part($a['slug']) . '.csv'] = orders_csv($a);
     }
-    if (!$files) { $res['skipped'] = 'empty'; return $res; }
     $day = date('Y-m-d');
+    if (!$files) {
+        // архива нет, но короткое сообщение показывает, что ночная проверка работает
+        $msg = 'Ночная копия заявок на ' . ru_date($day) . ': заявок с сайта пока нет, архив не нужен. Как только появятся заявки, сюда будет приходить архив с паролем.';
+        if (!empty($b['tg'])) foreach (tg_chats(0) as $chat) if (tg_send($chat, $msg)) $res['tg']++;
+        if (!empty($b['email']) && owner_email() !== '' && mail_text(owner_email(), 'Копия заявок на ' . ru_date($day) . ': заявок пока нет', $msg)) $res['email']++;
+        $res['skipped'] = 'empty'; return $res;
+    }
     $zip = zip_with_password($files, (string)($b['password'] ?? ''));
     if ($zip === null) { $res['skipped'] = 'zip'; return $res; }
     $file = "bronprazdnik-vse-zayavki-$day.zip";
@@ -93,8 +99,9 @@ function cron_result(?array $r): string {
     if (!$r) return '';
     $o = $r['owner'] ?? [];
     $why = ['off' => 'ваша копия выключена — поставьте галочку «В Telegram» или «На почту» в разделе «Копия всех заявок» и сохраните',
-        'empty' => 'заявок с сайта пока нет, отправлять нечего (демо-агентство не считается)', 'zip' => 'сервер не смог собрать архив с паролем'];
+        'empty' => 'заявок с сайта пока нет, архив не нужен (демо-агентство не считается)', 'zip' => 'сервер не смог собрать архив с паролем'];
     if (!empty($o['error'])) $t = 'ваша копия: ошибка при отправке';
+    elseif (($o['skipped'] ?? '') === 'empty') $t = $why['empty'] . (!empty($o['tg']) || !empty($o['email']) ? ', сообщение об этом отправлено' : '');
     elseif (!empty($o['skipped'])) $t = 'ваша копия не отправлена: ' . ($why[$o['skipped']] ?? $o['skipped']);
     else {
         $parts = [];

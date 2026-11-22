@@ -776,7 +776,7 @@
         $("mailRes").innerHTML = r.ok ? "<b>Письмо отправлено</b> с адреса " + esc(r.from) + ". Проверьте «Входящие» и «Спам». Не пришло за 5 минут — значит, почтовый сервер получателя его отклонил." : '<b class="bad-text">Не отправлено:</b> ' + esc(r.error);
       }).catch(function (err) { $("mailRes").textContent = err.message; }).finally(function () { e.target.disabled = false; });
     }
-    if (id === "ownBkTest") api("owner_backup_test").then(function (r) { flash("Копия отправлена (Telegram: " + r.tg + ", почта: " + r.email + ")", !(r.tg || r.email)); }).catch(function (err) { flash(err.message, true); });
+    if (id === "ownBkTest") api("owner_backup_test").then(function (r) { flash(r.empty ? "Заявок пока нет — отправил сообщение об этом, архив появится с первыми заявками" : "Копия отправлена (Telegram: " + r.tg + ", почта: " + r.email + ")", !(r.tg || r.email)); }).catch(function (err) { flash(err.message, true); });
   });
 
   /* ---------- агентства (владелец) ---------- */

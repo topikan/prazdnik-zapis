@@ -256,8 +256,8 @@
     ["#characters", "Составы добавляете, удаляете и настраиваете сами: фото, название, подпись и плашку «Чаще всего выбирают»"],
     ["#programs", "Свои программы: что входит и сколько длится. Цену задаёте для каждой программы и состава, а по длительности сайт сам считает, на сколько часов занят выезд с дорогой"],
     [".kids", "Сколько детей входит в цену и доплату за каждого следующего ребёнка настраиваете сами"],
-    ["#step-2 .cal", "Цвет дня — загрузка: клиент сразу видит, где ещё много свободного времени"],
-    ["#step-2 .times", "Часы работы и сколько выездов одновременно задаёте вы. Занятое время скрывается само — по заявкам с сайта и заказам по телефону"],
+    ["#step-2 .cal", "Цвет дня — загрузка: клиент сразу видит, где ещё много свободного времени", "inside"],
+    ["#step-2 .times", "Часы работы и сколько выездов одновременно задаёте вы. Занятое время скрывается само — по заявкам с сайта и заказам по телефону", "inside"],
     ["#step-2 .price-card", "Наценки на праздничные даты, вечерние часы и популярное время настраиваете сами"],
     ["#addons", "Дополнительные услуги с вашими ценами: добавляете, убираете и меняете сами"],
     ["#zones", "Районы выезда и доплату за дорогу настраиваете сами"],
@@ -282,7 +282,8 @@
     NOTES.forEach(function (n) {
       var t = document.querySelector(n[0]); if (!t || (t.hidden && n[2])) return;
       var tip = document.createElement("p"); tip.textContent = n[1];
-      if (n[2]) { tip.className = "note-tip note-abs" + (n[2] === "below-right" ? " note-right" : ""); t.classList.add("has-note"); t.appendChild(tip); }
+      if (n[2] === "inside") { tip.className = "note-tip"; t.insertBefore(tip, t.firstChild); }
+      else if (n[2]) { tip.className = "note-tip note-abs" + (n[2] === "below-right" ? " note-right" : ""); t.classList.add("has-note"); t.appendChild(tip); }
       else { tip.className = "note-tip"; t.parentNode.insertBefore(tip, t); }
     });
     var nav = $("stepsNav"); if (nav) { var tt = document.createElement("p"); tt.className = "note-tip note-wide"; tt.textContent = NOTE_TITLES; nav.parentNode.insertBefore(tt, nav.nextSibling); }

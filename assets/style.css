@@ -469,7 +469,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 
 /* Пояснения под логотипом и телефоном в шапке */
 .has-note { position: relative; }
-.hero p.note-abs, p.note-abs { position: absolute; top: calc(100% + 14px); left: 0; z-index: 6; display: block; width: max-content; max-width: 230px; margin: 0; text-align: left; white-space: normal; transform: rotate(-1.5deg); }
+.hero p.note-abs, p.note-abs { pointer-events: none; position: absolute; top: calc(100% + 14px); left: 0; z-index: 6; display: block; width: max-content; max-width: 230px; margin: 0; text-align: left; white-space: normal; transform: rotate(-1.5deg); }
 p.note-abs::after { top: -9px; bottom: auto; left: 18px; transform: rotate(225deg); }
 p.note-abs.note-right { left: auto; right: 0; transform: rotate(1.5deg); }
 p.note-abs.note-right::after { left: auto; right: 18px; }

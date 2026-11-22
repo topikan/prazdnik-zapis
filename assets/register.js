@@ -23,21 +23,31 @@
       .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
   }
   var f = $("regForm"), slugTouched = false, slugTimer = null;
-  f.name.addEventListener("input", function () { if (!slugTouched) { f.slug.value = slugify(f.name.value); checkSlug(); } });
-  f.slug.addEventListener("input", function () {
+  // Автозаполнение выключено по-настоящему: Chrome не слушает autocomplete="off" и узнаёт поля по имени,
+  // поэтому имена полей случайные при каждом открытии страницы, а поле почты — обычное текстовое
+  var F = {};
+  ["name", "city", "phone", "email", "password", "slug", "agreeRules", "agreePd"].forEach(function (k) { F[k] = f.elements[k]; });
+  Object.keys(F).forEach(function (k) {
+    var el = F[k]; if (el.type === "checkbox") return;
+    el.name = "f" + Math.random().toString(36).slice(2, 10);
+    if (el.type !== "password") el.setAttribute("autocomplete", "off");
+    if (el.type === "email") { el.type = "text"; el.inputMode = "email"; el.spellcheck = false; el.autocapitalize = "off"; }
+  });
+  F.name.addEventListener("input", function () { if (!slugTouched) { F.slug.value = slugify(F.name.value); checkSlug(); } });
+  F.slug.addEventListener("input", function () {
     slugTouched = true;
-    var v = f.slug.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
-    if (v !== f.slug.value) f.slug.value = v;
+    var v = F.slug.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (v !== F.slug.value) F.slug.value = v;
     checkSlug();
   });
   function checkSlug() {
     clearTimeout(slugTimer);
-    var v = f.slug.value, hint = $("slugHint");
+    var v = F.slug.value, hint = $("slugHint");
     hint.className = "";
     if (!v) { hint.textContent = "Латинские буквы, цифры и дефис. Можно поменять до отправки."; return; }
     slugTimer = setTimeout(function () {
       post("slug", { slug: v }).then(function (r) {
-        if (f.slug.value !== v) return;
+        if (F.slug.value !== v) return;
         hint.textContent = r.ok ? "Адрес свободен: bronprazdnik.ru/" + v : r.error;
         hint.className = r.ok ? "ok" : "bad";
       }).catch(function () {});
@@ -45,8 +55,8 @@
   }
 
   /* ---------- телефон: +7 (999) 123-45-67 ---------- */
-  f.phone.addEventListener("input", function () {
-    var d = f.phone.value.replace(/\D/g, "");
+  F.phone.addEventListener("input", function () {
+    var d = F.phone.value.replace(/\D/g, "");
     if (d[0] === "8") d = "7" + d.slice(1);
     if (d && d[0] !== "7") d = "7" + d;
     d = d.slice(0, 11);
@@ -56,7 +66,7 @@
     if (d.length > 4) o += " " + d.slice(4, 7);
     if (d.length > 7) o += "-" + d.slice(7, 9);
     if (d.length > 9) o += "-" + d.slice(9, 11);
-    f.phone.value = o;
+    F.phone.value = o;
   });
 
   /* ---------- показать пароль ---------- */
@@ -69,17 +79,17 @@
   /* ---------- регистрация ---------- */
   function check(form) {
     var d = {
-      name: form.name.value.trim(), city: form.city.value.trim(), phone: form.phone.value, email: form.email.value.trim(), password: form.password.value,
-      slug: form.slug.value.trim(), trap: form.bp_trap.value, agreeRules: form.agreeRules.checked, agreePd: form.agreePd.checked
+      name: F.name.value.trim(), city: F.city.value.trim(), phone: F.phone.value, email: F.email.value.trim(), password: F.password.value,
+      slug: F.slug.value.trim(), agreeRules: F.agreeRules.checked, agreePd: F.agreePd.checked
     };
     var bad = null;
-    if (d.name.length < 2) bad = [form.name, "Укажите название агентства"];
-    else if (!d.city) bad = [form.city, "Укажите город"];
-    else if (d.phone.replace(/\D/g, "").length !== 11) bad = [form.phone, "Проверьте номер телефона"];
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) bad = [form.email, "Проверьте адрес почты"];
-    else if (d.password.length < 8) bad = [form.password, "Пароль — не короче 8 символов"];
-    else if (d.slug.length < 3) bad = [form.slug, "Придумайте адрес страницы, от 3 символов"];
-    else if (!d.agreeRules || !d.agreePd) bad = [form.agreeRules, "Нужно принять правила сервиса и согласие на обработку данных"];
+    if (d.name.length < 2) bad = [F.name, "Укажите название агентства"];
+    else if (!d.city) bad = [F.city, "Укажите город"];
+    else if (d.phone.replace(/\D/g, "").length !== 11) bad = [F.phone, "Проверьте номер телефона"];
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) bad = [F.email, "Проверьте адрес почты"];
+    else if (d.password.length < 8) bad = [F.password, "Пароль — не короче 8 символов"];
+    else if (d.slug.length < 3) bad = [F.slug, "Придумайте адрес страницы, от 3 символов"];
+    else if (!d.agreeRules || !d.agreePd) bad = [F.agreeRules, "Нужно принять правила сервиса и согласие на обработку данных"];
     if (bad) { bad[0].focus(); throw new Error(bad[1]); }
     return d;
   }

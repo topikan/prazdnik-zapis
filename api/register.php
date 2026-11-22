@@ -53,7 +53,7 @@ switch ($action) {
         json_out(['ok' => $p === '', 'error' => $p]);
 
     case 'start':
-        if (!empty($in['trap'])) json_out(['token' => bin2hex(random_bytes(16)), 'email' => '']); // ловушка для ботов
+        // Ловушки для ботов здесь нет: её заполнял автозаполнением сам браузер. Ботов останавливает код из письма и лимиты.
         if (!reg_settings()['open']) fail('Регистрация временно закрыта. Напишите нам в Telegram, подключим вручную.');
         rate_limit('regip', 6, 3600);
         $name = trim(preg_replace('/\s+/u', ' ', in_str($in, 'name')));

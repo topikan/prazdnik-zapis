@@ -145,7 +145,7 @@ function send_mail_file(string $to, string $subject, string $text, string $filen
     $body = "--$b\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($text))
         . "--$b\r\nContent-Type: application/zip; name=\"$filename\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"$filename\"\r\n\r\n" . chunk_split(base64_encode($bytes))
         . "--$b--\r\n";
-    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers, "-fnoreply@$host");
 }
 
 // Уведомление владельцу сервиса: в его Telegram (подключается во вкладке «Агентства») и на почту из настроек

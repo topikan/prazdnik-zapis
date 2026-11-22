@@ -53,7 +53,7 @@ switch ($action) {
         json_out(['ok' => $p === '', 'error' => $p]);
 
     case 'start':
-        if (!empty($in['website'])) json_out(['token' => bin2hex(random_bytes(16)), 'email' => '']); // ловушка для ботов
+        if (!empty($in['trap'])) json_out(['token' => bin2hex(random_bytes(16)), 'email' => '']); // ловушка для ботов
         if (!reg_settings()['open']) fail('Регистрация временно закрыта. Напишите нам в Telegram, подключим вручную.');
         rate_limit('regip', 6, 3600);
         $name = trim(preg_replace('/\s+/u', ' ', in_str($in, 'name')));
@@ -67,7 +67,7 @@ switch ($action) {
         if (mb_strlen($name) < 2 || mb_strlen($name) > 80) fail('Укажите название агентства');
         if ($city === '' || mb_strlen($city) > 60) fail('Укажите город');
         if (strlen($phoneDigits) !== 11 || $phoneDigits[0] !== '7') fail('Проверьте номер телефона');
-        if (strlen($pass) < 10) fail('Пароль — не короче 10 символов');
+        if (strlen($pass) < 8) fail('Пароль — не короче 8 символов');
         if (strlen($pass) > 200) fail('Слишком длинный пароль');
         if (empty($in['agreeRules']) || empty($in['agreePd'])) fail('Нужно принять правила сервиса и согласие на обработку данных');
         if (($p = slug_problem($slug)) !== '') fail($p);
@@ -135,7 +135,7 @@ switch ($action) {
         $email = norm_email(in_str($in, 'email'));
         $code = preg_replace('/\D/', '', in_str($in, 'code'));
         $pass = in_str($in, 'password');
-        if (strlen($pass) < 10) fail('Новый пароль — не короче 10 символов');
+        if (strlen($pass) < 8) fail('Новый пароль — не короче 8 символов');
         if (strlen($pass) > 200) fail('Слишком длинный пароль');
         $key = 'rst:' . substr(hash('sha256', $email), 0, 32);
         $p = pending_get($key);

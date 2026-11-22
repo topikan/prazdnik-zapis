@@ -47,9 +47,9 @@
             <label>Телефон<input name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="+7 (___) ___-__-__" autocomplete="tel" required></label>
           </div>
           <label>Почта<input name="email" type="email" maxlength="60" autocomplete="email" required><small>На неё придёт код подтверждения, по ней же вы будете входить.</small></label>
-          <label>Пароль<span class="pw"><input name="password" type="password" minlength="10" maxlength="200" autocomplete="new-password" required><button type="button" class="pw-eye" data-eye aria-label="Показать пароль">Показать</button></span><small>Не короче 10 символов.</small></label>
+          <label>Пароль<span class="pw"><input name="password" type="password" minlength="8" maxlength="200" autocomplete="new-password" required><button type="button" class="pw-eye" data-eye aria-label="Показать пароль">Показать</button></span><small>Не короче 8 символов.</small></label>
           <label>Адрес вашей страницы<span class="slug"><span class="slug-pre">bronprazdnik.ru/</span><input name="slug" maxlength="40" autocapitalize="off" spellcheck="false" required></span><small id="slugHint">Латинские буквы, цифры и дефис. Можно поменять до отправки.</small></label>
-          <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <input class="hp" name="bp_trap" tabindex="-1" autocomplete="off" aria-hidden="true">
           <label class="check"><input type="checkbox" name="agreeRules"> <span>Принимаю <a href="rules.html" target="_blank">правила сервиса</a></span></label>
           <label class="check"><input type="checkbox" name="agreePd"> <span>Согласен на <a href="rules.html#pd" target="_blank">обработку моих персональных данных</a></span></label>
           <p class="auth-err" id="regErr" role="alert" hidden></p>
@@ -86,7 +86,7 @@
           <h2>Новый пароль</h2>
           <p class="muted">Если такая почта зарегистрирована, на неё пришёл код. Письмо может попасть в «Спам».</p>
           <label>Код из письма<input name="code" class="code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
-          <label>Новый пароль<span class="pw"><input name="password" type="password" minlength="10" maxlength="200" autocomplete="new-password" required><button type="button" class="pw-eye" data-eye aria-label="Показать пароль">Показать</button></span><small>Не короче 10 символов.</small></label>
+          <label>Новый пароль<span class="pw"><input name="password" type="password" minlength="8" maxlength="200" autocomplete="new-password" required><button type="button" class="pw-eye" data-eye aria-label="Показать пароль">Показать</button></span><small>Не короче 8 символов.</small></label>
           <p class="auth-err" id="reset2Err" role="alert" hidden></p>
           <button class="btn btn-red" type="submit">Сохранить пароль</button>
         </form>

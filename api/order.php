@@ -10,7 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 $in = body_json();
 
 // Ловушка для ботов: поле, которое человек не видит и не заполняет
-if (!empty($in['website'])) json_out(['ok' => true, 'id' => 0]);
+// Ловушка для ботов: скрытое поле с ничего не значащим именем. Старое имя «website» Chrome заполнял сам, и заявки людей пропадали
+if (!empty($in['trap'])) json_out(['ok' => true, 'id' => 0]);
 
 rate_limit('order', 8, 600);
 

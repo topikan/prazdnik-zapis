@@ -202,6 +202,8 @@ function mail_text(string $to, string $subject, string $text): bool {
     $host = parse_url((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), PHP_URL_HOST) ?: 'bronprazdnik.ru';
     $headers = "From: =?UTF-8?B?" . base64_encode('Бронь Праздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64";
     if (!empty($APP['mail_log'])) { @file_put_contents((string)$APP['mail_log'], date('c') . " $to | $subject\n$text\n\n", FILE_APPEND); return true; } // для проверки на своём компьютере
-    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', chunk_split(base64_encode($text)), $headers);
+    // -f: отправитель конверта — адрес на нашем домене. Без него письмо уходит от технического адреса сервера,
+    // проверка SPF у Gmail идёт не по bronprazdnik.ru, и письма с кодами попадают в спам или теряются.
+    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', chunk_split(base64_encode($text)), $headers, "-fnoreply@$host");
 }
 

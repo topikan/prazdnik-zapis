@@ -109,7 +109,7 @@ switch ($action) {
 
     case 'password': // сменить свой пароль
         $new = in_str($in, 'new');
-        if (strlen($new) < 10) fail('Пароль не короче 10 символов');
+        if (strlen($new) < 8) fail('Пароль не короче 8 символов');
         rate_limit('passwd', 10, 900);
         $st = db()->prepare('SELECT password_hash FROM users WHERE id = ?'); $st->execute([$_SESSION['uid']]);
         if (!password_verify(in_str($in, 'old'), (string)$st->fetchColumn())) fail('Старый пароль неверный');
@@ -544,7 +544,7 @@ switch ($action) {
         if (!agency_by_id($aid)) fail('Агентство не найдено', 404);
         $login = in_str($in, 'login'); $pass = in_str($in, 'password');
         if (!preg_match('/^[a-zA-Z0-9_.-]{3,40}$/', $login)) fail('Логин: латиница и цифры, от 3 символов');
-        if (strlen($pass) < 10) fail('Пароль не короче 10 символов');
+        if (strlen($pass) < 8) fail('Пароль не короче 8 символов');
         $st = db()->prepare('SELECT id, agency_id FROM users WHERE login = ?'); $st->execute([$login]); $u = $st->fetch();
         if ($u && (int)$u['agency_id'] !== $aid) fail('Такой логин уже занят');
         // У агентства один вход: новый логин заменяет старый, а новый пароль выкидывает всех, кто был внутри

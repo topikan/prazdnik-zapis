@@ -70,14 +70,14 @@
   function check(form) {
     var d = {
       name: form.name.value.trim(), city: form.city.value.trim(), phone: form.phone.value, email: form.email.value.trim(), password: form.password.value,
-      slug: form.slug.value.trim(), website: form.website.value, agreeRules: form.agreeRules.checked, agreePd: form.agreePd.checked
+      slug: form.slug.value.trim(), trap: form.bp_trap.value, agreeRules: form.agreeRules.checked, agreePd: form.agreePd.checked
     };
     var bad = null;
     if (d.name.length < 2) bad = [form.name, "Укажите название агентства"];
     else if (!d.city) bad = [form.city, "Укажите город"];
     else if (d.phone.replace(/\D/g, "").length !== 11) bad = [form.phone, "Проверьте номер телефона"];
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) bad = [form.email, "Проверьте адрес почты"];
-    else if (d.password.length < 10) bad = [form.password, "Пароль — не короче 10 символов"];
+    else if (d.password.length < 8) bad = [form.password, "Пароль — не короче 8 символов"];
     else if (d.slug.length < 3) bad = [form.slug, "Придумайте адрес страницы, от 3 символов"];
     else if (!d.agreeRules || !d.agreePd) bad = [form.agreeRules, "Нужно принять правила сервиса и согласие на обработку данных"];
     if (bad) { bad[0].focus(); throw new Error(bad[1]); }
@@ -131,7 +131,7 @@
   r2.addEventListener("submit", function (e) {
     e.preventDefault(); err("reset2Err", "");
     if (r2.code.value.length !== 6) { err("reset2Err", "Введите 6 цифр из письма"); return; }
-    if (r2.password.value.length < 10) { err("reset2Err", "Пароль — не короче 10 символов"); return; }
+    if (r2.password.value.length < 8) { err("reset2Err", "Пароль — не короче 8 символов"); return; }
     busy(r2, true);
     post("reset_finish", { email: resetEmail, code: r2.code.value, password: r2.password.value }).then(function () { show("resetDone"); })
       .catch(function (x) { err("reset2Err", x.message); if (x.status === 410) setTimeout(function () { show("resetForm"); }, 1800); })

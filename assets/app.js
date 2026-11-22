@@ -582,7 +582,7 @@
       agency: slug, character: state.character, program: state.program, date: state.date, time: state.time,
       kids: state.kids, addons: Object.keys(state.addons).filter(function (k) { return state.addons[k]; }), zone: state.zone,
       name: f.elements.name.value, phone: f.elements.phone.value, address: f.elements.address.value, comment: f.elements.comment.value,
-      children: state.children, consent: f.elements.consent.checked, website: f.elements.website.value,
+      children: state.children, consent: f.elements.consent.checked, trap: f.elements.bp_trap.value,
       expectedTotal: (calc(state.date, state.time) || {}).total // сервер сверит: если цена успела измениться, спросим ещё раз
     };
     fetch("api/order.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })

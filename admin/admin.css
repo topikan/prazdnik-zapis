@@ -163,7 +163,7 @@ label.row { flex-direction: row; align-items: center; color: var(--ink); font-si
 .ag-count b { color: var(--ink); font-size: 16px; }
 .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
-#siteForm textarea { width: 100%; min-height: 76px; }
+#siteForm textarea { width: 100%; }
 #siteForm .fields label:has(textarea) { grid-column: 1 / -1; }
 
 /* окно с данными входа */
@@ -285,3 +285,57 @@ label.row { flex-direction: row; align-items: center; color: var(--ink); font-si
 .cron .muted { margin-top: 10px; }
 @media (max-width: 960px) { .owner-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .owner-grid { grid-template-columns: 1fr; } .bill .btn { width: 100%; } }
+
+/* Списки в виде карточек: обычный текст, поля открываются по «Изменить» */
+.re-list { display: grid; gap: 8px; margin-top: 12px; }
+.re-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.re-item:hover { border-color: var(--line-strong); }
+.re-item.is-open { display: block; background: var(--soft); border-color: var(--line-strong); padding: 16px; }
+.re-thumb { width: 56px; height: 56px; border-radius: 10px; overflow: hidden; background: var(--soft); flex: none; display: grid; place-items: center; }
+.re-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
+.re-thumb i { font-style: normal; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.2; }
+.re-text { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.re-text b { font-size: 15px; font-weight: 600; }
+.re-text b.re-empty { color: var(--muted); font-weight: 400; font-style: italic; }
+.re-sub { color: var(--muted); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.re-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.re-chip { font-size: 12px; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 3px 10px; }
+.re-text .re-chip b { color: var(--ink); font-weight: 600; font-size: 12px; }
+.re-acts { display: flex; align-items: center; gap: 6px; flex: none; }
+.re-item.is-open .re-acts { margin-top: 14px; justify-content: flex-start; }
+.re-x { width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.re-x:hover { color: var(--red); background: #FBEAED; }
+.re-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; align-items: end; }
+.re-form label { display: flex; }
+.re-form label.wide, .re-form .re-photo { grid-column: 1 / -1; }
+.re-photo { display: grid; gap: 6px; }
+.re-label { font-size: 13px; color: var(--muted); }
+.ed > .re-form { margin-top: 10px; }
+textarea.auto, #siteForm textarea, #settingsForm textarea { resize: none; overflow: hidden; line-height: 1.5; min-height: 64px; }
+#siteForm textarea { min-height: 64px; }
+
+/* Тексты главной: свёрнутые блоки с тем, что сейчас на сайте */
+.fold { padding: 0; }
+.fold > summary { list-style: none; display: flex; align-items: center; gap: 16px; padding: 16px 20px; cursor: pointer; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold-t { font-weight: 600; font-size: 15px; flex: none; }
+.fold-p { flex: 1; min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fold-btn { flex: none; font-size: 13px; font-weight: 600; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 12px; }
+.fold[open] .fold-btn { background: var(--ink); color: #fff; border-color: var(--ink); }
+.fold > .fields { padding: 0 20px 20px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+@media (max-width: 600px) {
+  .re-item { flex-wrap: wrap; }
+  .re-acts { width: 100%; justify-content: flex-end; }
+  .re-item.is-open .re-acts .btn { flex: 1; }
+  .fold-p { display: none; }
+}
+.mx-cards { display: none; }
+@media (max-width: 600px) {
+  .matrix table { display: none; }
+  .mx-cards { display: grid; gap: 12px; margin-top: 10px; }
+  .mx-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+  .mx-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 14px; align-items: center; gap: 8px; font-size: 14px; }
+  .mx-row input { width: 100%; }
+  .mx-row i { font-style: normal; color: var(--muted); }
+  .fold > .fields { grid-template-columns: 1fr; }
+}

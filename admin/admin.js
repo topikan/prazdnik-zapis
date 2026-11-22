@@ -234,26 +234,58 @@
     api("block_remove", { id: +id }).then(function () { flash("Время снова открыто"); loadSchedule(); }).catch(function (err) { flash(err.message, true); });
   });
 
-  /* ---------- редактор строк ---------- */
-  // fields: [{k, label, type: text|number|date|time|select|percent|mult, options, num}]
+  /* ---------- редактор списков: карточки с текстом, поля — по кнопке «Изменить» ---------- */
+  // fields: [{k, label, type: text|number|date|time|select|percent|mult|photo, options, num, long}]
+  function fieldText(f, v) {
+    if (v == null || v === "") return "";
+    if (f.type === "select") { var o = (f.options || []).filter(function (x) { return x[0] === v; })[0]; return o ? o[1] : v; }
+    if (f.type === "percent") return Math.round(v * 100) + "%";
+    if (f.type === "mult") return "×" + String(v).replace(".", ",");
+    if (f.type === "date") return isoToRu(v);
+    if (f.type === "number") return /₽/.test(f.label) ? rub(+v) : f.k === "minutes" ? v + " мин" : String(v);
+    return String(v);
+  }
+  function isTextField(f) { return !f.type || f.type === "text"; }
   function rowsEditor(title, hint, rows, fields, newRow, max) {
     var box = document.createElement("div"); box.className = "card ed";
-    var data = clone(rows || []);
-    function cell(f, r, i) {
+    var data = clone(rows || []), open = {};
+    function input(f, r, i) {
       var v = r[f.k];
       if (f.type === "photo") return imgBox("char", r.id, r.photo);
       if (f.type === "select") return "<select data-i=\"" + i + "\" data-k=\"" + f.k + "\">" + f.options.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select>";
+      if (f.long) return '<textarea class="auto" rows="2" data-i="' + i + '" data-k="' + f.k + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
       if (f.type === "percent") v = v == null ? "" : Math.round(v * 100);
       var type = f.type === "percent" || f.type === "number" || f.type === "mult" ? "number" : (f.type || "text");
       var step = f.type === "mult" ? ' step="0.05" min="0.1"' : f.type === "percent" ? ' step="1" min="0" max="100"' : f.type === "number" ? ' step="1" min="0"' : "";
-      return '<input type="' + type + '"' + step + ' data-i="' + i + '" data-k="' + f.k + '" value="' + esc(v) + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : "") + ">";
+      return '<input type="' + type + '"' + step + ' data-i="' + i + '" data-k="' + f.k + '" value="' + esc(v == null ? "" : v) + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : "") + ">";
+    }
+    function form(r, i) {
+      return '<div class="re-form">' + fields.map(function (f) {
+        if (f.type === "photo") return '<div class="re-photo"><span class="re-label">' + esc(f.label) + "</span>" + input(f, r, i) + "</div>";
+        return '<label class="' + (f.long || (isTextField(f) && fields.filter(isTextField).length === 1) ? "wide" : "") + '">' + esc(f.label) + input(f, r, i) + "</label>";
+      }).join("") + "</div>";
+    }
+    function summary(r) {
+      var texts = fields.filter(isTextField), first = texts[0];
+      var head = first ? r[first.k] : "";
+      var sub = texts.slice(1).map(function (f) { return r[f.k]; }).filter(Boolean).join(" · ");
+      var range = fields.some(function (f) { return f.k === "from"; }) && fields.some(function (f) { return f.k === "to"; });
+      var chips = fields.filter(function (f) { return !isTextField(f) && f.type !== "photo" && !f.noChip && !(range && f.k === "to"); }).map(function (f) {
+        if (range && f.k === "from") return '<span class="re-chip">Даты: <b>' + esc(isoToRu(r.from)) + (r.to && r.to !== r.from ? " — " + esc(isoToRu(r.to)) : "") + "</b></span>";
+        var t = fieldText(f, r[f.k]); return t ? '<span class="re-chip">' + (f.chipLabel === false ? "" : esc(f.short || f.label) + ": ") + "<b>" + esc(t) + "</b></span>" : "";
+      }).join("");
+      var ph = fields.some(function (f) { return f.type === "photo"; }) ? '<span class="re-thumb">' + (/^uploads\//.test(r.photo || "") ? '<img src="../' + esc(r.photo) + '" alt="">' : "<i>нет фото</i>") + "</span>" : "";
+      return ph + '<div class="re-text"><b class="' + (head ? "" : "re-empty") + '">' + esc(head || "Без названия") + "</b>" + (sub ? '<span class="re-sub">' + esc(sub) + "</span>" : "") + (chips ? '<span class="re-chips">' + chips + "</span>" : "") + "</div>";
     }
     function draw() {
-      box.innerHTML = "<h2>" + esc(title) + "</h2>" + (hint ? '<p class="muted">' + esc(hint) + "</p>" : "") +
-        "<table><thead><tr>" + fields.map(function (f) { return '<th class="' + (f.num ? "num" : "") + '">' + esc(f.label) + "</th>"; }).join("") + (max === 0 ? "" : "<th></th>") + "</tr></thead><tbody>" +
-        data.map(function (r, i) { return "<tr>" + fields.map(function (f) { return '<td class="' + (f.num ? "num" : "") + '">' + cell(f, r, i) + "</td>"; }).join("") + (max === 0 ? "" : '<td class="del-cell"><button type="button" class="del" data-del="' + i + '" aria-label="Удалить строку" title="Удалить строку">×</button></td>') + "</tr>"; }).join("") +
-        "</tbody></table>" + (data.length ? "" : '<p class="ed-empty">Пока ничего нет</p>') +
-        (max === 0 || (max && data.length >= max) ? "" : '<button type="button" class="btn ghost small add">+ Добавить</button>');
+      var head = "<h2>" + esc(title) + "</h2>" + (hint ? '<p class="muted">' + esc(hint) + "</p>" : "");
+      if (max === 0) { box.innerHTML = head + data.map(function (r, i) { return form(r, i); }).join(""); autosize(box); return; }
+      box.innerHTML = head + '<div class="re-list">' + data.map(function (r, i) {
+        if (open[i]) return '<div class="re-item is-open">' + form(r, i) + '<div class="re-acts"><button type="button" class="btn small" data-done="' + i + '">Готово</button><button type="button" class="btn danger small" data-del="' + i + '">Удалить</button></div></div>';
+        return '<div class="re-item">' + summary(r) + '<div class="re-acts"><button type="button" class="btn ghost small" data-edit="' + i + '">Изменить</button><button type="button" class="re-x" data-del="' + i + '" aria-label="Удалить" title="Удалить">×</button></div></div>';
+      }).join("") + "</div>" + (data.length ? "" : '<p class="ed-empty">Пока ничего нет</p>') +
+        (max && data.length >= max ? "" : '<button type="button" class="btn ghost small add">+ Добавить</button>');
+      autosize(box);
     }
     box.addEventListener("input", function (e) {
       var i = e.target.dataset.i, k = e.target.dataset.k; if (i == null) return;
@@ -264,8 +296,16 @@
       box.dispatchEvent(new CustomEvent("changed"));
     });
     box.addEventListener("click", function (e) {
-      if (e.target.dataset.del != null) { data.splice(+e.target.dataset.del, 1); draw(); box.dispatchEvent(new CustomEvent("changed")); }
-      if (e.target.classList.contains("add")) { data.push(newRow()); draw(); box.dispatchEvent(new CustomEvent("changed")); }
+      var t = e.target.closest ? e.target.closest("button") : null; if (!t || !box.contains(t)) return;
+      if (t.dataset.edit != null) { open[+t.dataset.edit] = true; draw(); var x = box.querySelector(".re-item.is-open input, .re-item.is-open textarea"); if (x) x.focus(); }
+      if (t.dataset.done != null) { delete open[+t.dataset.done]; draw(); }
+      if (t.dataset.del != null) {
+        var n = +t.dataset.del, r = data[n], name = (r && (r.title || r.label || r.q)) || "";
+        if (!confirm("Удалить" + (name ? " «" + name + "»" : " эту строку") + "? Удаление сохранится после кнопки «Сохранить».")) return;
+        data.splice(n, 1); var o2 = {}; Object.keys(open).forEach(function (k) { k = +k; if (k < n) o2[k] = true; if (k > n) o2[k - 1] = true; }); open = o2;
+        draw(); box.dispatchEvent(new CustomEvent("changed"));
+      }
+      if (t.classList.contains("add")) { data.push(newRow()); open[data.length - 1] = true; draw(); box.dispatchEvent(new CustomEvent("changed")); var y = box.querySelector(".re-item.is-open input:not([type=file]), .re-item.is-open textarea"); if (y) y.focus(); }
     });
     box.addEventListener("photo", function (e) {
       data.forEach(function (r) { if (r.id === e.detail.id) { if (e.detail.path) r.photo = e.detail.path; else delete r.photo; } });
@@ -275,6 +315,10 @@
     box.get = function () { return data; };
     return box;
   }
+  // Поля для длинного текста растут по содержимому, без полос прокрутки
+  function autosize(root) { (root || document).querySelectorAll("textarea.auto, #siteForm textarea, #settingsForm textarea").forEach(grow); }
+  function grow(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
+  document.addEventListener("input", function (e) { if (e.target.tagName === "TEXTAREA" && !e.target.closest(".cred")) grow(e.target); });
   // select меняет значение через событие change: синхронизируем отдельно
   document.addEventListener("change", function (e) {
     var t = e.target; if (t.tagName !== "SELECT" || t.dataset.i == null) return;
@@ -286,10 +330,10 @@
   function renderPrices() {
     var root = $("pricesForm"); root.innerHTML = "";
     ed.characters = rowsEditor("Кто приедет", "Кто едет на праздник. «Иконка» показывается, пока не загружено своё фото: лучше квадратное, персонажи крупно. «Бейдж» — плашка на карточке, например «Чаще всего выбирают».", cfg.characters,
-      [{ k: "photo", label: "Фото", type: "photo" }, { k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Иконка", type: "select", options: [["santa", "Дед Мороз"], ["duo", "Дед Мороз и Снегурочка"], ["trio", "Трио со Снеговиком"]] }, { k: "badge", label: "Бейдж" }],
+      [{ k: "photo", label: "Фото", type: "photo" }, { k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Иконка, пока нет фото", type: "select", noChip: 1, options: [["santa", "Дед Мороз"], ["duo", "Дед Мороз и Снегурочка"], ["trio", "Трио со Снеговиком"]] }, { k: "badge", label: "Бейдж" }],
       function () { return { id: uid("c"), title: "", note: "", icon: "santa", badge: "" }; });
     ed.programs = rowsEditor("Программы", "Длительность в минутах влияет на то, сколько часов займёт визит вместе с дорогой.", cfg.programs,
-      [{ k: "title", label: "Название" }, { k: "minutes", label: "Минут", type: "number", num: 1 }, { k: "note", label: "Что входит" }, { k: "icon", label: "Картинка", type: "select", options: [["gift", "Подарок"], ["tree", "Ёлка"], ["ball", "Диско-шар"]] }],
+      [{ k: "title", label: "Название" }, { k: "note", label: "Что входит" }, { k: "minutes", label: "Длительность, минут", short: "Длительность", type: "number", num: 1 }, { k: "icon", label: "Картинка", type: "select", noChip: 1, options: [["gift", "Подарок"], ["tree", "Ёлка"], ["ball", "Диско-шар"]] }],
       function () { return { id: uid("p"), title: "", minutes: 30, note: "", icon: "tree" }; });
     var matrix = document.createElement("div"); matrix.className = "card ed matrix";
     var prices = clone(cfg.prices || {});
@@ -297,9 +341,15 @@
       var chs = ed.characters.get(), prs = ed.programs.get();
       matrix.innerHTML = '<h2>Базовые цены</h2><p class="muted">Цена в обычный день, без наценок. Наценки по датам и спросу добавятся сверху.</p><table><thead><tr><th></th>' +
         prs.map(function (p) { return "<th>" + esc(p.title || "Программа") + "</th>"; }).join("") + "</tr></thead><tbody>" +
-        chs.map(function (c) { return "<tr><td>" + esc(c.title || "Состав") + "</td>" + prs.map(function (p) { var v = (prices[c.id] || {})[p.id]; return '<td><input type="number" min="0" step="100" data-c="' + esc(c.id) + '" data-p="' + esc(p.id) + '" value="' + esc(v == null ? "" : v) + '"></td>'; }).join("") + "</tr>"; }).join("") + "</tbody></table>";
+        chs.map(function (c) { return "<tr><td>" + esc(c.title || "Состав") + "</td>" + prs.map(function (p) { var v = (prices[c.id] || {})[p.id]; return '<td><input type="number" min="0" step="100" data-c="' + esc(c.id) + '" data-p="' + esc(p.id) + '" value="' + esc(v == null ? "" : v) + '"></td>'; }).join("") + "</tr>"; }).join("") + "</tbody></table>" +
+        // на телефоне та же таблица по составам: широкая таблица там не помещается
+        '<div class="mx-cards">' + chs.map(function (c) { return '<div class="mx-card"><b>' + esc(c.title || "Состав") + "</b>" + prs.map(function (p) { var v = (prices[c.id] || {})[p.id]; return '<label class="row mx-row"><span>' + esc(p.title || "Программа") + '</span><input type="number" inputmode="numeric" min="0" step="100" data-c="' + esc(c.id) + '" data-p="' + esc(p.id) + '" value="' + esc(v == null ? "" : v) + '"><i>₽</i></label>'; }).join("") + "</div>"; }).join("") + "</div>";
     }
-    matrix.addEventListener("input", function (e) { var c = e.target.dataset.c, p = e.target.dataset.p; if (!c) return; prices[c] = prices[c] || {}; prices[c][p] = e.target.value === "" ? null : +e.target.value; });
+    matrix.addEventListener("input", function (e) {
+      var c = e.target.dataset.c, p = e.target.dataset.p; if (!c) return;
+      prices[c] = prices[c] || {}; prices[c][p] = e.target.value === "" ? null : +e.target.value;
+      matrix.querySelectorAll("input[data-c]").forEach(function (x) { if (x !== e.target && x.dataset.c === c && x.dataset.p === p) x.value = e.target.value; });
+    });
     ed.characters.addEventListener("changed", drawMatrix); ed.programs.addEventListener("changed", drawMatrix);
     drawMatrix();
     ed.matrix = { get: function () { var out = {}; ed.characters.get().forEach(function (c) { out[c.id] = {}; ed.programs.get().forEach(function (p) { var v = (prices[c.id] || {})[p.id]; if (v != null) out[c.id][p.id] = v; }); }); return out; } };
@@ -307,22 +357,22 @@
     ed.kids = rowsEditor("Дети", "Сколько детей входит в цену, максимум на один заказ и доплата за каждого сверх нормы.", [cfg.kids],
       [{ k: "included", label: "Входит в цену", type: "number", num: 1 }, { k: "max", label: "Максимум", type: "number", num: 1 }, { k: "extraPrice", label: "Доплата за ребёнка, ₽", type: "number", num: 1 }], function () { return { included: 5, max: 15, extraPrice: 300 }; }, 0);
     ed.dateRules = rowsEditor("Наценки по датам", "Коэффициент: 1 — обычная цена, 1,5 — на 50% дороже. Подпись видит клиент.", cfg.dateRules,
-      [{ k: "from", label: "С", type: "date" }, { k: "to", label: "По", type: "date" }, { k: "mult", label: "Коэффициент", type: "mult", num: 1 }, { k: "label", label: "Подпись" }],
+      [{ k: "label", label: "Подпись для клиента", ph: "Например, «Предновогодние дни»" }, { k: "from", label: "С", type: "date" }, { k: "to", label: "По", type: "date" }, { k: "mult", label: "Коэффициент", type: "mult", num: 1 }],
       function () { return { from: cfg.season.start, to: cfg.season.start, mult: 1, label: "" }; });
     ed.timeRules = rowsEditor("Наценки по времени", "Например, вечер 31 декабря после 19:00.", cfg.timeRules,
-      [{ k: "date", label: "Дата", type: "date" }, { k: "after", label: "Начиная с", type: "time" }, { k: "mult", label: "Коэффициент", type: "mult", num: 1 }, { k: "label", label: "Подпись" }],
+      [{ k: "label", label: "Подпись для клиента", ph: "Например, «Вечер 31 декабря»" }, { k: "date", label: "Дата", type: "date" }, { k: "after", label: "Начиная с", type: "time" }, { k: "mult", label: "Коэффициент", type: "mult", num: 1 }],
       function () { return { date: cfg.season.end, after: "19:00", mult: 2, label: "" }; });
     ed.demand = rowsEditor("Наценка за спрос", "Когда свободных выездов на это время остаётся мало, цена растёт. Удалите строки, если наценка не нужна.", cfg.demandPricing,
-      [{ k: "freeShareAtMost", label: "Свободно не больше, %", type: "percent", num: 1 }, { k: "plus", label: "Наценка, %", type: "percent", num: 1 }, { k: "label", label: "Подпись для клиента" }],
+      [{ k: "label", label: "Подпись для клиента" }, { k: "freeShareAtMost", label: "Когда свободно не больше, %", short: "Свободно не больше", type: "percent", num: 1 }, { k: "plus", label: "Наценка, %", short: "Наценка", type: "percent", num: 1 }],
       function () { return { freeShareAtMost: 0.5, plus: 0.1, label: "Это время популярно" }; });
     ed.promo = rowsEditor("Скидка за раннее бронирование", "Действует для заказов, оформленных до указанной даты. Если скидка не нужна, удалите строку.", cfg.promo ? [cfg.promo] : [],
-      [{ k: "percent", label: "Скидка, %", type: "number", num: 1 }, { k: "until", label: "Для заказов до", type: "date" }, { k: "text", label: "Текст" }],
+      [{ k: "text", label: "Текст для клиента", ph: "Например, «Скидка за раннюю бронь»" }, { k: "percent", label: "Скидка, %", short: "Скидка, %", type: "number", num: 1 }, { k: "until", label: "Для заказов до", type: "date" }],
       function () { return { percent: 10, until: cfg.season.start, text: "" }; }, 1);
     ed.addons = rowsEditor("Дополнительные услуги", "Все картинки в одном стиле, выберите подходящую.", cfg.addons,
-      [{ k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "price", label: "Цена, ₽", type: "number", num: 1 }, { k: "icon", label: "Картинка", type: "select", options: ADDON_ICONS }],
+      [{ k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "price", label: "Цена, ₽", short: "Цена", type: "number", num: 1 }, { k: "icon", label: "Картинка", type: "select", noChip: 1, options: ADDON_ICONS }],
       function () { return { id: uid("a"), title: "", note: "", price: 1000, icon: "star" }; });
     ed.zones = rowsEditor("Куда ехать", "Первая строка выбрана по умолчанию.", cfg.zones,
-      [{ k: "title", label: "Название" }, { k: "price", label: "Доплата, ₽", type: "number", num: 1 }], function () { return { id: uid("z"), title: "", price: 0 }; });
+      [{ k: "title", label: "Название" }, { k: "price", label: "Доплата, ₽", short: "Доплата", type: "number", num: 1 }], function () { return { id: uid("z"), title: "", price: 0 }; });
 
     [ed.characters, ed.programs, matrix, ed.kids, ed.dateRules, ed.timeRules, ed.demand, ed.promo, ed.addons, ed.zones].forEach(function (x) { root.appendChild(x); });
   }
@@ -389,6 +439,7 @@
       (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
     loadNotify();
     renderPfList();
+    autosize(root);
     api("backup_info").then(function (r) {
       var el = $("bkInfo"); if (!el) return;
       el.textContent = !r.zip ? "Сервер пока не умеет делать архивы с паролем, поэтому копии не отправляются. Напишите владельцу сервиса." : "Сейчас подключено: Telegram-чатов — " + r.tgChats + ", адресов почты — " + r.emails + ".";
@@ -582,16 +633,19 @@
     }).then(function (d) {
       siteData = d;
       var root = $("siteForm");
+      // Каждая группа свёрнута и показывает, что сейчас на сайте; поля — по нажатию
       root.innerHTML = SITE_FIELDS.map(function (g) {
-        return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
+        var prev = g[1].map(function (f) { return d[f[0]]; }).filter(Boolean).slice(0, 2).join(" · ");
+        return '<details class="card fold"><summary><span class="fold-t">' + esc(g[0]) + '</span><span class="fold-p">' + esc(prev) + '</span><span class="fold-btn">Изменить</span></summary><div class="fields">' + g[1].map(function (f) {
           var v = esc(d[f[0]] || "");
-          return "<label>" + esc(f[1]) + (f[2] === "area" ? '<textarea data-site="' + f[0] + '" rows="3">' + v + "</textarea>" : '<input data-site="' + f[0] + '" value="' + v + '">') + "</label>";
-        }).join("") + "</div></div>";
+          return '<label class="' + (f[2] === "area" ? "wide" : "") + '">' + esc(f[1]) + (f[2] === "area" ? '<textarea data-site="' + f[0] + '" rows="2">' + v + "</textarea>" : '<input data-site="' + f[0] + '" value="' + v + '">') + "</label>";
+        }).join("") + "</div></details>";
       }).join("");
+      root.querySelectorAll("details.fold").forEach(function (dt) { dt.addEventListener("toggle", function () { if (dt.open) autosize(dt); dt.querySelector(".fold-btn").textContent = dt.open ? "Свернуть" : "Изменить"; }); });
       siteEd.strip = rowsEditor("Полоса под первым экраном", "Три коротких пункта с иконками.", d.strip, [{ k: "title", label: "Текст" }], function () { return { title: "" }; }, 3);
-      siteEd.items = rowsEditor("Карточки возможностей", "", d.items, [{ k: "title", label: "Заголовок" }, { k: "text", label: "Текст" }], function () { return { title: "", text: "" }; });
-      siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение" }], function () { return { title: "", text: "" }; });
-      siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ" }], function () { return { q: "", a: "" }; });
+      siteEd.items = rowsEditor("Карточки возможностей", "", d.items, [{ k: "title", label: "Заголовок" }, { k: "text", label: "Текст", long: 1 }], function () { return { title: "", text: "" }; });
+      siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение", long: 1 }], function () { return { title: "", text: "" }; });
+      siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ", long: 1 }], function () { return { q: "", a: "" }; });
       [siteEd.strip, siteEd.items, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
     }).catch(function (e) {
       $("siteForm").innerHTML = '<div class="card empty"><b>Не удалось загрузить тексты</b><p class="muted">' + esc(e.message) + '</p><button class="btn ghost small" type="button" id="siteRetry">Попробовать ещё раз</button></div>';

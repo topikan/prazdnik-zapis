@@ -402,15 +402,20 @@ html.no-anim { scroll-behavior: auto; }
 .text-link.dark { color: var(--ink); }
 .text-link.dark:hover { color: var(--red); }
 
-/* сообщение в Telegram */
-.f4:nth-child(1) .f4-pic { background: #E7EEF5; }
-.tg-msg { width: 100%; max-width: 330px; background: #fff; border-radius: 16px 16px 16px 4px; padding: 14px 16px 16px; box-shadow: 0 10px 26px rgba(20, 33, 61, .12); }
-.tg-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+/* сообщение в Telegram: маленький экран чата, чтобы не сливался с текстом карточки */
+.f4:nth-child(1) .f4-pic { background: #E3ECF4; }
+.tg-chat { width: 100%; max-width: 330px; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 14px 30px rgba(20, 33, 61, .16); border: 1px solid rgba(20, 33, 61, .08); }
+.tg-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border-bottom: 1px solid #E6ECF1; }
 .tg-ava { width: 34px; height: 34px; border-radius: 50%; background: #173B2F; display: grid; place-items: center; flex: none; }
 .tg-ava img { width: 22px; height: auto; }
-.tg-head b { font-size: 15px; }
-.tg-head small { margin-left: auto; color: var(--muted); font-size: 12px; }
-.tg-msg p { font-size: 15px; line-height: 1.5; }
+.tg-name { display: grid; line-height: 1.2; }
+.tg-name b { font-size: 14px; }
+.tg-name small { font-size: 12px; color: #7D8A99; }
+.tg-area { padding: 16px 14px 18px; background: #CFDDEA radial-gradient(circle at 20% 30%, rgba(255, 255, 255, .35) 0 2px, transparent 3px) 0 0 / 22px 22px; }
+.tg-bubble { position: relative; display: grid; gap: 2px; max-width: 240px; background: #fff; border-radius: 14px 14px 14px 4px; padding: 10px 12px 20px; font-size: 13px; line-height: 1.4; color: #1F2A37; box-shadow: 0 1px 1px rgba(0, 0, 0, .08); }
+.tg-bubble b { font-size: 13px; }
+.tg-bubble em { font-style: normal; font-weight: 800; font-size: 15px; margin-top: 4px; }
+.tg-bubble time { position: absolute; right: 10px; bottom: 6px; font-size: 11px; color: #8C99A6; }
 
 /* список заявок */
 .mini-list { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 400px; display: grid; gap: 8px; }

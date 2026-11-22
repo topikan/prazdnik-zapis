@@ -160,9 +160,9 @@
     }
     $("demoNote").hidden = !cfg.demo;
     var qs = "?a=" + encodeURIComponent(slug);
-    var policy = cfg.legal && /^https:\/\//.test(cfg.legal.policyUrl || "") ? cfg.legal.policyUrl : "privacy.html" + qs;
-    $("consentLink").href = "consent.html" + qs; $("privacyLink").href = policy;
-    document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent.html" + qs; });
+    var policy = cfg.legal && /^https:\/\//.test(cfg.legal.policyUrl || "") ? cfg.legal.policyUrl : "privacy" + qs;
+    $("consentLink").href = "consent" + qs; $("privacyLink").href = policy;
+    document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent" + qs; });
     document.querySelectorAll(".js-privacy").forEach(function (a) { a.href = policy; });
     renderBanner();
     renderPortfolio();
@@ -289,8 +289,8 @@
     if (/^uploads\/logos\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.logo || "")) document.querySelectorAll(".logo-mark").forEach(function (svg) { var img = document.createElement("img"); img.className = "logo-img"; img.src = cfg.logo; img.alt = ""; svg.replaceWith(img); });
     if (/^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.heroImage || "")) { var hero = $("hero"); hero.classList.add("custom"); hero.style.backgroundImage = "url(" + cfg.heroImage + ")"; }
     var qs = "?a=" + encodeURIComponent(slug);
-    document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent.html" + qs; });
-    document.querySelectorAll(".js-privacy").forEach(function (a) { a.href = "privacy.html" + qs; });
+    document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent" + qs; });
+    document.querySelectorAll(".js-privacy").forEach(function (a) { a.href = "privacy" + qs; });
     $("app").hidden = true; $("closed").hidden = false;
     document.querySelector("#hero .lead").textContent = "Онлайн-запись временно недоступна. Позвоните нам, чтобы заказать праздник.";
   }

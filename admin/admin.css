@@ -339,3 +339,8 @@ textarea.auto, #siteForm textarea, #settingsForm textarea { resize: none; overfl
   .mx-row i { font-style: normal; color: var(--muted); }
   .fold > .fields { grid-template-columns: 1fr; }
 }
+
+.mail-box { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.mail-box h3 { font-size: 14px; margin: 0 0 6px; }
+.mail-box .inline { max-width: 560px; }
+#mailRes { margin-top: 8px; }

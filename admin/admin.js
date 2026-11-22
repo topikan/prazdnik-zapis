@@ -676,6 +676,8 @@
         '<label>Пароль от архива<input id="ownBkPass" autocomplete="off" spellcheck="false" value="' + esc(o.backup.password || "") + '"></label>' +
         '<label>Моя почта<input id="ownEmail" type="email" value="' + esc(o.email || "") + '"></label>' + (o.zip ? "" : '<p class="muted bad-text">Сервер не умеет делать архивы с паролем: копии не отправляются.</p>') + "</div>" +
         '</div><div class="acts"><button class="btn" id="ownSave" type="button">Сохранить настройки сервиса</button><button class="btn ghost small" id="ownBkTest" type="button">Отправить копию сейчас</button></div>' +
+        '<div class="mail-box"><h3>Письма с сайта</h3><p class="muted">Коды регистрации, восстановление пароля и уведомления. Отправляются ' + (o.mailMethod === "smtp" ? "через почтовый ящик <b>" + esc(o.mailFrom) + "</b>." : "функцией хостинга — Gmail часто их не принимает. Лучше подключить почтовый ящик на домене (SMTP).") + '</p>' +
+        '<div class="inline"><input id="mailTo" type="email" placeholder="Куда отправить проверку" value="' + esc(o.email || "") + '"><button class="btn ghost small" id="mailTest" type="button">Проверить почту</button></div><p class="muted" id="mailRes"></p></div>' +
         '<details class="cron"><summary>Ночная отправка копий: настроить один раз на хостинге</summary>' +
         '<ol><li>Панель reg.ru → ваш сайт → «Планировщик заданий» (cron) → «Создать задание».</li><li>Время: каждый день в 03:00.</li><li>Команда (скопируйте целиком):</li></ol>' +
         '<div class="inline"><input id="cronCmd" readonly value="' + esc('wget -q -O /dev/null "' + o.cronUrl + '"') + '"><button class="btn ghost small" id="cronCopy" type="button">Скопировать</button></div>' +
@@ -702,6 +704,12 @@
       backup: { tg: $("ownBkTg").checked, email: $("ownBkMail").checked, password: $("ownBkPass").value },
       billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value }
     }).then(function () { flash("Настройки сервиса сохранены"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
+    if (id === "mailTest") {
+      e.target.disabled = true; $("mailRes").textContent = "Отправляю…";
+      api("mail_test", { to: $("mailTo").value.trim() }).then(function (r) {
+        $("mailRes").innerHTML = r.ok ? "<b>Письмо отправлено</b> с адреса " + esc(r.from) + ". Проверьте «Входящие» и «Спам». Не пришло за 5 минут — значит, почтовый сервер получателя его отклонил." : '<b class="bad-text">Не отправлено:</b> ' + esc(r.error);
+      }).catch(function (err) { $("mailRes").textContent = err.message; }).finally(function () { e.target.disabled = false; });
+    }
     if (id === "ownBkTest") api("owner_backup_test").then(function (r) { flash("Копия отправлена (Telegram: " + r.tg + ", почта: " + r.email + ")", !(r.tg || r.email)); }).catch(function (err) { flash(err.message, true); });
   });
 

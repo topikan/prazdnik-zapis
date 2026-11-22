@@ -139,13 +139,11 @@ function tg_send_document(int $chat, string $filename, string $bytes, string $ca
 function send_mail_file(string $to, string $subject, string $text, string $filename, string $bytes): bool {
     global $APP;
     if (!empty($APP['mail_log'])) { @file_put_contents((string)$APP['mail_log'], date('c') . " $to | $subject | вложение $filename, " . strlen($bytes) . " байт\n$text\n\n", FILE_APPEND); return true; }
-    $host = parse_url(site_url(), PHP_URL_HOST) ?: 'bronprazdnik.ru';
     $b = 'b' . bin2hex(random_bytes(12));
-    $headers = "From: =?UTF-8?B?" . base64_encode('Бронь Праздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"$b\"";
     $body = "--$b\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($text))
         . "--$b\r\nContent-Type: application/zip; name=\"$filename\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"$filename\"\r\n\r\n" . chunk_split(base64_encode($bytes))
         . "--$b--\r\n";
-    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers, "-fnoreply@$host");
+    return mail_send($to, $subject, "Content-Type: multipart/mixed; boundary=\"$b\"", $body);
 }
 
 // Уведомление владельцу сервиса: в его Telegram (подключается во вкладке «Агентства») и на почту из настроек

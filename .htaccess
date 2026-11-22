@@ -24,6 +24,10 @@ Options -Indexes
 # за прокси хостинга правило здесь вызывает бесконечную переадресацию.
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  # Чистые адреса: /register, /rules, /consent, /privacy вместо .html (старые ссылки с .html переадресуются)
+  RewriteCond %{THE_REQUEST} \s/(register|rules|consent|privacy)\.html[\s?#]
+  RewriteRule ^(register|rules|consent|privacy)\.html$ /$1 [R=301,L]
+  RewriteRule ^(register|rules|consent|privacy)$ $1.html [L]
   # Короткие ссылки агентств: bronprazdnik.ru/fabrika-skazok → страница записи
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^([a-z0-9-]{2,40})/$ /$1 [R=301,L]

@@ -196,14 +196,63 @@ function session_peek(): array {
     if (!$u || $u['role'] !== ($s['role'] ?? '') || !hash_equals(pass_fp($u['password_hash']), (string)($s['fp'] ?? ''))) return [];
     return ['role' => $u['role'], 'agency' => $u['role'] === 'super' ? (int)($s['agency'] ?? 0) : (int)$u['agency_id']];
 }
+// ---------- почта ----------
+// Если в config.local.php заданы smtp_*, письма идут через настоящий почтовый ящик на домене (надёжно доходят до Gmail).
+// Иначе — через mail() хостинга. Последняя ошибка отправки хранится для кнопки «Проверить почту» в админке.
+function mail_from(): string {
+    global $APP;
+    if (!empty($APP['smtp_user']) && filter_var($APP['smtp_user'], FILTER_VALIDATE_EMAIL)) return (string)$APP['smtp_user'];
+    $host = parse_url((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), PHP_URL_HOST) ?: 'bronprazdnik.ru';
+    return "noreply@$host";
+}
+function mail_error(?string $e = null): string { static $last = ''; if ($e !== null) $last = $e; return $last; }
+function mail_send(string $to, string $subject, string $contentHeaders, string $body): bool {
+    global $APP;
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $to)) { mail_error('Неверный адрес'); return false; }
+    $from = mail_from();
+    $subj = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $fromHdr = '=?UTF-8?B?' . base64_encode('Бронь Праздник') . "?= <$from>";
+    if (!empty($APP['smtp_host'])) return smtp_send($to, $subj, $fromHdr, $from, $contentHeaders, $body);
+    $ok = @mail($to, $subj, $body, "From: $fromHdr\r\nMIME-Version: 1.0\r\n" . $contentHeaders, "-f$from");
+    mail_error($ok ? '' : 'Хостинг не принял письмо (функция mail вернула ошибку)');
+    return $ok;
+}
+// Простой SMTP-клиент: SSL на 465 или STARTTLS на 587, вход по логину и паролю ящика
+function smtp_send(string $to, string $subj, string $fromHdr, string $from, string $contentHeaders, string $body): bool {
+    global $APP;
+    $host = (string)$APP['smtp_host']; $port = (int)($APP['smtp_port'] ?? 465);
+    $err = '';
+    $fp = @stream_socket_client(($port === 465 ? 'ssl://' : 'tcp://') . "$host:$port", $no, $str, 15, STREAM_CLIENT_CONNECT,
+        stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'SNI_enabled' => true]]));
+    if (!$fp) { mail_error("Нет соединения с почтовым сервером $host:$port ($str)"); return false; }
+    stream_set_timeout($fp, 20);
+    $read = function () use ($fp) { $r = ''; while (($l = fgets($fp, 1024)) !== false) { $r .= $l; if (strlen($l) < 4 || $l[3] === ' ') break; } return $r; };
+    $cmd = function (string $c, array $okCodes) use ($fp, $read, &$err) { if ($c !== '') fwrite($fp, $c . "\r\n"); $r = $read(); if (!in_array((int)substr($r, 0, 3), $okCodes, true)) { $err = trim($r) ?: 'нет ответа'; return false; } return true; };
+    $ehlo = 'EHLO ' . (parse_url((string)($APP['site_url'] ?? ''), PHP_URL_HOST) ?: 'localhost');
+    $ok = $cmd('', [220]) && $cmd($ehlo, [250]);
+    if ($ok && $port !== 465 && ($APP['smtp_secure'] ?? '') !== 'none') { // 'none' — только для проверки на своём компьютере
+        $ok = $cmd('STARTTLS', [220]) && @stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) && $cmd($ehlo, [250]);
+        if (!$ok && $err === '') $err = 'не удалось включить шифрование';
+    }
+    $ok = $ok && $cmd('AUTH LOGIN', [334]) && $cmd(base64_encode((string)$APP['smtp_user']), [334]) && $cmd(base64_encode((string)($APP['smtp_pass'] ?? '')), [235]);
+    if (!$ok && stripos($err, '535') !== false) $err = 'Неверный логин или пароль почтового ящика (' . $err . ')';
+    $ok = $ok && $cmd("MAIL FROM:<$from>", [250]) && $cmd("RCPT TO:<$to>", [250, 251]) && $cmd('DATA', [354]);
+    if ($ok) {
+        $msg = "Date: " . date('r') . "\r\nFrom: $fromHdr\r\nTo: <$to>\r\nSubject: $subj\r\nMessage-ID: <" . bin2hex(random_bytes(12)) . '@' . substr(strrchr($from, '@'), 1) . ">\r\nMIME-Version: 1.0\r\n"
+            . $contentHeaders . "\r\n\r\n" . $body;
+        $msg = preg_replace('/^\./m', '..', str_replace(["\r\n", "\n"], ["\n", "\r\n"], $msg)); // точка в начале строки удваивается
+        $ok = $cmd($msg . "\r\n.", [250]);
+    }
+    @fwrite($fp, "QUIT\r\n"); fclose($fp);
+    mail_error($ok ? '' : 'Почтовый сервер ответил: ' . $err);
+    return $ok;
+}
 // Письмо с текстом (коды подтверждения и т. п.)
 function mail_text(string $to, string $subject, string $text): bool {
     global $APP;
-    $host = parse_url((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), PHP_URL_HOST) ?: 'bronprazdnik.ru';
-    $headers = "From: =?UTF-8?B?" . base64_encode('Бронь Праздник') . "?= <noreply@$host>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64";
     if (!empty($APP['mail_log'])) { @file_put_contents((string)$APP['mail_log'], date('c') . " $to | $subject\n$text\n\n", FILE_APPEND); return true; } // для проверки на своём компьютере
-    // -f: отправитель конверта — адрес на нашем домене. Без него письмо уходит от технического адреса сервера,
-    // проверка SPF у Gmail идёт не по bronprazdnik.ru, и письма с кодами попадают в спам или теряются.
-    return @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', chunk_split(base64_encode($text)), $headers, "-fnoreply@$host");
+    $ok = mail_send($to, $subject, "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64", chunk_split(base64_encode($text)));
+    if (!$ok) error_log('mail to ' . $to . ': ' . mail_error());
+    return $ok;
 }
 

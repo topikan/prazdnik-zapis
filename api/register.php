@@ -72,7 +72,7 @@ switch ($action) {
         if (empty($in['agreeRules']) || empty($in['agreePd'])) fail('Нужно принять правила сервиса и согласие на обработку данных');
         if (($p = slug_problem($slug)) !== '') fail($p);
         if (user_by_email($email)) fail('Эта почта уже зарегистрирована. Войдите или восстановите пароль.');
-        rate_limit('regmail', 4, 3600, 'm:' . $email);
+        rate_limit('regmail', 8, 3600, 'm:' . $email);
         $token = bin2hex(random_bytes(16)); $code = new_code();
         $phone = '+7 (' . substr($phoneDigits, 1, 3) . ') ' . substr($phoneDigits, 4, 3) . '-' . substr($phoneDigits, 7, 2) . '-' . substr($phoneDigits, 9);
         setting_set('reg:' . $token, ['name' => mb_substr($name, 0, 80), 'city' => mb_substr($city, 0, 60), 'phone' => $phone, 'email' => $email, 'slug' => $slug,
@@ -84,7 +84,7 @@ switch ($action) {
         $token = in_str($in, 'token');
         if (!preg_match('/^[a-f0-9]{32}$/', $token) || !($p = pending_get('reg:' . $token))) fail('Регистрация устарела, заполните форму ещё раз', 410);
         if (time() - (int)$p['sent'] < 60) fail('Отправить код ещё раз можно через минуту');
-        rate_limit('regmail', 4, 3600, 'm:' . $p['email']);
+        rate_limit('regmail', 8, 3600, 'm:' . $p['email']);
         $code = new_code();
         $p['code'] = code_hash($code, $token); $p['tries'] = 0; $p['sent'] = time(); $p['exp'] = time() + CODE_TTL;
         setting_set('reg:' . $token, $p);

@@ -465,7 +465,8 @@ switch ($action) {
         json_out(['reg' => (setting_get('reg') ?: ['open' => true, 'manual' => false]), 'backup' => (setting_get('ownerbackup') ?: ['tg' => false, 'email' => false, 'password' => '']),
             'email' => owner_email(), 'tgReady' => tg_ready(), 'tgChats' => count(tg_chats(0)), 'zip' => zip_password_ok(), 'billing' => billing_settings(),
             'cronUrl' => site_url() . '/api/cron.php?key=' . cron_key(), 'cronLast' => ($last['day'] ?? '') ? ru_date($last['day']) . ' в ' . ($last['at'] ?? '') : '',
-            'uploadMax' => ini_get('upload_max_filesize'), 'postMax' => ini_get('post_max_size')]);
+            'uploadMax' => ini_get('upload_max_filesize'), 'postMax' => ini_get('post_max_size'),
+            'mailMethod' => empty($APP['smtp_host']) ? 'mail' : 'smtp', 'mailFrom' => mail_from()]);
 
     case 'owner_save':
         need_super();
@@ -481,6 +482,14 @@ switch ($action) {
         setting_set('ownerbackup', ['tg' => !empty($bk['tg']), 'email' => !empty($bk['email']), 'password' => $pw]);
         setting_set('billing', ['freeEnd' => $bl['freeEnd'], 'seasonEnd' => $bl['seasonEnd']]);
         json_out(['ok' => true]);
+
+    case 'mail_test': // проверить отправку писем: отправляет тестовое письмо и показывает точную ошибку
+        need_super();
+        rate_limit('mtest', 10, 600);
+        $to = trim(in_str($in, 'to'));
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) fail('Укажите почту, на которую отправить проверку');
+        $ok = mail_text($to, 'Проверка почты — Бронь Праздник', "Это проверочное письмо с сайта " . site_url() . ".\n\nЕсли вы его видите, коды регистрации и уведомления тоже доходят.");
+        json_out(['ok' => $ok, 'error' => $ok ? '' : mail_error(), 'method' => empty($APP['smtp_host']) ? 'mail' : 'smtp', 'from' => mail_from()]);
 
     case 'tg_link_owner':
         need_super();

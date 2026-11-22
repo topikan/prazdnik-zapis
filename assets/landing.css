@@ -449,3 +449,28 @@ html.no-anim { scroll-behavior: auto; }
   .f4-pic { margin: 18px -20px 0; padding: 20px; min-height: 0; }
   .feat4-cta .btn { width: 100%; }
 }
+
+/* Остальные примеры — такие же мини-экраны: рамка, тень, шапка раздела, свой цвет фона */
+.f4:nth-child(2) .f4-pic { background: #E1EFE7; }
+.f4:nth-child(3) .f4-pic { background: #F1E8DA; }
+.f4:nth-child(4) .f4-pic { background: #ECE7F2; }
+.mini-screen { width: 100%; max-width: 360px; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 14px 30px rgba(20, 33, 61, .16); border: 1px solid rgba(20, 33, 61, .08); }
+.ms-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #ECEFF1; }
+.ms-ico { width: 34px; height: 34px; border-radius: 10px; background: #173B2F; color: #fff; display: grid; place-items: center; flex: none; }
+.ms-ico svg { width: 19px; height: 19px; }
+.ms-bar b { font-size: 14px; }
+.ms-bar small { margin-left: auto; font-size: 12px; color: #7D8A99; text-align: right; }
+.ms-area { padding: 12px; background: #F6F7F5; }
+.mini-screen .mini-list, .mini-screen .mini-times, .mini-screen .mini-prices { max-width: none; gap: 6px; }
+.mini-screen .mini-list li { grid-template-columns: 50px minmax(0, 1fr) auto; gap: 10px; padding: 8px 10px; border-radius: 10px; }
+.mini-screen .ml-when { font-size: 11px; }
+.mini-screen .ml-when b { font-size: 14px; }
+.mini-screen .ml-who { font-size: 13px; }
+.mini-screen .ml-who small { font-size: 12px; }
+.mini-screen .pill { font-size: 11px; padding: 4px 8px; }
+.mini-screen .mini-times span { min-height: 44px; font-size: 14px; border-radius: 10px; }
+.mini-screen .mini-times small { font-size: 10px; }
+.mini-screen .mini-prices div { font-size: 13px; padding: 8px 8px 8px 12px; border-radius: 10px; }
+.mini-screen .mini-prices b { font-size: 13px; min-width: 88px; padding: 6px 10px; }
+.mini-screen .mini-prices .is-edit i { top: 7px; bottom: 7px; right: 8px; }
+.tg-chat, .mini-screen { max-width: 360px; }

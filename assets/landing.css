@@ -378,26 +378,6 @@ html.no-anim { scroll-behavior: auto; }
 .dc-ava { overflow: hidden; }
 .dc-ava img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block; }
 
-/* Панель: общий вид и шаги 1 → 2 → 3 */
-.shot-frame img { display: block; width: 100%; height: auto; }
-.shot-steps { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-.shot-steps li { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 14px; }
-.shot-steps li + li::before { content: ""; position: absolute; left: -15px; top: 30px; width: 12px; height: 12px; border-top: 2px solid var(--red); border-right: 2px solid var(--red); transform: rotate(45deg); }
-.step-top { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
-.step-n { width: 34px; height: 34px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 800; font-size: 16px; display: grid; place-items: center; }
-.step-top p { font-weight: 700; font-size: 16px; line-height: 1.35; padding-top: 5px; }
-.shot-steps img { display: block; width: 100%; height: auto; margin-top: auto; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 8px 20px rgba(20, 33, 61, .08); }
-@media (max-width: 1060px) {
-  .shot-steps { grid-template-columns: 1fr; }
-  .shot-steps li + li::before { left: 34px; top: -15px; transform: rotate(135deg); }
-}
-@media (max-width: 680px) {
-  .shot-frame { display: none; }
-  .shot-steps { margin-top: 16px; gap: 22px; }
-  .shot-steps li { padding: 16px; }
-  .step-top p { font-size: 16px; }
-}
-
 /* Кнопка покупки абонемента */
 .btn-dark { background: var(--night); color: #fff; margin-top: 12px; }
 .btn-dark:hover { background: #1B2B52; }
@@ -412,11 +392,55 @@ html.no-anim { scroll-behavior: auto; }
   .foot-menu { grid-row: 2; }
   .foot-acts { grid-row: 3; flex-wrap: wrap; gap: 12px 16px; }
 }
-/* общий вид панели на компьютере — только верхняя часть экрана */
-.shot-frame { max-height: 600px; }
-.shot-frame img { object-fit: cover; object-position: top; }
-.shot-steps img { margin-top: 0; }
+/* Панель управления: четыре простые карточки с нарисованными примерами */
+.feat4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.f4 { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 26px 26px 0; display: flex; flex-direction: column; overflow: hidden; }
+.f4-text h3 { font-weight: 800; font-size: 22px; line-height: 1.2; margin-bottom: 8px; }
+.f4-text p { color: var(--muted); font-size: 16px; max-width: 440px; }
+.f4-pic { margin: 22px -26px 0; padding: 26px; min-height: 230px; flex: 1; background: var(--paper); border-top: 1px solid var(--line); display: grid; place-items: center; }
+.feat4-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; margin-top: 26px; }
+.text-link.dark { color: var(--ink); }
+.text-link.dark:hover { color: var(--red); }
+
+/* сообщение в Telegram */
+.f4:nth-child(1) .f4-pic { background: #E7EEF5; }
+.tg-msg { width: 100%; max-width: 330px; background: #fff; border-radius: 16px 16px 16px 4px; padding: 14px 16px 16px; box-shadow: 0 10px 26px rgba(20, 33, 61, .12); }
+.tg-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.tg-ava { width: 34px; height: 34px; border-radius: 50%; background: #173B2F; display: grid; place-items: center; flex: none; }
+.tg-ava img { width: 22px; height: auto; }
+.tg-head b { font-size: 15px; }
+.tg-head small { margin-left: auto; color: var(--muted); font-size: 12px; }
+.tg-msg p { font-size: 15px; line-height: 1.5; }
+
+/* список заявок */
+.mini-list { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 400px; display: grid; gap: 8px; }
+.mini-list li { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.ml-when { font-size: 12px; color: var(--muted); line-height: 1.25; }
+.ml-when b { font-size: 16px; color: var(--ink); }
+.ml-who { font-weight: 700; font-size: 15px; display: grid; }
+.ml-who small { font-weight: 600; color: var(--muted); font-size: 13px; }
+.pill { font-style: normal; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+.pill-new { background: #FFF1CF; color: #7A5700; }
+.pill-ok { background: var(--mint); color: var(--mint-ink); }
+
+/* время */
+.mini-times { width: 100%; max-width: 400px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.mini-times span { display: grid; place-items: center; min-height: 54px; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; font-weight: 700; font-size: 16px; line-height: 1.1; }
+.mini-times .is-busy { background: #EFEAE2; border-color: #EFEAE2; color: #A39E95; }
+.mini-times small { display: block; font-size: 11px; font-weight: 600; text-decoration: none; margin-top: 3px; }
+
+/* цены */
+.mini-prices { width: 100%; max-width: 400px; display: grid; gap: 8px; }
+.mini-prices div { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 10px 14px; font-weight: 600; font-size: 15px; }
+.mini-prices b { position: relative; min-width: 104px; text-align: right; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 9px; font-size: 15px; }
+.mini-prices .is-edit b { border-color: var(--red); box-shadow: 0 0 0 3px rgba(179, 32, 58, .14); }
+.mini-prices .is-edit i { position: absolute; right: 9px; top: 9px; bottom: 9px; width: 2px; background: var(--red); }
+
+@media (max-width: 860px) { .feat4 { grid-template-columns: 1fr; } }
 @media (max-width: 680px) {
-  .shot-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; }
-  .shot-tabs button { padding: 10px 4px; font-size: 13px; }
+  .f4 { padding: 22px 20px 0; }
+  .f4-text h3 { font-size: 20px; }
+  .f4-text p { font-size: 15px; }
+  .f4-pic { margin: 18px -20px 0; padding: 20px; min-height: 0; }
+  .feat4-cta .btn { width: 100%; }
 }

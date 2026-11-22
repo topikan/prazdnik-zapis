@@ -58,39 +58,6 @@
     $("faq").innerHTML = (d.faq || []).map(function (x) { return "<details><summary>" + esc(x.q) + "</summary><p>" + esc(x.a) + "</p></details>"; }).join("");
   }
 
-  /* ---------- панель: общий вид и три шага по порядку ---------- */
-  var SHOTS = [
-    { tab: "Заявки", img: "orders", steps: [
-      "Каждая заявка — карточкой: дата, время, состав, дети, телефон и адрес",
-      "Статус и отметка о предоплате — в одно нажатие",
-      "Фильтр по датам и статусу, все заявки таблицей для Excel"] },
-    { tab: "Расписание", img: "schedule", steps: [
-      "Загрузка по часам: видно, сколько выездов свободно",
-      "Заказ по телефону: это время сразу закрывается на сайте",
-      "Закрытое время возвращается одной кнопкой"] },
-    { tab: "Цены и услуги", img: "prices", steps: [
-      "Свои составы с фото. Ненужный можно скрыть со страницы",
-      "Программы и длительность визита",
-      "Цены для каждого состава и программы"] }
-  ];
-  var shotCur = 0;
-  function drawShot() {
-    var s = SHOTS[shotCur];
-    $("shotTabs").innerHTML = SHOTS.map(function (x, i) {
-      return '<button type="button" role="tab" data-shot="' + i + '" aria-selected="' + (i === shotCur) + '">' + esc(x.tab) + "</button>";
-    }).join("");
-    $("shotImg").src = "assets/img/panel/" + s.img + ".webp";
-    $("shotImg").alt = "Панель управления, раздел «" + s.tab + "»";
-    $("shotSteps").innerHTML = s.steps.map(function (t, i) {
-      return '<li><div class="step-top"><span class="step-n">' + (i + 1) + "</span><p>" + esc(t) + '</p></div><img src="assets/img/panel/' + s.img + "-" + (i + 1) + '.webp" alt="" loading="lazy"></li>';
-    }).join("");
-  }
-  document.addEventListener("click", function (e) {
-    var b = e.target.closest ? e.target.closest("[data-shot]") : null;
-    if (b) { shotCur = +b.dataset.shot; drawShot(); }
-  });
-  if ($("shotTabs")) drawShot();
-
   /* ---------- живая витрина: можно потрогать календарь и время ---------- */
   var MONTH = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   var demo = { day: 5, time: "12:30" };

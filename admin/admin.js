@@ -111,7 +111,7 @@
     document.querySelectorAll("#tabs button").forEach(function (b) { b.setAttribute("aria-current", b.dataset.tab === t ? "true" : "false"); });
     document.querySelectorAll(".tab").forEach(function (s) { s.hidden = s.id !== "tab-" + t; });
     if (t === "orders") loadOrders();
-    if (t === "schedule") loadSchedule();
+    if (t === "schedule") { renderHours(); loadSchedule(); }
     if (t === "prices") renderPrices();
     if (t === "settings") renderSettings();
     if (t === "agencies") { loadAgencies(); loadOwner(); }
@@ -184,6 +184,16 @@
   $("schPrev").addEventListener("click", function () { shiftDay(-1); });
   $("schNext").addEventListener("click", function () { shiftDay(1); });
   $("schDate").addEventListener("change", loadSchedule);
+  var HOURS_FIELDS = [["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день, например 31 декабря", "date"], ["hours.lastDay.to", "Особый день: последний визит в", "time"],
+    ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"]];
+  function renderHours() { $("hoursForm").innerHTML = HOURS_FIELDS.map(fieldHtml).join(""); }
+  $("saveHours").addEventListener("click", function () {
+    var c = clone(cfg);
+    document.querySelectorAll("#hoursForm [data-path]").forEach(function (i) { setPath(c, i.dataset.path, i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim()); });
+    if (c.hours && c.hours.lastDay && !c.hours.lastDay.date) delete c.hours.lastDay;
+    api("config_save", { config: c }).then(function (r) { cfg = r.config || c; flash("Часы работы сохранены. Они уже на странице записи."); renderHours(); loadSchedule(); })
+      .catch(function (e) { flash(e.message, true); });
+  });
   function loadSchedule() {
     if (!$("schDate").value) { var t = new Date(); t.setDate(t.getDate() + 1); setDate($("schDate"), iso(t)); }
     var day = $("schDate").value;
@@ -441,7 +451,7 @@
   /* ---------- настройки ---------- */
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
-    ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "Особый день: последний визит", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
+    ["Сезон", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["timezone", "Часовой пояс", "tz"]]],
     ["Предоплата после заявки", [["payment.enabled", "Показывать кнопку «Внести предоплату»", "check"], ["payment.amount", "Сколько внести, например «1 000 ₽» или «30%»"], ["payment.link", "Ссылка на оплату из вашего банка или СБП (https://…)", "wide"]]],
     ["Тексты страницы записи", [["texts.heroTitle", "Заголовок, белая часть", "ph:Дед Мороз"], ["texts.heroAccent", "Заголовок, цветная часть", "ph:к вам домой"], ["texts.heroLead", "Подпись под заголовком", "ph:Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков."],
       ["texts.whoTitle", "Шаг 1: заголовок", "ph:Кто приедет?"], ["texts.whoSub", "Шаг 1: подпись", "ph:Выберите, кто поздравит вашего ребёнка"], ["texts.progTitle", "Программы: заголовок", "ph:Программа"], ["texts.progSub", "Программы: подпись", "ph:Выберите программу праздника"],
@@ -453,6 +463,17 @@
   var BANNER_DEFAULT = { title: "Подарите детям настоящий Новый год!", text: "Забронируйте визит Деда Мороза и создайте волшебство в каждом доме.", button: "Забронировать праздник", link: "" };
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
   function setPath(o, p, v) { var ks = p.split("."), last = ks.pop(); ks.forEach(function (k) { if (o[k] == null || typeof o[k] !== "object") o[k] = {}; o = o[k]; }); o[last] = v; }
+  function fieldHtml(f) {
+        var v = getPath(cfg, f[0]); if (f[0] === "travelMinutes" && v == null) v = 30; if (f[0] === "leadHours" && v == null) v = 3;
+        if (f[2] === "color" && (!v || v.toUpperCase() === "#163A2F" || v.toUpperCase() === "#C9A24A")) v = f[0] === "colors.gold" ? "#D9B26A" : "#B3203A";
+        if (/^banner\./.test(f[0]) && v == null) v = BANNER_DEFAULT[f[0].slice(7)];
+        if (f[2] === "check") return '<label class="row wide"><input type="checkbox" data-path="' + f[0] + '"' + (v ? " checked" : "") + "> " + esc(f[1]) + "</label>";
+        if (f[2] === "wide") return '<label class="wide">' + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" value="' + esc(v == null ? "" : v) + '"></label>';
+        if (f[2] === "area") return '<label class="wide">' + esc(f[1]) + '<textarea data-path="' + f[0] + '" rows="2">' + esc(v || "") + "</textarea></label>";
+        if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
+        if (/^ph:/.test(f[2] || "")) return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" placeholder="' + esc(f[2].slice(3)) + '" value="' + esc(v == null ? "" : v) + '"></label>';
+        return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
+  }
   function renderSettings() {
     var root = $("settingsForm");
     var logoCard = '<div class="card"><h2>Оформление страницы записи</h2><div class="design-grid">' +
@@ -472,17 +493,7 @@
       '<label>Пароль от архива, от 6 символов. Запишите его<input data-path="backup.password" type="text" autocomplete="off" spellcheck="false" maxlength="100" value="' + esc(getPath(cfg, "backup.password") || "") + '"></label></div>' +
       '<p class="muted" id="bkInfo"></p><div class="acts no-dirty"><button class="btn ghost small" id="bkTest" type="button">Отправить копию сейчас</button></div></div>';
     root.innerHTML = logoCard + pfCard + SETTINGS.map(function (g) {
-      return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(function (f) {
-        var v = getPath(cfg, f[0]); if (f[0] === "travelMinutes" && v == null) v = 30; if (f[0] === "leadHours" && v == null) v = 3;
-        if (f[2] === "color" && (!v || v.toUpperCase() === "#163A2F" || v.toUpperCase() === "#C9A24A")) v = f[0] === "colors.gold" ? "#D9B26A" : "#B3203A";
-        if (/^banner\./.test(f[0]) && v == null) v = BANNER_DEFAULT[f[0].slice(7)];
-        if (f[2] === "check") return '<label class="row wide"><input type="checkbox" data-path="' + f[0] + '"' + (v ? " checked" : "") + "> " + esc(f[1]) + "</label>";
-        if (f[2] === "wide") return '<label class="wide">' + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" value="' + esc(v == null ? "" : v) + '"></label>';
-        if (f[2] === "area") return '<label class="wide">' + esc(f[1]) + '<textarea data-path="' + f[0] + '" rows="2">' + esc(v || "") + "</textarea></label>";
-        if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
-        if (/^ph:/.test(f[2] || "")) return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" placeholder="' + esc(f[2].slice(3)) + '" value="' + esc(v == null ? "" : v) + '"></label>';
-        return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
-      }).join("") + "</div></div>";
+      return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(fieldHtml).join("") + "</div></div>";
     }).join("") +
       '<div class="card"><h2>Уведомления о новых заявках</h2>' +
       '<p class="muted">В уведомлении будут дата, время, программа и сумма. Имя, телефон и адрес клиента видны только здесь, во вкладке «Заявки».</p>' +

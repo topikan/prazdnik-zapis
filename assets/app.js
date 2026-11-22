@@ -403,7 +403,17 @@
 
   function renderTimes() {
     var grid = $("times"); grid.innerHTML = "";
-    if (!state.date) { $("timesTitle").textContent = "Выберите дату в календаре"; $("leftNote").hidden = true; return; }
+    if (!state.date) {
+      // пока день не выбран — серые заготовки часов работы, чтобы было видно, что здесь появится
+      $("timesTitle").textContent = "Выберите день в календаре — здесь появится свободное время"; $("leftNote").hidden = true;
+      grid.classList.add("is-ghost");
+      for (var t = minutes(cfg.hours.from); t <= minutes(cfg.hours.to); t += 60) {
+        var g = el("span", "slot ghost"); g.setAttribute("aria-hidden", "true");
+        g.innerHTML = "<span><b>" + hhmm(t) + '<i class="t-end"> – ' + hhmm(t + 60) + "</i></b><em>&nbsp;</em></span>"; grid.appendChild(g);
+      }
+      return;
+    }
+    grid.classList.remove("is-ghost");
     $("timesTitle").textContent = "Доступное время на " + short(state.date);
     var slots = slotsFor(state.date);
     var freeCount = slots.filter(function (s) { return s.free > 0; }).length;

@@ -480,3 +480,9 @@ p.note-wide { margin: 16px 0 26px; }
   .hero p.note-abs, p.note-abs { max-width: 150px; font-size: 12px; }
   .has-guide #hero .wrap > .note-tip { margin-top: 84px; }
 }
+
+/* Часы до выбора дня: серые заготовки */
+.slot.ghost > span { border-style: dashed; background: transparent; color: var(--muted, #8a8f98); box-shadow: none; cursor: default; }
+.slot.ghost b { font-weight: 600; }
+.time-grid.is-ghost { opacity: .75; }
+.time-grid + .note-tip { margin-top: 18px; }

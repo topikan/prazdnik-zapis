@@ -64,6 +64,12 @@
       </section>
 
       <section id="tab-schedule" class="tab" hidden>
+        <div class="card" id="hoursCard">
+          <h2>Часы работы</h2>
+          <p class="muted">Когда можно заказать визит на странице записи. Время между первым и последним визитом сайт делит на часы, а занятое скрывает само.</p>
+          <div class="fields" id="hoursForm"></div>
+          <div class="acts"><button class="btn small" id="saveHours" type="button"><svg aria-hidden="true"><use href="#i-check"/></svg>Сохранить часы работы</button></div>
+        </div>
         <div class="bar">
           <label>День <input type="date" id="schDate"></label>
           <button class="btn ghost" id="schPrev" aria-label="Предыдущий день">←</button>

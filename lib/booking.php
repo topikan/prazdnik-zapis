@@ -158,14 +158,16 @@ function normalize_config(array $c, array &$err): array {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
         $row = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
         if (is_string($x['photo'] ?? null) && preg_match('~^uploads/chars/[a-z0-9-]+\.(webp|png|jpe?g)$~', $x['photo'])) $row['photo'] = $x['photo'];
+        if (!empty($x['off'])) $row['off'] = true; // скрыт со страницы записи, но остаётся в кабинете
         $o['characters'][] = $row;
     }
     $o['programs'] = [];
     foreach ($list($c['programs'] ?? [], 20) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $o['programs'][] = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'minutes' => $int($x['minutes'] ?? 30, 5, 600, 30), 'note' => $str($x['note'] ?? '', 160), 'icon' => $icons($x['icon'] ?? '', ['gift', 'tree', 'ball'], 'tree')];
+        $o['programs'][] = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'minutes' => $int($x['minutes'] ?? 30, 5, 600, 30), 'note' => $str($x['note'] ?? '', 160), 'icon' => $icons($x['icon'] ?? '', ['gift', 'tree', 'ball'], 'tree')] + (!empty($x['off']) ? ['off' => true] : []);
     }
     if (!$o['characters'] || !$o['programs']) $err[] = 'Нужен хотя бы один вариант «Кто приедет» и одна программа';
+    elseif (!array_filter($o['characters'], function ($x) { return empty($x['off']); }) || !array_filter($o['programs'], function ($x) { return empty($x['off']); })) $err[] = 'Хотя бы один состав и одна программа должны быть показаны на странице';
     if (count(array_unique(array_column($o['characters'], 'id'))) !== count($o['characters']) || count(array_unique(array_column($o['programs'], 'id'))) !== count($o['programs'])) $err[] = 'Повторяются строки в «Кто приедет» или «Программы»';
     $o['prices'] = [];
     foreach ($o['characters'] as $ch) foreach ($o['programs'] as $p) {
@@ -189,7 +191,7 @@ function normalize_config(array $c, array &$err): array {
     $o['addons'] = [];
     foreach ($list($c['addons'] ?? [], 30) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $o['addons'][] = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 160), 'price' => $int($x['price'] ?? 0, 0, 1000000, 0), 'icon' => $str($x['icon'] ?? 'star', 20)];
+        $o['addons'][] = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 160), 'price' => $int($x['price'] ?? 0, 0, 1000000, 0), 'icon' => $str($x['icon'] ?? 'star', 20)] + (!empty($x['off']) ? ['off' => true] : []);
     }
     $o['zones'] = [];
     foreach ($list($c['zones'] ?? [], 20) as $x) {

@@ -659,6 +659,8 @@
   function init(data) {
     if (data && data.closed) { initClosed(data); return; }
     cfg = data;
+    // скрытые агентством составы, программы и допы на странице не показываем
+    ["characters", "programs", "addons"].forEach(function (k) { if (cfg[k]) cfg[k] = cfg[k].filter(function (x) { return !x.off; }); });
     var popular = cfg.characters.filter(function (c) { return c.badge; })[0] || cfg.characters[0];
     state.character = popular.id;
     state.program = (cfg.programs[1] || cfg.programs[0]).id;

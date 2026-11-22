@@ -47,9 +47,10 @@ foreach (array_slice(is_array($in['children'] ?? null) ? $in['children'] : [], 0
 }
 
 if (!find_item($cfg['characters'], $o['character']) || !find_item($cfg['programs'], $o['program'])) fail('Выберите персонажей и программу');
+if (!empty(find_item($cfg['characters'], $o['character'])['off']) || !empty(find_item($cfg['programs'], $o['program'])['off'])) fail('Этот вариант сейчас недоступен, выберите другой');
 if (!find_item($cfg['zones'], $o['zone'])) fail('Выберите, куда ехать');
 if ($o['kids'] < 1 || $o['kids'] > (int)$cfg['kids']['max']) fail('Неверное количество детей');
-$known = array_column($cfg['addons'] ?? [], 'id');
+$known = array_column(array_filter($cfg['addons'] ?? [], function ($x) { return empty($x['off']); }), 'id'); // скрытые допы не принимаются
 $o['addons'] = array_values(array_unique(array_intersect($o['addons'], $known)));
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || !checkdate((int)substr($o['date'], 5, 2), (int)substr($o['date'], 8, 2), (int)substr($o['date'], 0, 4)) || $o['date'] < $cfg['season']['start'] || $o['date'] > $cfg['season']['end']) fail('Эта дата недоступна');
 if (!in_array($o['time'], slot_times($cfg, $o['date']), true)) fail('Это время недоступно');

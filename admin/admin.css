@@ -491,11 +491,15 @@ input, select, textarea { color: var(--text); border-radius: 10px; }
   .mx-line { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
-  .ed-head { flex-wrap: wrap; }
-  .ed-head > .btn { order: 3; }
+  /* иконка и заголовок в строку, кнопка — отдельной строкой ниже на всю ширину */
+  .ed-head { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px 12px; }
+  .ed-head > .btn { grid-column: 1 / -1; justify-self: stretch; justify-content: center; }
   .ed-grid .re-list { grid-template-columns: 1fr; }
   .re-drag { display: none; }
   .mx-cells { grid-template-columns: 1fr 1fr; }
 }
 .card > h2, .card-head h2 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
 .card h3 { font-weight: 700; }
+
+#hoursCard .acts { margin-top: 18px; }
+@media (max-width: 600px) { #hoursCard .acts .btn { width: 100%; justify-content: center; } }

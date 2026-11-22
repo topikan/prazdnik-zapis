@@ -419,9 +419,9 @@ switch ($action) {
         $clean = function ($v, $max) { return mb_substr(trim((string)$v), 0, $max); };
         $out = [];
         foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'heroLead', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'itemsTitle', 'itemsLead', 'stepsTitle',
-            'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'seatsLeft', 'seatsTotal', 'priceNote',
+            'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'buyButton', 'seatsLeft', 'seatsTotal', 'priceNote',
             'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
-        $out['v'] = 2;
+        $out['v'] = 3;
         foreach (['strip' => ['title'], 'items' => ['title', 'text'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }

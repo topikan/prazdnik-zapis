@@ -8,14 +8,14 @@
   <meta name="theme-color" content="#0E1A33">
   <title>Онлайн-запись и учёт заявок для агентств праздников — Бронь Праздник</title>
   <meta name="description" content="Страница записи для агентств праздников: родители сами выбирают программу, дату и время и сразу видят цену, а вы получаете готовую заявку.">
-  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/img/logo-icon.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/manrope-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="assets/landing.css?v=dev">
 </head>
 <body class="landing">
   <header class="top">
     <div class="wrap top-in">
-      <a class="brand" href="./" aria-label="Бронь Праздник, на главную"><svg aria-hidden="true"><use href="#i-flake"/></svg><span>Бронь Праздник</span></a>
+      <a class="brand" href="./" aria-label="Бронь Праздник, на главную"><img src="assets/img/logo-white.svg" alt="" width="40" height="33"><span>Бронь Праздник</span></a>
       <nav class="menu" aria-label="Разделы">
         <a href="#features">Возможности</a>
         <a href="#panel">Панель</a>
@@ -47,7 +47,7 @@
 
       <!-- Живая витрина: как выглядит запись для родителей -->
       <div class="demo-card" aria-label="Пример страницы записи">
-        <div class="dc-head"><span class="dc-brand"><svg aria-hidden="true"><use href="#i-flake"/></svg>Праздник сказки</span><span class="dc-user"><svg aria-hidden="true"><use href="#i-user"/></svg></span></div>
+        <div class="dc-head"><span class="dc-brand"><svg aria-hidden="true"><use href="#i-tree"/></svg>Праздник сказки</span><span class="dc-user"><svg aria-hidden="true"><use href="#i-user"/></svg></span></div>
         <div class="dc-body">
           <div class="dc-cal">
             <div class="dc-month"><svg aria-hidden="true"><use href="#i-left"/></svg><b>Декабрь 2026</b><svg aria-hidden="true"><use href="#i-right"/></svg></div>
@@ -58,7 +58,7 @@
           </div>
           <div class="dc-sum">
             <p class="dc-title">Ваша бронь</p>
-            <div class="dc-who"><span class="dc-ava"><svg aria-hidden="true"><use href="#i-santa"/></svg></span><span><b>Дед Мороз</b><small>Новогодняя программа</small></span></div>
+            <div class="dc-who"><span class="dc-ava"><img src="assets/img/demo/santa.webp" alt="" width="52" height="52"></span><span><b>Дед Мороз</b><small>Новогодняя программа</small></span></div>
             <p class="dc-line"><svg aria-hidden="true"><use href="#i-cal"/></svg><span id="dcWhen">5 декабря, 12:30</span></p>
             <p class="dc-line"><svg aria-hidden="true"><use href="#i-pin"/></svg><span>В черте города</span></p>
             <p class="dc-total"><span>Итого</span><b id="dcTotal">4 500 ₽</b></p>
@@ -90,13 +90,11 @@
       </div>
       <div class="shots">
         <div class="shot-tabs" role="tablist" aria-label="Разделы панели" id="shotTabs"></div>
-        <div class="shot-stage">
-          <figure class="shot-frame">
-            <div class="shot-bar" aria-hidden="true"><i></i><i></i><i></i><span>bronprazdnik.ru/admin</span></div>
-            <div class="shot-img"><img id="shotImg" src="assets/img/panel/orders.webp" width="1920" height="1200" alt="" loading="lazy"><div class="shot-pins" id="shotPins"></div></div>
-          </figure>
-          <ol class="shot-notes" id="shotNotes"></ol>
-        </div>
+        <figure class="shot-frame">
+          <div class="shot-bar" aria-hidden="true"><i></i><i></i><i></i><span>bronprazdnik.ru/admin</span></div>
+          <img id="shotImg" src="assets/img/panel/orders.webp" width="1600" height="1000" alt="" loading="lazy">
+        </figure>
+        <ol class="shot-steps" id="shotSteps"></ol>
       </div>
     </div>
   </section>
@@ -123,6 +121,7 @@
           <p class="p-sum" id="pricePaidSum"></p>
           <p class="p-text" id="pricePaidText"></p>
           <p class="p-seats" id="priceSeats" hidden></p>
+          <a class="btn btn-dark" id="buyButton" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true"><use href="#i-tg"/></svg><span id="buyButtonText">Оформить абонемент</span></a>
         </article>
       </div>
       <p class="p-note" id="priceNote"></p>
@@ -153,7 +152,7 @@
 
   <footer class="foot">
     <div class="wrap foot-in">
-      <a class="brand" href="./"><svg aria-hidden="true"><use href="#i-flake"/></svg><span>Бронь Праздник</span></a>
+      <a class="brand" href="./"><img src="assets/img/logo-white.svg" alt="" width="40" height="33"><span>Бронь Праздник</span></a>
       <nav class="foot-menu" aria-label="Разделы">
         <a href="#features">Возможности</a>
         <a href="#panel">Панель</a>

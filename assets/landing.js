@@ -24,6 +24,7 @@
   function text(id, v) { if ($(id)) $(id).textContent = v || ""; }
 
   var STRIP_ICONS = ["i-clock", "i-shield", "i-tg"];
+  var V3_KEYS = ["strip", "heroLead"]; // «Ни одной двойной брони» заменено на понятный текст
   var V2_KEYS = ["heroBadge", "heroTitle", "heroAccent", "heroLead", "regButton", "ctaNote", "demoButton", "contactButton", "strip", "itemsLead", "items", "steps", "faq", "finalText"];
   var FEAT_ICONS = ["i-calc", "i-check-cal", "i-inbox", "i-sliders"];
 
@@ -32,6 +33,7 @@
     if (defaults && d.heroBadge == null) d = { telegram: d.telegram, demoSlug: d.demoSlug, items: d.items, steps: d.steps, faq: d.faq };
     // Тексты, сохранённые до бесплатного периода и регистрации: первый экран, шаги и вопросы берём новые
     if (defaults && (+d.v || 0) < 2) V2_KEYS.forEach(function (k) { delete d[k]; });
+    if (defaults && (+d.v || 0) < 3) V3_KEYS.forEach(function (k) { delete d[k]; });
     // поля, которых нет в сохранённой версии, берём из текстов по умолчанию
     Object.keys(defaults || {}).forEach(function (k) { if (d[k] == null || d[k] === "" || (Array.isArray(d[k]) && !d[k].length)) d[k] = defaults[k]; });
     ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "itemsTitle", "itemsLead", "stepsTitle", "priceTitle", "priceFreeTitle", "priceFreeText", "pricePaidTitle", "pricePaidSum", "pricePaidText", "priceNote", "faqTitle", "finalTitle", "finalText", "footer", "footerTagline"].forEach(function (k) { text(k, d[k]); });
@@ -41,7 +43,8 @@
     text("demoButtonText", d.demoButton); text("finalDemoText", d.finalDemoButton); text("finalContactText", d.finalContactButton);
     text("loginText", d.loginLink || "Вход для агентств");
     var tg = safeUrl(d.telegram, "https://t.me/rodionfrontend");
-    ["tgFoot", "finalContactButton"].forEach(function (id) { $(id).href = tg; });
+    ["tgFoot", "finalContactButton", "buyButton"].forEach(function (id) { if ($(id)) $(id).href = tg; });
+    text("buyButtonText", d.buyButton || "Оформить абонемент");
     var demo = /^[a-z0-9-]{2,40}$/.test(d.demoSlug || "") ? d.demoSlug : "demo";
     var demoHref = location.hostname.endsWith("github.io") ? "zapis.html?a=" + demo : demo;
     ["demoButton", "finalDemoButton", "dcButton"].forEach(function (id) { $(id).href = demoHref; });
@@ -55,24 +58,20 @@
     $("faq").innerHTML = (d.faq || []).map(function (x) { return "<details><summary>" + esc(x.q) + "</summary><p>" + esc(x.a) + "</p></details>"; }).join("");
   }
 
-  /* ---------- скриншоты панели с подписями ---------- */
+  /* ---------- панель: общий вид и три шага по порядку ---------- */
   var SHOTS = [
-    { tab: "Заявки", img: "orders", pins: [
-      [3.6, 24, "Все заявки в одном списке: дата, время, состав, допы и сумма"],
-      [50.3, 27.2, "Телефон и адрес клиента сразу, без переписки"],
-      [77.2, 29.2, "Статус меняется в одно нажатие"],
-      [77.2, 57.1, "Отметка, что предоплата получена"],
-      [73.6, 15.6, "Все заявки таблицей для Excel"]] },
-    { tab: "Расписание", img: "schedule", pins: [
-      [3.6, 47.7, "Загрузка по часам: сколько выездов свободно"],
-      [33.4, 24.7, "Закрыть час или весь день, если вы заняты"],
-      [66.4, 24, "Заказ по телефону: время сразу закрывается на странице"],
-      [97.2, 53, "Закрытое время возвращается одной кнопкой"]] },
-    { tab: "Цены и услуги", img: "prices", pins: [
-      [3.6, 29.3, "Свои составы с фото"],
-      [33.3, 23.7, "Названия и подписи — какие нужно"],
-      [80.2, 23.7, "Плашка «Чаще всего выбирают» на нужном составе"],
-      [3.6, 74.3, "Программы и их длительность"]] }
+    { tab: "Заявки", img: "orders", steps: [
+      "Каждая заявка — карточкой: дата, время, состав, дети, телефон и адрес",
+      "Статус и отметка о предоплате — в одно нажатие",
+      "Фильтр по датам и статусу, все заявки таблицей для Excel"] },
+    { tab: "Расписание", img: "schedule", steps: [
+      "Загрузка по часам: видно, сколько выездов свободно",
+      "Заказ по телефону: это время сразу закрывается на сайте",
+      "Закрытое время возвращается одной кнопкой"] },
+    { tab: "Цены и услуги", img: "prices", steps: [
+      "Свои составы с фото. Ненужный можно скрыть со страницы",
+      "Программы и длительность визита",
+      "Цены для каждого состава и программы"] }
   ];
   var shotCur = 0;
   function drawShot() {
@@ -82,10 +81,9 @@
     }).join("");
     $("shotImg").src = "assets/img/panel/" + s.img + ".webp";
     $("shotImg").alt = "Панель управления, раздел «" + s.tab + "»";
-    // Положение задаём через style из скрипта: атрибут style в разметке запрещён политикой безопасности страницы
-    var pins = $("shotPins"); pins.textContent = "";
-    s.pins.forEach(function (p, i) { var el = document.createElement("span"); el.className = "pin"; el.textContent = i + 1; el.style.left = p[0] + "%"; el.style.top = p[1] + "%"; pins.appendChild(el); });
-    $("shotNotes").innerHTML = s.pins.map(function (p) { return "<li>" + esc(p[2]) + "</li>"; }).join("");
+    $("shotSteps").innerHTML = s.steps.map(function (t, i) {
+      return '<li><div class="step-top"><span class="step-n">' + (i + 1) + "</span><p>" + esc(t) + '</p></div><img src="assets/img/panel/' + s.img + "-" + (i + 1) + '.webp" alt="" loading="lazy"></li>';
+    }).join("");
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest ? e.target.closest("[data-shot]") : null;

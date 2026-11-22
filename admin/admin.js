@@ -659,7 +659,7 @@
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
     ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["heroLead", "Подзаголовок", "area"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"]]],
-    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidSum", "Цена (показывается и в плашке у агентств)"], ["pricePaidText", "Платно: текст", "area"], ["seatsLeft", "Осталось мест по этой цене (пусто — не показывать)"], ["seatsTotal", "Всего мест по этой цене"], ["priceNote", "Строка под карточками", "area"]]],
+    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidSum", "Цена (показывается и в плашке у агентств)"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка покупки (ведёт в Telegram)"], ["seatsLeft", "Осталось мест по этой цене (пусто — не показывать)"], ["seatsTotal", "Всего мест по этой цене"], ["priceNote", "Строка под карточками", "area"]]],
     ["Блок возможностей", [["itemsTitle", "Заголовок"], ["itemsLead", "Текст под заголовком", "area"], ["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
     ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
@@ -676,6 +676,7 @@
         if (saved.heroBadge == null) saved = { telegram: saved.telegram, demoSlug: saved.demoSlug, items: saved.items, steps: saved.steps, faq: saved.faq };
         // сохранённые до бесплатного периода: первый экран, шаги и вопросы берём новые (как на самой главной)
         if ((+saved.v || 0) < 2) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "regButton", "ctaNote", "demoButton", "contactButton", "strip", "itemsLead", "items", "steps", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
+        if ((+saved.v || 0) < 3) { delete saved.strip; delete saved.heroLead; }
         Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
         return saved;
       });

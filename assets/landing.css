@@ -368,3 +368,55 @@ html.no-anim { scroll-behavior: auto; }
 /* Подписи полей регистрации выводятся стилем, а не текстом: по тексту «Город», «Почта», «Адрес»
    Chrome узнаёт поля и предлагает сохранённые адреса, не слушая запрет автозаполнения */
 .auth-card .lt::before { content: attr(data-t); }
+
+/* Новый логотип: календарь с билетом */
+.brand img { width: 42px; height: auto; flex: none; }
+@media (max-width: 680px) { .brand img { width: 34px; } }
+@media (max-width: 480px) { .top .brand img { width: 30px; } }
+
+/* Фото Деда Мороза в витрине */
+.dc-ava { overflow: hidden; }
+.dc-ava img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block; }
+
+/* Панель: общий вид и шаги 1 → 2 → 3 */
+.shot-frame img { display: block; width: 100%; height: auto; }
+.shot-steps { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.shot-steps li { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.shot-steps li + li::before { content: ""; position: absolute; left: -15px; top: 30px; width: 12px; height: 12px; border-top: 2px solid var(--red); border-right: 2px solid var(--red); transform: rotate(45deg); }
+.step-top { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
+.step-n { width: 34px; height: 34px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 800; font-size: 16px; display: grid; place-items: center; }
+.step-top p { font-weight: 700; font-size: 16px; line-height: 1.35; padding-top: 5px; }
+.shot-steps img { display: block; width: 100%; height: auto; margin-top: auto; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 8px 20px rgba(20, 33, 61, .08); }
+@media (max-width: 1060px) {
+  .shot-steps { grid-template-columns: 1fr; }
+  .shot-steps li + li::before { left: 34px; top: -15px; transform: rotate(135deg); }
+}
+@media (max-width: 680px) {
+  .shot-frame { display: none; }
+  .shot-steps { margin-top: 16px; gap: 22px; }
+  .shot-steps li { padding: 16px; }
+  .step-top p { font-size: 16px; }
+}
+
+/* Кнопка покупки абонемента */
+.btn-dark { background: var(--night); color: #fff; margin-top: 12px; }
+.btn-dark:hover { background: #1B2B52; }
+.p-card .p-seats { margin-top: auto; }
+.p-card .p-seats + .btn-dark { margin-top: 14px; }
+@media (max-width: 680px) { .p-card .btn-dark { width: 100%; } }
+
+/* Подвал на телефоне: логотип строкой, кнопки входа и Telegram — отдельной строкой ниже меню */
+@media (max-width: 680px) {
+  .foot-in { grid-template-columns: 1fr; }
+  .foot-in > .brand { grid-row: 1; }
+  .foot-menu { grid-row: 2; }
+  .foot-acts { grid-row: 3; flex-wrap: wrap; gap: 12px 16px; }
+}
+/* общий вид панели на компьютере — только верхняя часть экрана */
+.shot-frame { max-height: 600px; }
+.shot-frame img { object-fit: cover; object-position: top; }
+.shot-steps img { margin-top: 0; }
+@media (max-width: 680px) {
+  .shot-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; }
+  .shot-tabs button { padding: 10px 4px; font-size: 13px; }
+}

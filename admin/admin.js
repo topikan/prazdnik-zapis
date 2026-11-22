@@ -443,6 +443,10 @@
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
     ["Сезон и часы", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день", "date"], ["hours.lastDay.to", "Особый день: последний визит", "time"], ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"], ["timezone", "Часовой пояс", "tz"]]],
     ["Предоплата после заявки", [["payment.enabled", "Показывать кнопку «Внести предоплату»", "check"], ["payment.amount", "Сколько внести, например «1 000 ₽» или «30%»"], ["payment.link", "Ссылка на оплату из вашего банка или СБП (https://…)", "wide"]]],
+    ["Тексты страницы записи", [["texts.heroTitle", "Заголовок, белая часть", "ph:Дед Мороз"], ["texts.heroAccent", "Заголовок, цветная часть", "ph:к вам домой"], ["texts.heroLead", "Подпись под заголовком", "ph:Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков."],
+      ["texts.whoTitle", "Шаг 1: заголовок", "ph:Кто приедет?"], ["texts.whoSub", "Шаг 1: подпись", "ph:Выберите, кто поздравит вашего ребёнка"], ["texts.progTitle", "Программы: заголовок", "ph:Программа"], ["texts.progSub", "Программы: подпись", "ph:Выберите программу праздника"],
+      ["texts.dateTitle", "Шаг 2: заголовок", "ph:Дата и время"], ["texts.dateSub", "Шаг 2: подпись", "ph:Цвет дня показывает, сколько времени уже разобрано"], ["texts.extraTitle", "Шаг 3: заголовок", "ph:Дополнительно"], ["texts.extraSub", "Шаг 3: подпись", "ph:Сделайте праздник ещё ярче. Можно ничего не выбирать"],
+      ["texts.zoneTitle", "Выезд: заголовок", "ph:Куда ехать"], ["texts.contTitle", "Шаг 4: заголовок", "ph:Контакты"], ["texts.contSub", "Шаг 4: подпись", "ph:Агентство перезвонит, чтобы подтвердить визит"]]],
     ["Баннер внизу страницы записи", [["banner.title", "Заголовок (пусто — баннера не будет)"], ["banner.button", "Текст кнопки"], ["banner.text", "Текст", "area"], ["banner.link", "Куда ведёт кнопка: https://… или tel:+7…; пусто — к началу записи"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
@@ -476,6 +480,7 @@
         if (f[2] === "wide") return '<label class="wide">' + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" value="' + esc(v == null ? "" : v) + '"></label>';
         if (f[2] === "area") return '<label class="wide">' + esc(f[1]) + '<textarea data-path="' + f[0] + '" rows="2">' + esc(v || "") + "</textarea></label>";
         if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
+        if (/^ph:/.test(f[2] || "")) return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" placeholder="' + esc(f[2].slice(3)) + '" value="' + esc(v == null ? "" : v) + '"></label>';
         return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
       }).join("") + "</div></div>";
     }).join("") +

@@ -164,6 +164,9 @@
     $("consentLink").href = "consent" + qs; $("privacyLink").href = policy;
     document.querySelectorAll(".js-consent").forEach(function (a) { a.href = "consent" + qs; });
     document.querySelectorAll(".js-privacy").forEach(function (a) { a.href = policy; });
+    // заголовки и подписи, которые агентство поменяло в кабинете
+    var T = cfg.texts || {};
+    Object.keys(TEXT_IDS).forEach(function (k) { if (T[k] && $(TEXT_IDS[k])) $(TEXT_IDS[k]).textContent = T[k]; });
     renderBanner();
     renderPortfolio();
     renderGuide();
@@ -184,6 +187,8 @@
     else if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
     else { btn.href = "#hero"; btn.dataset.top = "1"; btn.removeAttribute("target"); }
   }
+  var TEXT_IDS = { heroTitle: "tHeroTitle", heroAccent: "tHeroAccent", heroLead: "tHeroLead", whoTitle: "tWhoTitle", whoSub: "tWhoSub", progTitle: "tProgTitle", progSub: "tProgSub",
+    dateTitle: "tDateTitle", dateSub: "tDateSub", extraTitle: "tExtraTitle", extraSub: "tExtraSub", zoneTitle: "tZoneTitle", contTitle: "tContTitle", contSub: "tContSub" };
   /* ---------- портфолио: фото и видео агентства, просмотр на весь экран ---------- */
   var PF_PHOTO = /^uploads\/portfolio\/[a-z0-9-]+\.(webp|png|jpe?g)$/, PF_VIDEO = /^uploads\/videos\/[a-z0-9-]+\.(mp4|webm)$/;
   var PF_EMBED = /^https:\/\/(rutube\.ru\/play\/embed\/[a-f0-9]{32}(\?p=[A-Za-z0-9_-]{1,64})?|vk\.com\/video_ext\.php\?oid=-?\d{1,20}&id=\d{1,20}(&hash=[a-f0-9]{1,40})?)$/;
@@ -243,17 +248,27 @@
   })();
 
   /* ---------- пояснения в демо: что агентство может настроить ---------- */
+  // [что пояснить, текст, где: "before" — над элементом, "below" — плашкой под ним (для шапки)]
   var NOTES = [
-    ["#hero h1", "Фон, логотип и название — ваши"],
-    ["#characters", "Составы, фото и подписи меняете сами"],
-    ["#programs", "Программы, длительность и цены — из вашего прайса"],
-    ["#step-2 .date-grid", "Занятое время скрывается само: учитываются заявки и заказы по телефону"],
-    ["#addons", "Допы и районы выезда с вашими ценами"],
-    ["#step-4 .contact-grid", "Заявка придёт вам в Telegram и на почту, контакты клиента — в панели"],
-    ["#summary h2", "Цена считается по вашему прайсу, с наценками на праздничные даты"],
-    ["#portfolio .pf-title", "Фото и видео ваших аниматоров. Блок можно выключить"],
-    ["#banner .banner-text h2", "Баннер: свой текст, кнопка и ссылка. Можно выключить"]
+    [".topline .logo", "Ваш логотип и название агентства", "below"],
+    [".topline .phone-pill", "Ваш телефон: клиент позвонит в одно нажатие", "below-right"],
+    ["#hero h1", "Фон, заголовок и подпись меняете в кабинете — можно поставить своё фото"],
+    ["#characters", "Составы добавляете, удаляете и настраиваете сами: фото, название, подпись и плашку «Чаще всего выбирают»"],
+    ["#programs", "Свои программы: что входит и сколько длится. Цену задаёте для каждой программы и состава, а по длительности сайт сам считает, на сколько часов занят выезд с дорогой"],
+    [".kids", "Сколько детей входит в цену и доплату за каждого следующего ребёнка настраиваете сами"],
+    ["#step-2 .cal", "Цвет дня — загрузка: клиент сразу видит, где ещё много свободного времени"],
+    ["#step-2 .times", "Часы работы и сколько выездов одновременно задаёте вы. Занятое время скрывается само — по заявкам с сайта и заказам по телефону"],
+    ["#step-2 .price-card", "Наценки на праздничные даты, вечерние часы и популярное время настраиваете сами"],
+    ["#addons", "Дополнительные услуги с вашими ценами: добавляете, убираете и меняете сами"],
+    ["#zones", "Районы выезда и доплату за дорогу настраиваете сами"],
+    ["#step-4 .contact-grid", "Заявка сразу придёт вам в Telegram и на почту. Удобно: не нужно переписываться, все контакты клиента уже в панели"],
+    ["#step-4 .consent-box", "Согласие и политика обработки данных с вашими реквизитами — готовы автоматически"],
+    ["#summary h2", "Итог считается сам по вашему прайсу, со всеми наценками и скидками — клиент видит цену до звонка"],
+    ["#portfolio .pf-title", "Ваше портфолио: фото и видео с праздников. Заголовок меняете, блок можно выключить"],
+    ["#banner .banner-text h2", "Рекламный баннер: свой заголовок, текст, кнопка и ссылка. Можно выключить"]
   ];
+  // все заголовки шагов тоже настраиваются: одна пометка над формой
+  var NOTE_TITLES = "Все заголовки и подписи на странице можно поменять в кабинете";
   function renderGuide() {
     var bar = $("guideBar"), tog = $("notesToggle");
     if (cfg.preview) { // агентство смотрит свою выключенную или закрытую страницу
@@ -265,10 +280,12 @@
     if (!cfg.demo) return;
     bar.hidden = false; tog.hidden = false; document.body.classList.add("has-guide");
     NOTES.forEach(function (n) {
-      var t = document.querySelector(n[0]); if (!t) return;
-      var tip = document.createElement("p"); tip.className = "note-tip"; tip.textContent = n[1];
-      t.parentNode.insertBefore(tip, t);
+      var t = document.querySelector(n[0]); if (!t || (t.hidden && n[2])) return;
+      var tip = document.createElement("p"); tip.textContent = n[1];
+      if (n[2]) { tip.className = "note-tip note-abs" + (n[2] === "below-right" ? " note-right" : ""); t.classList.add("has-note"); t.appendChild(tip); }
+      else { tip.className = "note-tip"; t.parentNode.insertBefore(tip, t); }
     });
+    var nav = $("stepsNav"); if (nav) { var tt = document.createElement("p"); tt.className = "note-tip note-wide"; tt.textContent = NOTE_TITLES; nav.parentNode.insertBefore(tt, nav.nextSibling); }
     var KEY = "bp-no-notes", off = false;
     try { off = localStorage.getItem(KEY) === "1"; } catch (e) {}
     function apply() {
@@ -279,6 +296,26 @@
     apply();
     tog.addEventListener("click", function () { off = !off; try { localStorage.setItem(KEY, off ? "1" : "0"); } catch (e) {} apply(); });
   }
+
+  // Демо: примерная загрузка, чтобы календарь выглядел как в разгар сезона — есть занятые дни и дни с высокой загрузкой
+  function demoOccupancy(c) {
+    var occ = {}, d = new Date(c.season.start + "T12:00"), end = new Date(c.season.end + "T12:00"), pairs = +c.pairs || 1;
+    var FULL = [20, 30], HIGH = [13, 19, 21, 24, 25, 27, 28, 29, 31], MID = [5, 6, 12, 14, 26, 2];
+    function hash(str) { var h = 7; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 1000; return h; }
+    for (; d <= end; d.setDate(d.getDate() + 1)) {
+      var key = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2), day = d.getDate(), dec = d.getMonth() === 11;
+      var share = !dec ? (day <= 3 ? 0.7 : 0.15) : FULL.indexOf(day) > -1 ? 1 : HIGH.indexOf(day) > -1 ? 0.8 : MID.indexOf(day) > -1 ? 0.5 : 0.12;
+      if (!share) continue;
+      var from = minutesOf(c.hours.from), to = minutesOf(c.hours.lastDay && c.hours.lastDay.date === key ? c.hours.lastDay.to : c.hours.to);
+      occ[key] = {};
+      for (var t = from; t <= to; t += 60) {
+        var hh = ("0" + Math.floor(t / 60)).slice(-2) + ":" + ("0" + t % 60).slice(-2);
+        if (share >= 1 || hash(key + hh) / 1000 < share) occ[key][hh] = pairs;
+      }
+    }
+    return occ;
+  }
+  function minutesOf(t) { var p = String(t).split(":"); return +p[0] * 60 + +p[1]; }
 
   // Запись закрыта до оплаты: только название, оформление и телефон
   function initClosed(data) {
@@ -380,7 +417,7 @@
       var diff = pr && base && pr.total !== base.total;
       var lab = el("label", "slot");
       lab.innerHTML = '<input type="radio" name="time" value="' + s.time + '"' + (dis ? " disabled" : "") + (state.time === s.time ? " checked" : "") + ">" +
-        "<span><b>" + s.time + '<i class="t-end"> – ' + s.end + "</i></b>" + (dis ? "<em>занято</em>" : diff ? '<em class="' + (pr.surge.plus ? "up" : "") + '">' + rub(pr.total) + "</em>" : "") + "</span>";
+        "<span><b>" + s.time + '<i class="t-end"> – ' + s.end + "</i></b>" + (dis ? "<em>занято</em>" : pr ? '<em class="' + (diff ? "up" : "") + '">' + rub(pr.total) + "</em>" : "") + "</span>";
       grid.appendChild(lab);
     });
   }
@@ -436,7 +473,7 @@
       "<span><b>" + esc(c.title) + "</b><small>" + esc(p.title) + (p.minutes ? ", " + esc(p.minutes) + " мин" : "") + "</small></span>";
     var when = state.date ? short(state.date) + (state.time ? ", " + state.time : ", время не выбрано") : "Дата не выбрана";
     $("sumFacts").innerHTML = '<li class="' + (state.date && state.time ? "" : "muted") + '"><svg aria-hidden="true"><use href="#i-cal"/></svg>' + esc(when) + "</li>" +
-      '<li><svg aria-hidden="true"><use href="#i-pin"/></svg>' + esc(z.title || "") + "</li>" +
+      ((state.seen || 1) >= 3 ? '<li><svg aria-hidden="true"><use href="#i-pin"/></svg>' + esc(z.title || "") + "</li>" : "") +
       '<li><svg aria-hidden="true"><use href="#i-kids"/></svg>' + state.kids + " " + plural(state.kids, "ребёнок", "ребёнка", "детей") + "</li>";
     renderPriceCard();
   }
@@ -458,6 +495,8 @@
   function goStep(n, push) {
     n = Math.max(1, Math.min(STEPS, n));
     state.step = n;
+    state.seen = Math.max(state.seen || 1, n);
+    renderBar();
     for (var i = 1; i <= STEPS; i++) $("step-" + i).hidden = i !== n;
     document.querySelectorAll("#stepsNav li").forEach(function (li, i) {
       li.classList.toggle("is-current", i + 1 === n); li.classList.toggle("is-done", i + 1 < n);
@@ -661,6 +700,7 @@
     cfg = data;
     // скрытые агентством составы, программы и допы на странице не показываем
     ["characters", "programs", "addons"].forEach(function (k) { if (cfg[k]) cfg[k] = cfg[k].filter(function (x) { return !x.off; }); });
+    if (cfg.demo) cfg.occupancy = demoOccupancy(cfg);
     var popular = cfg.characters.filter(function (c) { return c.badge; })[0] || cfg.characters[0];
     state.character = popular.id;
     state.program = (cfg.programs[1] || cfg.programs[0]).id;

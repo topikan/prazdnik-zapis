@@ -25,8 +25,8 @@
           <a class="phone-pill js-phone" href="#" hidden><svg aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
         </div>
       </div>
-      <h1>Дед Мороз <em>к вам домой</em></h1>
-      <p class="lead">Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков.</p>
+      <h1><span id="tHeroTitle">Дед Мороз</span> <em id="tHeroAccent">к вам домой</em></h1>
+      <p class="lead" id="tHeroLead">Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков.</p>
     </div>
   </header>
 
@@ -41,12 +41,12 @@
         </ol>
 
         <section class="step" id="step-1" data-step="1">
-          <h2 class="step-title" tabindex="-1">Кто приедет?</h2>
-          <p class="step-sub">Выберите, кто поздравит вашего ребёнка</p>
+          <h2 class="step-title" tabindex="-1" id="tWhoTitle">Кто приедет?</h2>
+          <p class="step-sub" id="tWhoSub">Выберите, кто поздравит вашего ребёнка</p>
           <div class="cards cards-who" id="characters" role="radiogroup" aria-label="Кто приедет"></div>
 
-          <h2 class="step-title sub">Программа</h2>
-          <p class="step-sub">Выберите программу праздника</p>
+          <h2 class="step-title sub" id="tProgTitle">Программа</h2>
+          <p class="step-sub" id="tProgSub">Выберите программу праздника</p>
           <div class="cards cards-program" id="programs" role="radiogroup" aria-label="Программа"></div>
 
           <div class="kids">
@@ -61,8 +61,8 @@
         </section>
 
         <section class="step" id="step-2" data-step="2" hidden>
-          <h2 class="step-title" tabindex="-1">Дата и время</h2>
-          <p class="step-sub">Цвет дня показывает, сколько времени уже разобрано</p>
+          <h2 class="step-title" tabindex="-1" id="tDateTitle">Дата и время</h2>
+          <p class="step-sub" id="tDateSub">Цвет дня показывает, сколько времени уже разобрано</p>
           <div class="date-grid">
             <div class="cal">
               <div class="cal-head">
@@ -96,16 +96,16 @@
         </section>
 
         <section class="step" id="step-3" data-step="3" hidden>
-          <h2 class="step-title" tabindex="-1">Дополнительно</h2>
-          <p class="step-sub">Сделайте праздник ещё ярче. Можно ничего не выбирать</p>
+          <h2 class="step-title" tabindex="-1" id="tExtraTitle">Дополнительно</h2>
+          <p class="step-sub" id="tExtraSub">Сделайте праздник ещё ярче. Можно ничего не выбирать</p>
           <div class="tiles" id="addons"></div>
-          <h2 class="step-title sub">Куда ехать</h2>
+          <h2 class="step-title sub" id="tZoneTitle">Куда ехать</h2>
           <div class="chips" id="zones" role="radiogroup" aria-label="Куда ехать"></div>
         </section>
 
         <section class="step" id="step-4" data-step="4" hidden>
-          <h2 class="step-title" tabindex="-1">Контакты</h2>
-          <p class="step-sub">Агентство перезвонит, чтобы подтвердить визит</p>
+          <h2 class="step-title" tabindex="-1" id="tContTitle">Контакты</h2>
+          <p class="step-sub" id="tContSub">Агентство перезвонит, чтобы подтвердить визит</p>
           <div class="contact-grid">
             <label class="field"><span class="f-label">Ваше имя</span><input name="name" maxlength="60" autocomplete="name" placeholder="Иван" required></label>
             <label class="field"><span class="f-label">Телефон</span><input name="phone" maxlength="18" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (999) 123-45-67" required></label>

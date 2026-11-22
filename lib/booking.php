@@ -225,6 +225,11 @@ function normalize_config(array $c, array &$err): array {
         $o['banner'] = ['title' => $str($bn['title'] ?? '', 120), 'text' => $str($bn['text'] ?? '', 300), 'button' => $str($bn['button'] ?? '', 40), 'link' => $str($bn['link'] ?? '', 300)];
         if ($o['banner']['link'] !== '' && !preg_match('~^(https://[^\s<>"]+|tel:\+?[0-9()\s-]{5,20})$~', $o['banner']['link'])) $err[] = 'Ссылка кнопки баннера: адрес с https:// или телефон вида tel:+79991234567';
     }
+    // Свои заголовки и подписи страницы записи; пусто — стандартный текст
+    $tx = is_array($c['texts'] ?? null) ? $c['texts'] : [];
+    $o['texts'] = [];
+    foreach (['heroTitle' => 60, 'heroAccent' => 60, 'heroLead' => 200, 'whoTitle' => 60, 'whoSub' => 120, 'progTitle' => 60, 'progSub' => 120, 'dateTitle' => 60, 'dateSub' => 120,
+        'extraTitle' => 60, 'extraSub' => 120, 'zoneTitle' => 60, 'contTitle' => 60, 'contSub' => 120] as $k => $max) { $v = $str($tx[$k] ?? '', $max); if ($v !== '') $o['texts'][$k] = $v; }
     // Портфолио: фото и видео агентства на странице записи. Файлы добавляются и убираются отдельными действиями.
     $pf = is_array($c['portfolio'] ?? null) ? $c['portfolio'] : [];
     $o['portfolio'] = ['enabled' => !empty($pf['enabled']), 'title' => $str($pf['title'] ?? '', 80), 'items' => []];

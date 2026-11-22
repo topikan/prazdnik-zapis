@@ -411,7 +411,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .note-tip, .banner p.note-tip, .hero p.note-tip { position: relative; display: table; margin: 0 0 14px; padding: 7px 12px; background: #E4FF1A; color: #101010; border: 2px solid #101010; border-radius: 8px; font: 800 13px/1.35 var(--font); letter-spacing: 0; transform: rotate(-1deg); box-shadow: 3px 3px 0 #101010; max-width: 100%; }
 .note-tip::after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 12px; height: 12px; background: #E4FF1A; border-right: 2px solid #101010; border-bottom: 2px solid #101010; transform: rotate(45deg); }
 #hero .note-tip { margin-top: 18px; }
-.no-notes .note-tip { display: none; }
+.no-notes .note-tip, .no-notes .banner p.note-tip, .no-notes .hero p.note-tip { display: none !important; }
 .has-guide .summary { top: 64px; }
 .notes-toggle { margin-left: 10px; border: 2px solid #101010; background: #fff; color: #101010; border-radius: 999px; padding: 8px 14px; font: 800 13px/1 var(--font); cursor: pointer; white-space: nowrap; }
 .no-notes .notes-toggle { background: #101010; color: #E4FF1A; }
@@ -443,7 +443,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .lb { position: fixed; inset: 0; z-index: 100; background: rgba(6, 11, 24, .94); display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; align-items: center; padding: 56px 0 44px; }
 .lb-open { overflow: hidden; }
 .lb-stage { grid-column: 2; display: grid; place-items: center; height: 100%; min-height: 0; }
-.lb-stage img, .lb-stage video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.lb-stage img, .lb-stage video { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; border-radius: 10px; } /* без растягивания: маленькое фото не мылится */
 .lb-stage iframe { width: min(100%, 1100px); aspect-ratio: 16 / 9; max-height: 100%; border: 0; border-radius: 10px; background: #000; }
 .lb-nav, .lb-close { border: 0; background: rgba(255, 255, 255, .12); color: #fff; width: 48px; height: 48px; border-radius: 50%; font-size: 30px; line-height: 1; cursor: pointer; display: grid; place-items: center; justify-self: center; }
 .lb-nav:hover, .lb-close:hover { background: rgba(255, 255, 255, .24); }
@@ -465,4 +465,18 @@ h1, h2, h3 { letter-spacing: -0.02em; }
   .guide-bar small { display: none; }
   .notes-toggle { padding: 6px 10px; font-size: 12px; margin-left: 6px; }
   .guide-bar { padding: 8px 12px; gap: 6px; }
+}
+
+/* Пояснения под логотипом и телефоном в шапке */
+.has-note { position: relative; }
+.hero p.note-abs, p.note-abs { position: absolute; top: calc(100% + 14px); left: 0; z-index: 6; display: block; width: max-content; max-width: 230px; margin: 0; text-align: left; white-space: normal; transform: rotate(-1.5deg); }
+p.note-abs::after { top: -9px; bottom: auto; left: 18px; transform: rotate(225deg); }
+p.note-abs.note-right { left: auto; right: 0; transform: rotate(1.5deg); }
+p.note-abs.note-right::after { left: auto; right: 18px; }
+.has-guide #hero .wrap > .note-tip { margin-top: 74px; }
+.no-notes #hero .wrap > .note-tip { margin-top: 0; }
+p.note-wide { margin: 16px 0 26px; }
+@media (max-width: 640px) {
+  .hero p.note-abs, p.note-abs { max-width: 150px; font-size: 12px; }
+  .has-guide #hero .wrap > .note-tip { margin-top: 84px; }
 }

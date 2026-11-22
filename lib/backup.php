@@ -88,5 +88,23 @@ function backup_owner(): array {
     return $res;
 }
 
+// Итог ночного запуска понятными словами — показываем владельцу рядом с «Последний запуск»
+function cron_result(?array $r): string {
+    if (!$r) return '';
+    $o = $r['owner'] ?? [];
+    $why = ['off' => 'ваша копия выключена — поставьте галочку «В Telegram» или «На почту» в разделе «Копия всех заявок» и сохраните',
+        'empty' => 'заявок с сайта пока нет, отправлять нечего (демо-агентство не считается)', 'zip' => 'сервер не смог собрать архив с паролем'];
+    if (!empty($o['error'])) $t = 'ваша копия: ошибка при отправке';
+    elseif (!empty($o['skipped'])) $t = 'ваша копия не отправлена: ' . ($why[$o['skipped']] ?? $o['skipped']);
+    else {
+        $parts = [];
+        if (!empty($o['tg'])) $parts[] = 'в Telegram';
+        if (!empty($o['email'])) $parts[] = 'на почту';
+        $t = $parts ? 'ваша копия отправлена ' . implode(' и ', $parts) : 'ваша копия не дошла — проверьте, что Telegram подключён';
+    }
+    $sent = 0; foreach (($r['agencies'] ?? []) as $a) if (!empty($a['tg']) || !empty($a['email'])) $sent++;
+    return '. Итог: ' . $t . '. Агентствам отправлено копий: ' . $sent;
+}
+
 // Ключ для ссылки ночного запуска: без него никто посторонний не запустит рассылку копий
 function cron_key(): string { global $APP; return substr(hash_hmac('sha256', 'cron-backup', (string)$APP['secret']), 0, 32); }

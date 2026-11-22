@@ -464,7 +464,7 @@ switch ($action) {
         $last = setting_get('cronlast') ?: [];
         json_out(['reg' => (setting_get('reg') ?: ['open' => true, 'manual' => false]), 'backup' => (setting_get('ownerbackup') ?: ['tg' => false, 'email' => false, 'password' => '']),
             'email' => owner_email(), 'tgReady' => tg_ready(), 'tgChats' => count(tg_chats(0)), 'zip' => zip_password_ok(), 'billing' => billing_settings(),
-            'cronUrl' => site_url() . '/api/cron.php?key=' . cron_key(), 'cronLast' => ($last['day'] ?? '') ? ru_date($last['day']) . ' в ' . ($last['at'] ?? '') : '',
+            'cronUrl' => site_url() . '/api/cron.php?key=' . cron_key(), 'cronLast' => ($last['day'] ?? '') ? ru_date($last['day']) . ' в ' . ($last['at'] ?? '') . cron_result($last['report'] ?? null) : '',
             'uploadMax' => ini_get('upload_max_filesize'), 'postMax' => ini_get('post_max_size'),
             'mailMethod' => empty($APP['smtp_host']) ? 'mail' : 'smtp', 'mailFrom' => mail_from()]);
 

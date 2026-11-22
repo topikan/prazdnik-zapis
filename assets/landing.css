@@ -364,3 +364,7 @@ html.no-anim { scroll-behavior: auto; }
   .auth-points li + li { display: none; }
   .auth-text h1 { font-size: 28px; }
 }
+
+/* Подписи полей регистрации выводятся стилем, а не текстом: по тексту «Город», «Почта», «Адрес»
+   Chrome узнаёт поля и предлагает сохранённые адреса, не слушая запрет автозаполнения */
+.auth-card .lt::before { content: attr(data-t); }

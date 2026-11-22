@@ -30,7 +30,7 @@
   Object.keys(F).forEach(function (k) {
     var el = F[k]; if (el.type === "checkbox") return;
     el.name = "f" + Math.random().toString(36).slice(2, 10);
-    if (el.type !== "password") el.setAttribute("autocomplete", "off");
+    if (el.type !== "password") el.setAttribute("autocomplete", "x-" + Math.random().toString(36).slice(2, 8)); // незнакомое значение: подсказок нет
     if (el.type === "email") { el.type = "text"; el.inputMode = "email"; el.spellcheck = false; el.autocapitalize = "off"; }
   });
   F.name.addEventListener("input", function () { if (!slugTouched) { F.slug.value = slugify(F.name.value); checkSlug(); } });

@@ -247,11 +247,48 @@ function smtp_send(string $to, string $subj, string $fromHdr, string $from, stri
     mail_error($ok ? '' : 'Почтовый сервер ответил: ' . $err);
     return $ok;
 }
-// Письмо с текстом (коды подтверждения и т. п.)
-function mail_text(string $to, string $subject, string $text): bool {
+// Оформленное письмо: тёмная шапка с логотипом, белая карточка, подпись. Вёрстка таблицами и встроенными стилями —
+// так письмо одинаково выглядит в Gmail, Яндексе, Mail.ru и Outlook.
+function mail_html(string $innerHtml, string $preheader = ''): string {
+    global $APP;
+    $site = rtrim((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), '/');
+    $host = parse_url($site, PHP_URL_HOST) ?: 'bronprazdnik.ru';
+    $f = "font-family:Arial,Helvetica,sans-serif;";
+    return '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бронь Праздник</title></head>'
+        . '<body style="margin:0;padding:0;background:#F4EFE7;">'
+        . '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#F4EFE7;">' . htmlspecialchars($preheader) . '</div>'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE7;"><tr><td align="center" style="padding:28px 12px;">'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">'
+        . '<tr><td style="background:#0E1A33;padding:20px 28px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+        . '<td style="padding-right:12px;"><img src="' . $site . '/assets/img/mail-logo.png" width="40" height="40" alt="" style="display:block;border-radius:10px;"></td>'
+        . '<td style="' . $f . 'font-size:19px;font-weight:bold;color:#FFFFFF;">Бронь Праздник</td></tr></table></td></tr>'
+        . '<tr><td style="' . $f . 'padding:30px 28px 26px;font-size:16px;line-height:1.55;color:#14213D;">' . $innerHtml . '</td></tr>'
+        . '<tr><td style="' . $f . 'padding:18px 28px;border-top:1px solid #EFE8DD;font-size:12px;line-height:1.5;color:#7A8293;">Письмо отправлено автоматически, отвечать на него не нужно.<br>'
+        . '<a href="' . $site . '" style="color:#7A8293;">' . htmlspecialchars($host) . '</a></td></tr>'
+        . '</table></td></tr></table></body></html>';
+}
+// Простой текст → оформленное письмо: абзацы, переносы и ссылки сохраняются
+function mail_html_from_text(string $text): string {
+    $parts = preg_split("/\n{2,}/", trim($text));
+    $html = '';
+    foreach ($parts as $n => $p) {
+        $e = nl2br(htmlspecialchars($p), false);
+        $e = preg_replace('~(https?://[^\s<]+)~', '<a href="$1" style="color:#B3203A;">$1</a>', $e);
+        // первый абзац — заголовок письма
+        $html .= $n === 0 && !str_contains($p, "\n") ? '<p style="margin:0 0 16px;font-size:20px;font-weight:bold;line-height:1.3;">' . $e . '</p>' : '<p style="margin:0 0 14px;">' . $e . '</p>';
+    }
+    return mail_html($html, mb_substr(strtok(trim($text), "\n"), 0, 90));
+}
+// Письмо: текстовая версия + оформленная (почтовая программа показывает оформленную, если умеет)
+function mail_text(string $to, string $subject, string $text, ?string $html = null): bool {
     global $APP;
     if (!empty($APP['mail_log'])) { @file_put_contents((string)$APP['mail_log'], date('c') . " $to | $subject\n$text\n\n", FILE_APPEND); return true; } // для проверки на своём компьютере
-    $ok = mail_send($to, $subject, "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64", chunk_split(base64_encode($text)));
+    $html = $html ?? mail_html_from_text($text);
+    $b = 'a' . bin2hex(random_bytes(12));
+    $body = "--$b\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($text))
+        . "--$b\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($html))
+        . "--$b--\r\n";
+    $ok = mail_send($to, $subject, "Content-Type: multipart/alternative; boundary=\"$b\"", $body);
     if (!$ok) error_log('mail to ' . $to . ': ' . mail_error());
     return $ok;
 }

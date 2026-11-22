@@ -41,7 +41,13 @@ function user_by_email(string $email): ?array {
 }
 function send_code(string $email, string $code, string $why): bool {
     $text = "Ваш код: $code\n\n$why Код действует 30 минут.\n\nЕсли вы ничего не запрашивали, просто удалите это письмо.\n\n— Бронь Праздник, " . site_url();
-    return mail_text($email, "Код $code — Бронь Праздник", $text);
+    $f = 'font-family:Arial,Helvetica,sans-serif;';
+    $html = mail_html('<p style="margin:0 0 6px;font-size:22px;font-weight:bold;">Ваш код</p>'
+        . '<p style="margin:0 0 18px;color:#5D6679;">' . htmlspecialchars($why) . '</p>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="' . $f . 'background:#F4E7D0;border-radius:12px;padding:16px 26px;font-size:34px;font-weight:bold;letter-spacing:8px;color:#14213D;">' . $code . '</td></tr></table>'
+        . '<p style="margin:0 0 8px;color:#5D6679;">Код действует 30 минут.</p>'
+        . '<p style="margin:0;color:#5D6679;font-size:14px;">Если вы ничего не запрашивали, просто удалите это письмо.</p>', "Ваш код: $code");
+    return mail_text($email, "Код $code — Бронь Праздник", $text, $html);
 }
 pending_cleanup();
 

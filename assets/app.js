@@ -693,16 +693,69 @@
     var rows = [["Когда", human(state.date) + ", " + state.time]];
     if (kids) rows.push(["Дети", kids]);
     rows = rows.concat(pr.lines).concat([["Итого", pr.total]]);
+    $("doneSum").hidden = false;
     $("doneSum").innerHTML = rows.map(function (r) { return '<div class="row"><span>' + esc(r[0]) + "</span><span>" + (typeof r[1] === "number" ? (r[1] < 0 ? "−" + rub(-r[1]) : rub(r[1])) : esc(r[1])) + "</span></div>"; }).join("");
     // кнопка предоплаты — только если агентство включило её в настройках
-    var pay = cfg.payment || {}, payOn = !cfg.demo && pay.enabled && /^https:\/\//.test(pay.link || "");
+    var pay = cfg.payment || {};
+    var online = !cfg.demo && pay.enabled && pay.mode === "yookassa" && server && server.payToken && server.prepay > 0;
+    var payOn = online || (!cfg.demo && pay.enabled && pay.mode !== "yookassa" && /^https:\/\//.test(pay.link || ""));
     $("donePay").hidden = !payOn;
-    if (payOn) {
-      $("payBtn").href = pay.link;
+    if (online) {
+      payToken = server.payToken;
+      $("payBtn").removeAttribute("target"); $("payBtn").href = "#";
+      $("payBtn").firstChild.nodeValue = "Внести предоплату " + rub(server.prepay);
+      $("payNote").textContent = "Картой или по СБП. Деньги поступают сразу агентству, заявка отметится как оплаченная.";
+    } else if (payOn) {
+      payToken = "";
+      $("payBtn").setAttribute("target", "_blank"); $("payBtn").href = pay.link;
       $("payNote").textContent = (pay.amount ? "Предоплата: " + pay.amount + ". " : "") + "Оплата идёт напрямую агентству. Укажите в комментарии к платежу номер заявки № " + (server ? server.id : "") + ".";
     }
     $("doneClose").textContent = payOn ? "Закрыть" : "Хорошо";
     $("done").hidden = false; (payOn ? $("payBtn") : $("doneClose")).focus();
+  }
+
+  /* ---------- онлайн-предоплата ---------- */
+  var payToken = "";
+  $("payBtn").addEventListener("click", function (e) {
+    if (!payToken) return;          // обычная ссылка агентства открывается сама
+    e.preventDefault();
+    var b = $("payBtn"); if (b.getAttribute("aria-busy") === "true") return;
+    b.setAttribute("aria-busy", "true");
+    fetch("api/pay.php?action=start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: payToken }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.url && /^https:\/\//.test(d.url)) { location.href = d.url; return; }
+        b.removeAttribute("aria-busy");
+        $("payNote").textContent = d.paid ? "Предоплата уже получена, спасибо!" : (d.error || "Не удалось перейти к оплате. Попробуйте ещё раз.");
+      })
+      .catch(function () { b.removeAttribute("aria-busy"); $("payNote").textContent = "Нет связи с сервером. Попробуйте ещё раз."; });
+  });
+  // Клиент вернулся со страницы оплаты: спрашиваем сервер, прошла ли оплата (сервер сам сверяется с ЮKassa)
+  function payReturn(tok) {
+    history.replaceState(null, "", location.pathname);
+    var tries = 0;
+    function ask() {
+      fetch("api/pay.php?action=check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: tok }) })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.error) { showPayResult(false, d.error); return; }
+          if (d.paid) { showPayResult(true, "Предоплата " + rub(d.prepaid) + " по заявке № " + d.order + " получена. Агентство уже видит оплату и свяжется с вами."); return; }
+          if (d.status === "pending" && ++tries < 6) { showPayResult(null, "Проверяем оплату…"); setTimeout(ask, 3000); return; }
+          payToken = tok;
+          showPayResult(false, d.status === "canceled" ? "Оплата не прошла или была отменена. Можно попробовать ещё раз." : "Оплата пока не подтвердилась. Если деньги списались, агентство увидит платёж в течение нескольких минут.");
+        })
+        .catch(function () { showPayResult(false, "Нет связи с сервером. Обновите страницу через минуту."); });
+    }
+    ask();
+  }
+  function showPayResult(ok, text) {
+    $("doneTitle").textContent = ok ? "Оплата получена" : ok === null ? "Проверяем оплату" : "Оплата не подтверждена";
+    $("doneText").textContent = text;
+    $("doneSum").innerHTML = ""; $("doneSum").hidden = true;
+    $("donePay").hidden = !(ok === false && payToken);
+    if (!$("donePay").hidden) { $("payBtn").removeAttribute("target"); $("payBtn").href = "#"; $("payBtn").firstChild.nodeValue = "Оплатить ещё раз"; $("payNote").textContent = ""; }
+    $("doneClose").textContent = "Хорошо";
+    $("done").hidden = false;
   }
 
   /* ---------- запуск ---------- */
@@ -738,7 +791,7 @@
   function getJson(url) { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
   getJson("api/agency.php?a=" + encodeURIComponent(slug))
     .catch(function () { return getJson("agencies/" + slug + ".json"); })
-    .then(init)
+    .then(function (d) { init(d); var m = location.search.match(/[?&]pay=([a-f0-9]{48})(?:&|$)/); if (m && !d.closed) payReturn(m[1]); })
     .catch(function () {
       ["app", "banner", "foot", "hero"].forEach(function (id) { $(id).hidden = true; });
       $("fail").hidden = false;

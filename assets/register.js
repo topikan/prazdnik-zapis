@@ -158,6 +158,12 @@
   window.addEventListener("hashchange", mode);
   mode();
   fetch("api/service.php", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (s) {
+    if (s && s.priceEarly) {
+      var rub = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
+      document.querySelectorAll(".js-p1").forEach(function (x) { x.textContent = rub(s.priceEarly); });
+      document.querySelectorAll(".js-p2").forEach(function (x) { x.textContent = rub(s.priceFull); });
+      document.querySelectorAll(".js-ph").forEach(function (x) { x.textContent = s.earlyHours; });
+    }
     if (!s) return;
     document.querySelectorAll(".js-free").forEach(function (x) { x.textContent = s.freeEnd; });
     document.querySelectorAll(".js-tg").forEach(function (x) { if (/^https:\/\//.test(s.telegram)) x.href = s.telegram; });

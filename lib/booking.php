@@ -216,9 +216,16 @@ function normalize_config(array $c, array &$err): array {
     if (is_string($hero) && preg_match('~^uploads/heroes/[a-z0-9-]+\.(webp|png|jpe?g)$~', $hero)) $o['heroImage'] = $hero;
     // Предоплата: кнопка со ссылкой агентства после заявки; деньги идут агентству напрямую
     $pay = is_array($c['payment'] ?? null) ? $c['payment'] : [];
-    $o['payment'] = ['enabled' => !empty($pay['enabled']), 'link' => $str($pay['link'] ?? '', 500), 'amount' => $str($pay['amount'] ?? '', 40)];
+    $mode = ($pay['mode'] ?? 'link') === 'yookassa' ? 'yookassa' : 'link';
+    $ykType = ($pay['ykType'] ?? 'fixed') === 'percent' ? 'percent' : 'fixed';
+    $ykValue = (int)($pay['ykValue'] ?? 0);
+    $o['payment'] = ['enabled' => !empty($pay['enabled']), 'mode' => $mode, 'link' => $str($pay['link'] ?? '', 500), 'amount' => $str($pay['amount'] ?? '', 40), 'ykType' => $ykType, 'ykValue' => $ykValue];
     if ($o['payment']['link'] !== '' && !preg_match('~^https://[^\s<>"]+$~', $o['payment']['link'])) $err[] = 'Ссылка на оплату должна начинаться с https://';
-    if ($o['payment']['enabled'] && $o['payment']['link'] === '') $err[] = 'Чтобы показывать кнопку предоплаты, вставьте ссылку на оплату';
+    if ($o['payment']['enabled'] && $mode === 'link' && $o['payment']['link'] === '') $err[] = 'Чтобы показывать кнопку предоплаты, вставьте ссылку на оплату';
+    if ($o['payment']['enabled'] && $mode === 'yookassa') {
+        if ($ykType === 'percent' && ($ykValue < 1 || $ykValue > 100)) $err[] = 'Предоплата в процентах — от 1 до 100';
+        if ($ykType === 'fixed' && ($ykValue < 1 || $ykValue > 500000)) $err[] = 'Укажите сумму предоплаты в рублях';
+    }
     // Баннер внизу страницы записи: пустой заголовок — баннера нет
     if (is_array($c['banner'] ?? null)) {
         $bn = $c['banner'];

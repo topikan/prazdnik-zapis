@@ -12,6 +12,7 @@ json_out([
     'email' => (string)((setting_get('owner') ?: [])['email'] ?? ''),
     'freeEnd' => ru_date($b['freeEnd']), 'seasonEnd' => ru_date($b['seasonEnd']),
     'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽'),
+    'priceEarly' => $b['priceEarly'], 'priceFull' => $b['priceFull'], 'earlyHours' => $b['earlyHours'],
     'regOpen' => ($reg['open'] ?? true) !== false,
     'site' => (string)($APP['site_url'] ?? 'https://bronprazdnik.ru'),
 ]);

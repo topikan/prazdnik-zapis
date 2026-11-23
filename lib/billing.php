@@ -3,7 +3,7 @@
 // Даты храним строками ГГГГ-ММ-ДД: одинаково в MySQL и SQLite.
 declare(strict_types=1);
 
-const BILLING_DEFAULTS = ['freeEnd' => '2026-12-15', 'seasonEnd' => '2027-01-10', 'graceDays' => 3, 'trialDays' => 3];
+const BILLING_DEFAULTS = ['freeEnd' => '2026-12-15', 'seasonEnd' => '2027-01-10', 'graceDays' => 3, 'trialDays' => 3, 'priceEarly' => 3000, 'priceFull' => 5000, 'earlyHours' => 24];
 
 // Колонки оплаты и регистрации у агентств; в старых базах добавляются при первом обращении
 function ensure_billing_cols(): void {
@@ -22,7 +22,20 @@ function billing_settings(): array {
     $s = setting_get('billing') ?: [];
     $o = BILLING_DEFAULTS;
     foreach (['freeEnd', 'seasonEnd'] as $k) if (!empty($s[$k]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$s[$k])) $o[$k] = $s[$k];
+    foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720]] as $k => $r) if (isset($s[$k]) && is_numeric($s[$k]) && $s[$k] >= $r[0] && $s[$k] <= $r[1]) $o[$k] = (int)$s[$k];
     return $o;
+}
+
+// Цена сезона для агентства: в первые сутки после регистрации — со скидкой, потом полная.
+// Считается только здесь, на сервере: сумму из браузера не принимаем никогда.
+function billing_price(array $a, ?int $now = null): array {
+    $now = $now ?? time();
+    $s = billing_settings();
+    $created = strtotime((string)($a['created_at'] ?? '')) ?: $now;
+    $until = $created + $s['earlyHours'] * 3600;
+    $early = $now < $until;
+    return ['amount' => $early ? $s['priceEarly'] : $s['priceFull'], 'early' => $early, 'priceEarly' => $s['priceEarly'], 'priceFull' => $s['priceFull'],
+        'earlyUntil' => date('Y-m-d H:i', $until), 'earlyLeft' => max(0, $until - $now), 'earlyHours' => $s['earlyHours']];
 }
 // Через DateTime: строку вида «2026-12-15 -1 day» strtotime читает как часовой пояс −1 и ошибается на два дня
 function day_add(string $d, int $n): string { return (new DateTime($d))->modify(($n >= 0 ? '+' : '') . $n . ' day')->format('Y-m-d'); }

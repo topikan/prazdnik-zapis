@@ -55,30 +55,54 @@
   $("logout").addEventListener("click", function () { api("logout").finally(function () { me = null; showLogin(); }); });
 
   function start(m) {
-    me = m;
+    me = m; billLoaded = Date.now();
     $("login").hidden = true; $("app").hidden = false;
     document.querySelectorAll(".super-only").forEach(function (x) { x.hidden = me.role !== "super"; });
     if (!me.agency) { setTab(me.role === "super" ? "agencies" : "orders"); renderHeader(); return; }
-    api("config_get").then(function (r) { cfg = r.config; slug = r.slug; renderHeader(); setTab(tab === "agencies" && me.role !== "super" ? "orders" : tab); });
+    api("config_get").then(function (r) { cfg = r.config; slug = r.slug; renderHeader(); setTab(tab === "agencies" && me.role !== "super" ? "orders" : tab); subReturn(); });
   }
   function ruDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v.slice(8, 10) + "." + v.slice(5, 7) + "." + v.slice(0, 4) : ""; }
   function days(n) { return n + " " + plural(n, "день", "дня", "дней"); }
   // Плашка об оплате и проверке страницы: видна агентству над вкладками
+  function rubs(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; }
+  function leftText(sec) { var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return (h ? h + " ч " : "") + m + " мин"; }
+  var billLoaded = Date.now();
   function renderBill() {
     var bar = $("billBar"), a = me.agency;
     if (!a || !a.billing || a.billing.status === "demo") { bar.hidden = true; return; }
-    var b = a.billing, cls = "bill", html = "";
-    var pay = ' <a class="btn small" href="' + esc(me.contact) + '" target="_blank" rel="noopener noreferrer">Написать об оплате</a>';
-    var price = esc(me.price || "3 000 ₽"), season = ruDate(b.seasonEnd);
-    if (!a.active) { cls += " info"; html = "<span><b>Страница на проверке.</b> Скоро откроем её для клиентов. Пока настройте цены и оформление — по ссылке «Страница записи» видно, как она выглядит.</span>"; }
-    else if (b.status === "free") {
-      cls += b.daysLeft <= 3 ? " warn" : " info";
-      html = "<span><b>Бесплатный доступ: ещё " + days(b.daysLeft) + "</b>, по " + ruDate(b.lastDay) + " включительно. Дальше — " + price + " до конца сезона (" + season + ").</span>" + pay.replace("Написать об оплате", "Оплатить доступ");
-    }
+    var b = a.billing, pr = a.price || {}, cls = "bill", html = "", season = ruDate(b.seasonEnd);
+    var left = Math.max(0, (pr.earlyLeft || 0) - Math.floor((Date.now() - billLoaded) / 1000));
+    var early = pr.early && left > 0, amount = early ? pr.priceEarly : pr.priceFull;
+    // онлайн-оплата, если владелец подключил ЮKassa; иначе — написать владельцу
+    var pay = a.payOnline ? ' <button class="btn small" type="button" id="subPay">Оплатить ' + rubs(amount) + "</button>"
+      : ' <a class="btn small" href="' + esc(me.contact) + '" target="_blank" rel="noopener noreferrer">Написать об оплате</a>';
+    var offer = early ? " <b>Оплатите сейчас за " + rubs(pr.priceEarly) + "</b> — цена действует ещё " + leftText(left) + ", потом " + rubs(pr.priceFull) + "." : " Доступ до конца сезона (" + season + ") — " + rubs(amount) + ".";
+    if (!a.active) { cls += " info"; html = "<span><b>Страница на проверке.</b> Скоро откроем её для клиентов. Пока настройте цены и оформление — по ссылке «Страница записи» видно, как она выглядит." + (early ? offer : "") + "</span>" + (early ? pay : ""); }
+    else if (b.status === "free") { cls += early ? " warn" : b.daysLeft <= 3 ? " warn" : " info"; html = "<span><b>Бесплатно ещё " + days(b.daysLeft) + "</b>, по " + ruDate(b.lastDay) + " включительно." + offer + "</span>" + pay; }
     else if (b.status === "paid") { if (b.daysLeft > 3) { bar.hidden = true; return; } cls += " warn"; html = "<span><b>Оплачено по " + ruDate(b.paidUntil) + "</b>, осталось " + days(b.daysLeft) + ".</span>" + pay; }
-    else if (b.status === "grace") { cls += " bad"; html = "<span><b>Срок доступа закончился.</b> Страница записи закроется " + ruDate(b.closesOn) + " (через " + days(b.daysLeft) + "). Оплатите " + price + ", чтобы клиенты могли записываться до " + season + ".</span>" + pay; }
-    else if (b.status === "closed") { cls += " bad"; html = "<span><b>Страница записи закрыта.</b> Клиенты видят только ваш телефон. Заявки и настройки сохранены, после оплаты всё сразу включится.</span>" + pay; }
+    else if (b.status === "grace") { cls += " bad"; html = "<span><b>Срок доступа закончился.</b> Страница записи закроется " + ruDate(b.closesOn) + " (через " + days(b.daysLeft) + ")." + offer + "</span>" + pay; }
+    else if (b.status === "closed") { cls += " bad"; html = "<span><b>Страница записи закрыта.</b> Клиенты видят только ваш телефон. Заявки и настройки сохранены, после оплаты всё сразу включится." + offer + "</span>" + pay; }
     bar.className = cls; bar.innerHTML = html; bar.hidden = !html;
+  }
+  setInterval(function () { if (me && me.agency && me.agency.price && me.agency.price.early) renderBill(); }, 30000);
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest || !e.target.closest("#subPay")) return;
+    var btn = e.target.closest("#subPay"); btn.disabled = true;
+    api("sub_start").then(function (r) { if (/^https:\/\//.test(r.url || "")) location.href = r.url; else btn.disabled = false; })
+      .catch(function (err) { btn.disabled = false; flash(err.message, true); });
+  });
+  // вернулись из ЮKassa: сервер сам проверяет платёж
+  function subReturn() {
+    if (!/[?&]paid=1/.test(location.search) || !me.agency) return;
+    history.replaceState(null, "", location.pathname);
+    var n = 0;
+    (function ask() {
+      api("sub_check").then(function (r) {
+        if (r.status === "succeeded") { me.agency.billing = r.billing; renderBill(); flash("Оплата получена. Доступ открыт до " + ruDate(r.billing.paidUntil) + ". Спасибо!"); return; }
+        if (r.status === "pending" && ++n < 6) { flash("Проверяем оплату…"); setTimeout(ask, 3000); return; }
+        flash(r.status === "canceled" ? "Оплата не прошла или была отменена" : "Оплата пока не подтвердилась. Если деньги списались, доступ откроется в течение нескольких минут.", true);
+      }).catch(function (err) { flash(err.message, true); });
+    })();
   }
   function renderHeader() {
     renderBill();
@@ -158,6 +182,7 @@
           '<div class="o-what"><b>' + esc(ch ? ch.title : d.character) + "</b><p>" + esc(pr ? pr.title + ", " + pr.minutes + " мин" : d.program) + " · " + esc(d.kids) + " " + plural(+d.kids || 0, "ребёнок", "ребёнка", "детей") + "</p>" + (extra ? "<dl>" + extra + "</dl>" : "") + "</div>" +
           '<div class="o-who"><b>' + esc(o.name) + '</b><a href="tel:+' + esc(String(o.phone).replace(/\D/g, "")) + '">' + esc(fmtPhone(o.phone)) + "</a><p>" + esc(o.address) + "</p></div>" +
           '<div class="o-side"><div class="sum">' + rub(o.total) + "</div>" + statusSelect(o) +
+          (+o.prepaid > 0 ? '<span class="o-online">Оплачено онлайн: ' + rubs(+o.prepaid) + "</span>" : "") +
           '<label class="o-paid"><input type="checkbox" data-paid="' + o.id + '"' + (+o.paid ? " checked" : "") + "> Предоплата получена</label>" +
           '<button type="button" class="o-del" data-del-order="' + o.id + '">Удалить</button></div></article>';
       }).join("");
@@ -452,7 +477,6 @@
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
     ["Сезон", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["timezone", "Часовой пояс", "tz"]]],
-    ["Предоплата после заявки", [["payment.enabled", "Показывать кнопку «Внести предоплату»", "check"], ["payment.amount", "Сколько внести, например «1 000 ₽» или «30%»"], ["payment.link", "Ссылка на оплату из вашего банка или СБП (https://…)", "wide"]]],
     ["Тексты страницы записи", [["texts.heroTitle", "Заголовок, белая часть", "ph:Дед Мороз"], ["texts.heroAccent", "Заголовок, цветная часть", "ph:к вам домой"], ["texts.heroLead", "Подпись под заголовком", "ph:Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков."],
       ["texts.whoTitle", "Шаг 1: заголовок", "ph:Кто приедет?"], ["texts.whoSub", "Шаг 1: подпись", "ph:Выберите, кто поздравит вашего ребёнка"], ["texts.progTitle", "Программы: заголовок", "ph:Программа"], ["texts.progSub", "Программы: подпись", "ph:Выберите программу праздника"],
       ["texts.dateTitle", "Шаг 2: заголовок", "ph:Дата и время"], ["texts.dateSub", "Шаг 2: подпись", "ph:Цвет дня показывает, сколько времени уже разобрано"], ["texts.extraTitle", "Шаг 3: заголовок", "ph:Дополнительно"], ["texts.extraSub", "Шаг 3: подпись", "ph:Сделайте праздник ещё ярче. Можно ничего не выбирать"],
@@ -492,6 +516,25 @@
       '<label class="row"><input type="checkbox" data-path="backup.email"' + (getPath(cfg, "backup.email") ? " checked" : "") + "> Присылать на почту</label>" +
       '<label>Пароль от архива, от 6 символов. Запишите его<input data-path="backup.password" type="text" autocomplete="off" spellcheck="false" maxlength="100" value="' + esc(getPath(cfg, "backup.password") || "") + '"></label></div>' +
       '<p class="muted" id="bkInfo"></p><div class="acts no-dirty"><button class="btn ghost small" id="bkTest" type="button">Отправить копию сейчас</button></div></div>';
+    var P = cfg.payment || {}, mode = P.mode === "yookassa" ? "yookassa" : "link";
+    var payCard = '<div class="card" id="payCard"><h2>Предоплата после заявки</h2>' +
+      '<p class="muted">После заявки клиент увидит кнопку «Внести предоплату». Деньги идут сразу вам — сервис их не касается.</p>' +
+      '<div class="fields"><label class="row wide"><input type="checkbox" data-path="payment.enabled"' + (P.enabled ? " checked" : "") + "> Показывать кнопку «Внести предоплату»</label>" +
+      '<label class="wide">Как принимать<select data-path="payment.mode" id="payMode"><option value="yookassa"' + (mode === "yookassa" ? " selected" : "") + '>Онлайн через вашу ЮKassa — оплата отмечается в заявке сама</option><option value="link"' + (mode === "link" ? " selected" : "") + ">Своя ссылка на оплату (банк, СБП) — оплату отмечаете вручную</option></select></label></div>" +
+      '<div id="payYk"' + (mode === "yookassa" ? "" : " hidden") + '><div class="fields">' +
+      '<label>Сколько брать<select data-path="payment.ykType"><option value="fixed"' + (P.ykType !== "percent" ? " selected" : "") + '>Фиксированная сумма, ₽</option><option value="percent"' + (P.ykType === "percent" ? " selected" : "") + ">Процент от суммы заказа</option></select></label>" +
+      '<label>Сумма или процент<input type="number" min="1" max="500000" data-path="payment.ykValue" value="' + esc(P.ykValue || "") + '"></label></div>' +
+      '<div class="yk-box no-dirty"><h3>Ваш магазин ЮKassa</h3><p class="muted" id="ykStatus">Проверяю…</p>' +
+      '<div class="fields"><label>Номер магазина (shopId)<input id="ykShop" inputmode="numeric" autocomplete="off" maxlength="12"></label>' +
+      '<label>Секретный ключ<input id="ykSecret" type="password" autocomplete="new-password" spellcheck="false" maxlength="130"></label>' +
+      '<label class="row wide"><input type="checkbox" id="ykReceipt"> Передавать данные для чека (если в ЮKassa подключена онлайн-касса)</label></div>' +
+      '<div class="acts"><button class="btn small" type="button" id="ykSave">Проверить и подключить</button><button class="btn ghost small" type="button" id="ykOff" hidden>Отключить</button></div>' +
+      '<details class="cron"><summary>Где взять ключи и что указать в ЮKassa</summary><ol>' +
+      '<li>В личном кабинете ЮKassa откройте «Интеграция» → «Ключи API». Номер магазина (shopId) и секретный ключ скопируйте сюда.</li>' +
+      '<li>Там же, в «HTTP-уведомлениях», вставьте адрес <input id="ykHook" readonly class="inline-copy"> и отметьте событие payment.succeeded.</li>' +
+      '<li>Сохраните. Ключ хранится у нас зашифрованным и больше нигде не показывается.</li></ol></details></div></div>' +
+      '<div id="payLink"' + (mode === "link" ? "" : " hidden") + '><div class="fields"><label>Сколько внести, например «1 000 ₽» или «30%»<input data-path="payment.amount" value="' + esc(P.amount || "") + '"></label>' +
+      '<label class="wide">Ссылка на оплату из вашего банка или СБП (https://…)<input data-path="payment.link" type="text" value="' + esc(P.link || "") + '"></label></div></div></div>';
     root.innerHTML = logoCard + pfCard + SETTINGS.map(function (g) {
       return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(fieldHtml).join("") + "</div></div>";
     }).join("") +
@@ -500,9 +543,10 @@
       '<div class="notify-row"><b>Telegram</b><span id="tgStatus">Проверяю…</span></div><div class="notify-acts" id="tgActs"></div>' +
       '<div class="fields"><label>Почта, можно несколько через запятую<input data-path="notify.email" type="text" placeholder="zayavki@agency.ru" value="' + esc(getPath(cfg, "notify.email") || "") + '"></label></div>' +
       '<p class="muted">Новую почту сначала сохраните кнопкой внизу, потом проверьте.</p>' +
-      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' + bkCard +
+      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' + payCard + bkCard +
       (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
     loadNotify();
+    loadYk();
     renderPfList();
     autosize(root);
     api("backup_info").then(function (r) {
@@ -654,6 +698,29 @@
       flash(parts.length ? "Проверочное уведомление отправлено (" + parts.join(", ") + ")" : "Некуда отправить: подключите Telegram или сохраните почту", !parts.length);
     }).catch(function (err) { flash(err.message, true); });
   });
+  function ykShow(r) {
+    if (!$("ykStatus")) return;
+    $("ykStatus").innerHTML = r.connected ? "<b>Подключено:</b> магазин " + esc(r.shop) + ", ключ …" + esc(r.tail) + (r.test ? " (тестовый — деньги не настоящие)" : "") : "Не подключено. Пока ключей нет, кнопка онлайн-оплаты клиентам не показывается.";
+    $("ykShop").value = r.shop || ""; $("ykSecret").value = ""; $("ykSecret").placeholder = r.connected ? "Оставьте пустым, чтобы не менять" : "live_…";
+    $("ykReceipt").checked = !!r.receipt; $("ykOff").hidden = !r.connected; $("ykHook").value = r.webhook || "";
+    $("ykSave").textContent = r.connected ? "Сохранить изменения" : "Проверить и подключить";
+  }
+  function loadYk() { if ($("ykStatus")) api("pay_settings_get").then(ykShow).catch(function () { $("ykStatus").textContent = "Не удалось загрузить"; }); }
+  $("settingsForm").addEventListener("change", function (e) {
+    if (e.target.id === "payMode") { $("payYk").hidden = e.target.value !== "yookassa"; $("payLink").hidden = e.target.value === "yookassa"; }
+  });
+  $("settingsForm").addEventListener("click", function (e) {
+    if (e.target.id === "ykSave") {
+      e.target.disabled = true;
+      api("pay_settings_save", { shop: $("ykShop").value, secret: $("ykSecret").value, receipt: $("ykReceipt").checked })
+        .then(function (r) { ykShow(r); flash("ЮKassa подключена. Не забудьте включить кнопку предоплаты и сохранить настройки."); })
+        .catch(function (err) { flash(err.message, true); }).finally(function () { e.target.disabled = false; });
+    }
+    if (e.target.id === "ykOff" && confirm("Отключить онлайн-оплату? Ключи будут удалены, кнопка онлайн-оплаты пропадёт со страницы записи.")) {
+      api("pay_settings_off").then(function () { loadYk(); flash("Онлайн-оплата отключена"); }).catch(function (err) { flash(err.message, true); });
+    }
+    if (e.target.id === "ykHook") { e.target.select(); }
+  });
   $("saveSettings").addEventListener("click", function () {
     var c = clone(cfg);
     document.querySelectorAll("#settingsForm [data-path]").forEach(function (i) {
@@ -674,9 +741,9 @@
   /* ---------- главная (владелец) ---------- */
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
-    ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["heroLead", "Подзаголовок", "area"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"]]],
-    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidSum", "Цена (показывается и в плашке у агентств)"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка покупки (ведёт в Telegram)"], ["seatsLeft", "Осталось мест по этой цене (пусто — не показывать)"], ["seatsTotal", "Всего мест по этой цене"], ["priceNote", "Строка под карточками", "area"]]],
-    ["Блок возможностей", [["itemsTitle", "Заголовок"], ["itemsLead", "Текст под заголовком", "area"], ["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
+    ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"]]],
+    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidSum", "Цена (показывается и в плашке у агентств)"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка (ведёт на регистрацию)"], ["priceNote", "Строка под карточками", "area"]]],
+    ["Заголовки блоков", [["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
     ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
   ];
@@ -693,6 +760,7 @@
         // сохранённые до бесплатного периода: первый экран, шаги и вопросы берём новые (как на самой главной)
         if ((+saved.v || 0) < 2) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "regButton", "ctaNote", "demoButton", "contactButton", "strip", "itemsLead", "items", "steps", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
         if ((+saved.v || 0) < 3) { delete saved.strip; delete saved.heroLead; }
+        if ((+saved.v || 0) < 4) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
         Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
         return saved;
       });
@@ -708,11 +776,10 @@
         }).join("") + "</div></details>";
       }).join("");
       root.querySelectorAll("details.fold").forEach(function (dt) { dt.addEventListener("toggle", function () { if (dt.open) autosize(dt); dt.querySelector(".fold-btn").textContent = dt.open ? "Свернуть" : "Изменить"; }); });
-      siteEd.strip = rowsEditor("Полоса под первым экраном", "Три коротких пункта с иконками.", d.strip, [{ k: "title", label: "Текст" }], function () { return { title: "" }; }, 3);
-      siteEd.items = rowsEditor("Карточки возможностей", "", d.items, [{ k: "title", label: "Заголовок" }, { k: "text", label: "Текст", long: 1 }], function () { return { title: "", text: "" }; });
+      siteEd.points = rowsEditor("Пункты с галочками на первом экране", "До четырёх коротких пунктов.", d.points, [{ k: "title", label: "Текст" }], function () { return { title: "" }; }, 4);
       siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение", long: 1 }], function () { return { title: "", text: "" }; });
       siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ", long: 1 }], function () { return { q: "", a: "" }; });
-      [siteEd.strip, siteEd.items, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
+      [siteEd.points, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
     }).catch(function (e) {
       $("siteForm").innerHTML = '<div class="card empty"><b>Не удалось загрузить тексты</b><p class="muted">' + esc(e.message) + '</p><button class="btn ghost small" type="button" id="siteRetry">Попробовать ещё раз</button></div>';
       $("siteRetry").addEventListener("click", loadSite);
@@ -721,7 +788,7 @@
   $("saveSite").addEventListener("click", function () {
     var d = clone(siteData || {});
     document.querySelectorAll("#siteForm [data-site]").forEach(function (i) { d[i.dataset.site] = i.value.trim(); });
-    d.strip = siteEd.strip.get(); d.items = siteEd.items.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get();
+    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 4;
     api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 
@@ -736,7 +803,10 @@
         '<label class="row"><input type="checkbox" id="ownRegManual"' + (o.reg.manual ? " checked" : "") + "> Новые страницы включаю вручную</label>" +
         '<p class="muted">Если включить вторую галочку, страница нового агентства не видна клиентам, пока вы не нажмёте «Включить».</p></div>' +
         '<div><h3>Оплата</h3><label>Первый платный день<input type="date" id="ownFree" value="' + esc(o.billing.freeEnd) + '"></label><label>Конец сезона<input type="date" id="ownSeason" value="' + esc(o.billing.seasonEnd) + '"></label>' +
-        '<p class="muted">После окончания срока 3 дня отсрочки, потом страница записи закрывается.</p></div>' +
+        '<label>Цена в первые часы после регистрации, ₽<input type="number" id="ownPriceEarly" min="100" value="' + esc(o.billing.priceEarly) + '"></label>' +
+        '<label>Сколько часов действует эта цена<input type="number" id="ownEarlyHours" min="1" max="720" value="' + esc(o.billing.earlyHours) + '"></label>' +
+        '<label>Обычная цена сезона, ₽<input type="number" id="ownPriceFull" min="100" value="' + esc(o.billing.priceFull) + '"></label>' +
+        '<p class="muted">После окончания срока 3 дня отсрочки, потом страница записи закрывается. Онлайн-оплата: ' + (o.payOnline ? "подключена" : "не подключена — впишите yk_shop_id и yk_secret в config.local.php") + '.</p></div>' +
         '<div><h3>Копия всех заявок</h3><label class="row"><input type="checkbox" id="ownBkTg"' + (o.backup.tg ? " checked" : "") + "> В мой Telegram</label>" +
         '<label class="row"><input type="checkbox" id="ownBkMail"' + (o.backup.email ? " checked" : "") + '> На мою почту</label>' +
         '<label>Пароль от архива<input id="ownBkPass" autocomplete="off" spellcheck="false" value="' + esc(o.backup.password || "") + '"></label>' +
@@ -768,7 +838,7 @@
     if (id === "ownSave") api("owner_save", {
       email: $("ownEmail").value.trim(), reg: { open: $("ownRegOpen").checked, manual: $("ownRegManual").checked },
       backup: { tg: $("ownBkTg").checked, email: $("ownBkMail").checked, password: $("ownBkPass").value },
-      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value }
+      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value, priceEarly: +$("ownPriceEarly").value, priceFull: +$("ownPriceFull").value, earlyHours: +$("ownEarlyHours").value }
     }).then(function () { flash("Настройки сервиса сохранены"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
     if (id === "mailTest") {
       e.target.disabled = true; $("mailRes").textContent = "Отправляю…";

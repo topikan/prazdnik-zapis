@@ -17,7 +17,7 @@
     <div class="wrap top-in">
       <a class="brand" href="./" aria-label="Бронь Праздник, на главную"><img src="assets/img/logo-white.svg" alt="" width="40" height="33"><span>Бронь Праздник</span></a>
       <nav class="menu" aria-label="Разделы">
-        <a href="#features">Возможности</a>
+        <a href="#adapt">Возможности</a>
         <a href="#panel">Панель</a>
         <a href="#price">Цена</a>
         <a href="#faq-block">Вопросы</a>
@@ -37,105 +37,113 @@
       <div class="hero-text">
         <p class="badge"><svg aria-hidden="true"><use href="#i-tree"/></svg><span id="heroBadge"></span></p>
         <h1><span id="heroTitle"></span> <em id="heroAccent"></em></h1>
-        <p class="lead" id="heroLead"></p>
+        <ul class="points" id="points"></ul>
         <div class="cta-row">
           <a class="btn btn-red" id="regButton" href="register"><span id="regButtonText">Подключить бесплатно</span></a>
           <a class="btn btn-ghost" id="demoButton" href="demo"><svg aria-hidden="true"><use href="#i-play"/></svg><span id="demoButtonText"></span></a>
         </div>
         <p class="cta-note" id="ctaNote"></p>
+        <div class="hero-facts">
+          <span class="fact"><svg aria-hidden="true"><use href="#i-clock"/></svg><b>Заявки 24/7</b></span>
+          <span class="fact"><svg aria-hidden="true"><use href="#i-bell"/></svg><b>Уведомления в</b><i class="ch ch-tg" title="Telegram"><svg aria-hidden="true"><use href="#i-tg"/></svg></i><i class="ch ch-mail" title="Почта"><svg aria-hidden="true"><use href="#i-mail"/></svg></i></span>
+        </div>
       </div>
 
-      <!-- Живая витрина: как выглядит запись для родителей -->
-      <div class="demo-card" aria-label="Пример страницы записи">
-        <div class="dc-head"><span class="dc-brand"><svg aria-hidden="true"><use href="#i-tree"/></svg>Праздник сказки</span><span class="dc-user"><svg aria-hidden="true"><use href="#i-user"/></svg></span></div>
-        <div class="dc-body">
-          <div class="dc-cal">
-            <div class="dc-month"><svg aria-hidden="true"><use href="#i-left"/></svg><b>Декабрь 2026</b><svg aria-hidden="true"><use href="#i-right"/></svg></div>
-            <div class="dc-dow"><i>Пн</i><i>Вт</i><i>Ср</i><i>Чт</i><i>Пт</i><i>Сб</i><i>Вс</i></div>
-            <div class="dc-days" id="dcDays"></div>
-            <p class="dc-label">Свободное время</p>
-            <div class="dc-times" id="dcTimes"></div>
+      <!-- Как выглядит уведомление о заявке (те же поля, что приходят на самом деле) -->
+      <div class="hero-chat" aria-hidden="true">
+        <div class="hc-bar"><svg class="hc-back" aria-hidden="true"><use href="#i-left"/></svg><span class="hc-ava"><svg aria-hidden="true"><use href="#i-tg"/></svg></span><span class="hc-name"><b>Бронь Праздник</b><small>бот</small></span><span class="hc-dots">•••</span></div>
+        <div class="hc-area">
+          <div class="hc-msg">
+            <p class="hc-title">🔔 Новая заявка №27 — «Праздник сказки»</p>
+            <p><span>📅</span><b>Дата:</b> 24 декабря</p>
+            <p><span>🕚</span><b>Время:</b> 11:00</p>
+            <p><span>🎅</span><b>Кто:</b> Дед Мороз и Снегурочка</p>
+            <p><span>🎉</span><b>Программа:</b> Классическая, 30 мин</p>
+            <p><span>👧</span><b>Детей:</b> 3</p>
+            <p class="hc-sum"><span>💰</span><b>Сумма:</b> 7 500 ₽</p>
+            <p class="hc-link">Контакты клиента — в личном кабинете</p>
+            <time>12:34</time>
           </div>
-          <div class="dc-sum">
-            <p class="dc-title">Ваша бронь</p>
-            <div class="dc-who"><span class="dc-ava"><img src="assets/img/demo/santa.webp" alt="" width="52" height="52"></span><span><b>Дед Мороз</b><small>Новогодняя программа</small></span></div>
-            <p class="dc-line"><svg aria-hidden="true"><use href="#i-cal"/></svg><span id="dcWhen">5 декабря, 12:30</span></p>
-            <p class="dc-line"><svg aria-hidden="true"><use href="#i-pin"/></svg><span>В черте города</span></p>
-            <p class="dc-total"><span>Итого</span><b id="dcTotal">4 500 ₽</b></p>
-            <a class="btn btn-red dc-btn" id="dcButton" href="demo">Забронировать</a>
-          </div>
+          <div class="hc-msg hc-small"><p>💳 Предоплата по заявке №27: <b>1 000 ₽</b>. Деньги поступили в вашу ЮKassa.</p><time>12:41</time></div>
         </div>
       </div>
     </div>
-
-    <div class="wrap strip" id="strip"></div>
     <svg class="wave" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52C180 18 360 6 560 26s420 58 620 44 220-38 260-44V90H0z"/></svg>
   </section>
 
-  <section class="cream" id="features">
+  <section class="cream" id="adapt">
     <div class="wrap">
       <div class="sec-head">
-        <h2 class="sec-title" id="itemsTitle"></h2>
-        <p class="sec-lead" id="itemsLead"></p>
+        <h2 class="sec-title">Полная адаптация под ваши услуги</h2>
+        <p class="sec-lead">Страница записи работает по вашему прайсу. Всё меняете сами — без программиста.</p>
       </div>
-      <div class="feat-grid" id="items"></div>
+      <div class="shots">
+        <figure class="shot shot-wide">
+          <div class="shot-pic"><img src="assets/img/shots/a-easy.webp" alt="Раздел «Цены и услуги» в панели агентства" loading="lazy" width="1280" height="820"></div>
+          <figcaption><h3>Разберётся даже школьник</h3><p>Всё настраивается кнопками и простыми полями. Без инструкций и обучения.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/a-programs.webp" alt="Список программ с длительностью" loading="lazy"></div>
+          <figcaption><h3>Свои программы и составы</h3><p>Персонажи с фото, программы и их длительность.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/a-prices.webp" alt="Таблица базовых цен" loading="lazy"></div>
+          <figcaption><h3>Свои цены</h3><p>Цена для каждой программы и состава. Изменили — сразу на сайте.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/a-rules.webp" alt="Наценки по датам" loading="lazy"></div>
+          <figcaption><h3>Наценки на горячие даты</h3><p>31 декабря, вечер, пик сезона — коэффициенты задаёте сами.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/a-addons.webp" alt="Дополнительные услуги" loading="lazy"></div>
+          <figcaption><h3>Допуслуги и выезд</h3><p>Подарки, фотосессия, доплата за дорогу — со своими ценами.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/a-hours.webp" alt="Часы работы и число выездов" loading="lazy"></div>
+          <figcaption><h3>Часы работы и бригады</h3><p>Когда принимать заказы и сколько выездов одновременно.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/a-design.webp" alt="Логотип и фон страницы записи" loading="lazy"></div>
+          <figcaption><h3>Ваш логотип и оформление</h3><p>Свой логотип, фото, цвета и тексты на странице.</p></figcaption>
+        </figure>
+        <a class="shot shot-cta" href="demo">
+          <span class="sc-title">Посмотрите, как это видит клиент</span>
+          <span class="sc-text">Демо-страница записи с ценами и календарём</span>
+          <span class="btn btn-red">Открыть демо<svg aria-hidden="true"><use href="#i-arrow"/></svg></span>
+        </a>
+      </div>
     </div>
   </section>
 
   <section class="cream" id="panel">
     <div class="wrap">
       <div class="sec-head">
-        <h2 class="sec-title">Ваша панель управления</h2>
-        <p class="sec-lead">Всё, что нужно агентству в сезон, — в четырёх простых вещах.</p>
+        <h2 class="sec-title">Панель управления заявками</h2>
+        <p class="sec-lead">Все заказы сезона в одном месте — с телефона и компьютера.</p>
       </div>
-      <div class="feat4">
-        <article class="f4">
-          <div class="f4-text"><h3>Заявка сразу в Telegram</h3><p>Клиент записался сам — вам пришло сообщение с датой, временем и суммой.</p></div>
-          <div class="f4-pic" aria-hidden="true">
-            <div class="tg-chat">
-              <div class="tg-bar"><span class="tg-ava"><img src="assets/img/logo-white.svg" alt=""></span><span class="tg-name"><b>Бронь Праздник</b><small>бот</small></span></div>
-              <div class="tg-area">
-                <div class="tg-bubble"><b>Новая заявка №12</b><span>24 декабря, 11:00</span><span>Дед Мороз + Снегурочка</span><em>7 500 ₽</em><time>11:02</time></div>
-              </div>
-            </div>
-          </div>
-        </article>
-        <article class="f4">
-          <div class="f4-text"><h3>Все заявки в одном списке</h3><p>Телефон, адрес и статус каждой заявки. Ничего не теряется в переписке.</p></div>
-          <div class="f4-pic" aria-hidden="true">
-            <div class="mini-screen"><div class="ms-bar"><span class="ms-ico"><svg aria-hidden="true"><use href="#i-inbox"/></svg></span><b>Заявки</b><small>3 на этой неделе</small></div><div class="ms-area">
-<ul class="mini-list">
-              <li><span class="ml-when">24 дек<br><b>11:00</b></span><span class="ml-who">Анна П.<small>7 500 ₽</small></span><i class="pill pill-new">Новая</i></li>
-              <li><span class="ml-when">24 дек<br><b>14:00</b></span><span class="ml-who">Дмитрий С.<small>6 200 ₽</small></span><i class="pill pill-ok">Подтверждена</i></li>
-              <li><span class="ml-when">25 дек<br><b>12:00</b></span><span class="ml-who">Екатерина И.<small>9 800 ₽</small></span><i class="pill pill-new">Новая</i></li>
-            </ul>
-            </div></div>
-          </div>
-        </article>
-        <article class="f4">
-          <div class="f4-text"><h3>Занятое время закрывается</h3><p>Заказали по телефону — закройте час, и на сайте его уже не выбрать.</p></div>
-          <div class="f4-pic" aria-hidden="true">
-            <div class="mini-screen"><div class="ms-bar"><span class="ms-ico"><svg aria-hidden="true"><use href="#i-cal"/></svg></span><b>Расписание</b><small>31 декабря</small></div><div class="ms-area">
-<div class="mini-times">
-              <span>10:00</span><span>11:00</span><span class="is-busy"><s>12:00</s><small>занято</small></span><span>13:00</span><span>15:00</span><span class="is-busy"><s>16:00</s><small>занято</small></span><span>17:00</span><span>18:00</span>
-            </div>
-            </div></div>
-          </div>
-        </article>
-        <article class="f4">
-          <div class="f4-text"><h3>Цены меняете сами</h3><p>Исправили цену — она сразу появилась на странице записи.</p></div>
-          <div class="f4-pic" aria-hidden="true">
-            <div class="mini-screen"><div class="ms-bar"><span class="ms-ico"><svg aria-hidden="true"><use href="#i-calc"/></svg></span><b>Цены</b><small>Программа «Классическая»</small></div><div class="ms-area">
-<div class="mini-prices">
-              <div><span>Дед Мороз</span><b>2 000 ₽</b></div>
-              <div class="is-edit"><span>Дед Мороз + Снегурочка</span><b>3 500 ₽<i></i></b></div>
-              <div><span>Трио со Снеговиком</span><b>4 500 ₽</b></div>
-            </div>
-            </div></div>
-          </div>
-        </article>
+      <div class="shots">
+        <figure class="shot shot-wide">
+          <div class="shot-pic"><img src="assets/img/shots/p-orders.webp" alt="Список заявок с фильтрами" loading="lazy" width="1280" height="820"></div>
+          <figcaption><h3>Все заявки одним списком</h3><p>Фильтр по датам и статусам, выгрузка в Excel в один клик.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/p-order.webp" alt="Карточка заявки со статусом и оплатой" loading="lazy"></div>
+          <figcaption><h3>Статусы и оплата</h3><p>Новая, подтверждена, выполнена. Онлайн-предоплата отмечается сама.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic shot-fit"><img src="assets/img/shots/p-schedule.webp" alt="Загрузка по часам" loading="lazy"></div>
+          <figcaption><h3>Загрузка по часам</h3><p>Видно, сколько выездов свободно. Заказ по телефону — в пару кликов.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic"><img src="assets/img/shots/p-backup.webp" alt="Ночная копия заявок" loading="lazy"></div>
+          <figcaption><h3>Копия каждую ночь</h3><p>Архив с паролем в Telegram или на почту. Заявки не пропадут.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-pic shot-tg"><div class="tg-chat"><div class="tg-bar"><span class="tg-ava"><img src="assets/img/logo-white.svg" alt=""></span><span class="tg-name"><b>Бронь Праздник</b><small>бот</small></span></div><div class="tg-area"><div class="tg-bubble"><b>Новая заявка №12</b><span>24 декабря, 11:00</span><span>Дед Мороз + Снегурочка</span><em>7 500 ₽</em><time>11:02</time></div></div></div></div>
+          <figcaption><h3>Уведомление сразу</h3><p>О каждой заявке — в Telegram и на почту, даже ночью.</p></figcaption>
+        </figure>
       </div>
-      <p class="feat4-cta"><a class="btn btn-red" href="register">Попробовать бесплатно</a><a class="text-link dark" href="demo">Как это видит клиент<svg aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
+      <p class="feat4-cta"><a class="btn btn-red" href="register">Подключить бесплатно</a></p>
     </div>
   </section>
 
@@ -160,8 +168,7 @@
           <p class="p-when" id="pricePaidTitle"></p>
           <p class="p-sum" id="pricePaidSum"></p>
           <p class="p-text" id="pricePaidText"></p>
-          <p class="p-seats" id="priceSeats" hidden></p>
-          <a class="btn btn-dark" id="buyButton" href="https://t.me/rodionfrontend" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true"><use href="#i-tg"/></svg><span id="buyButtonText">Оформить абонемент</span></a>
+          <a class="btn btn-dark" id="buyButton" href="register"><span id="buyButtonText">Зарегистрироваться</span></a>
         </article>
       </div>
       <p class="p-note" id="priceNote"></p>
@@ -194,7 +201,7 @@
     <div class="wrap foot-in">
       <a class="brand" href="./"><img src="assets/img/logo-white.svg" alt="" width="40" height="33"><span>Бронь Праздник</span></a>
       <nav class="foot-menu" aria-label="Разделы">
-        <a href="#features">Возможности</a>
+        <a href="#adapt">Возможности</a>
         <a href="#panel">Панель</a>
         <a href="#price">Цена</a>
         <a href="#faq-block">Вопросы</a>
@@ -216,6 +223,8 @@
     <symbol id="i-flake" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><g id="flake-arm"><path d="M24 24V4M24 10.5l-4.6-4.6M24 10.5l4.6-4.6M24 17.5l-6.2-4.6M24 17.5l6.2-4.6"/></g><use href="#flake-arm" transform="rotate(60 24 24)"/><use href="#flake-arm" transform="rotate(120 24 24)"/><use href="#flake-arm" transform="rotate(180 24 24)"/><use href="#flake-arm" transform="rotate(240 24 24)"/><use href="#flake-arm" transform="rotate(300 24 24)"/></g></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
     <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 2l4 6h-2.5l4.5 6h-3l4 6H5l4-6H6l4.5-6H8z" fill="currentColor"/><path d="M11 20h2v2.5h-2z" fill="currentColor"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21V14a7 7 0 0114 0v7l2.5 3h-19z"/><path d="M13.5 27a2.6 2.6 0 005 0"/></g></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6.5L20.5 7"/></g></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>

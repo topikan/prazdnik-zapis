@@ -503,3 +503,9 @@ input, select, textarea { color: var(--text); border-radius: 10px; }
 
 #hoursCard .acts { margin-top: 18px; }
 @media (max-width: 600px) { #hoursCard .acts .btn { width: 100%; justify-content: center; } }
+
+.o-online { display: inline-block; padding: 3px 8px; border-radius: 8px; background: #E1EFE7; color: #1E6B43; font-size: 12px; font-weight: 700; }
+.yk-box { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+.yk-box h3 { margin: 0 0 4px; font-size: 15px; }
+.inline-copy { width: 100%; margin: 6px 0; font-size: 13px; }
+.o-online { white-space: nowrap; }

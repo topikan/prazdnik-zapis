@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/lib/bootstrap.php';
 require dirname(__DIR__) . '/lib/booking.php';
 require dirname(__DIR__) . '/lib/notify.php';
 require dirname(__DIR__) . '/lib/billing.php';
+require dirname(__DIR__) . '/lib/payments.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 $in = body_json();
@@ -18,6 +19,7 @@ rate_limit('order', 8, 600);
 $a = agency_by_slug(in_str($in, 'agency'));
 if (!$a || !$a['active']) fail('Агентство не найдено', 404);
 $cfg = $a['cfg'];
+ensure_pay_tables();
 if (!empty($cfg['demo'])) fail('Это демо-версия, заявки не принимаются', 403);
 ensure_billing_cols();
 if (billing_closed($a)) fail('Онлайн-запись временно недоступна.' . (!empty($cfg['phone']) ? ' Позвоните, пожалуйста: ' . $cfg['phone'] : ''), 403);
@@ -98,8 +100,10 @@ try {
         json_out(['error' => 'Пока вы заполняли форму, цена на это время изменилась: теперь ' . number_format((int)$price['total'], 0, '', ' ') . ' ₽. Проверьте итог внизу и нажмите «Заказать» ещё раз.', 'priceChanged' => true, 'total' => $price['total']], 409);
     }
     $data = ['character' => $o['character'], 'program' => $o['program'], 'kids' => $o['kids'], 'addons' => $o['addons'], 'zone' => $o['zone'], 'children' => $children, 'comment' => $comment];
-    $pdo->prepare('INSERT INTO orders (agency_id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-        ->execute([$a['id'], $o['date'], $o['time'], $span, json_encode($data, JSON_UNESCAPED_UNICODE), $name, $phone, $address, $price['total'], json_encode($price['lines'], JSON_UNESCAPED_UNICODE), 'new', date('Y-m-d H:i:s')]);
+    // токен для онлайн-предоплаты: знает только этот клиент, в базе хранится его хеш
+    $payToken = bin2hex(random_bytes(24));
+    $pdo->prepare('INSERT INTO orders (agency_id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at, pay_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        ->execute([$a['id'], $o['date'], $o['time'], $span, json_encode($data, JSON_UNESCAPED_UNICODE), $name, $phone, $address, $price['total'], json_encode($price['lines'], JSON_UNESCAPED_UNICODE), 'new', date('Y-m-d H:i:s'), hash('sha256', $payToken)]);
     $id = (int)$pdo->lastInsertId();
     if (is_mysql()) $pdo->commit(); else $pdo->exec('COMMIT');
 } catch (Throwable $e) {
@@ -118,7 +122,8 @@ if (random_int(1, 20) === 1) {
 // Ответ клиенту сразу, уведомления агентству — после, чтобы не задерживать страницу
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-echo json_encode(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines']], JSON_UNESCAPED_UNICODE);
+$prepay = prepay_online($a) ? prepay_amount($cfg, (int)$price['total']) : 0;
+echo json_encode(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines'], 'payToken' => $prepay > 0 ? $payToken : '', 'prepay' => $prepay], JSON_UNESCAPED_UNICODE);
 ignore_user_abort(true);
 if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
 elseif (function_exists('litespeed_finish_request')) litespeed_finish_request();

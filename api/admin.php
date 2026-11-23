@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/lib/booking.php';
 require dirname(__DIR__) . '/lib/notify.php';
 require dirname(__DIR__) . '/lib/billing.php';
 require dirname(__DIR__) . '/lib/backup.php';
+require dirname(__DIR__) . '/lib/payments.php';
 
 start_session();
 ensure_billing_cols();
@@ -58,7 +59,7 @@ $isSuper = $_SESSION['role'] === 'super';
 
 function me(): array {
     $agency = null;
-    if (!empty($_SESSION['agency'])) { $a = agency_by_id((int)$_SESSION['agency']); if ($a) $agency = ['id' => (int)$a['id'], 'slug' => $a['slug'], 'name' => $a['cfg']['name'] ?? $a['slug'], 'active' => (bool)$a['active'], 'billing' => billing_state($a)]; }
+    if (!empty($_SESSION['agency'])) { $a = agency_by_id((int)$_SESSION['agency']); if ($a) $agency = ['id' => (int)$a['id'], 'slug' => $a['slug'], 'name' => $a['cfg']['name'] ?? $a['slug'], 'active' => (bool)$a['active'], 'billing' => billing_state($a), 'price' => billing_price($a), 'payOnline' => owner_pay_ready()]; }
     $land = setting_get('landing') ?: [];
     $contact = preg_match('#^https://[^\s<>"]+$#', (string)($land['telegram'] ?? '')) ? $land['telegram'] : 'https://t.me/rodionfrontend';
     return ['role' => $_SESSION['role'], 'agency' => $agency, 'csrf' => $_SESSION['csrf'], 'contact' => $contact, 'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽')];
@@ -125,7 +126,8 @@ switch ($action) {
         $from = valid_date(in_str($in, 'from', (string)(date('Y-m-d'))));
         $to = valid_date(in_str($in, 'to', (string)($a['cfg']['season']['end'])));
         ensure_orders_paid();
-        $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, paid, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
+        ensure_pay_tables();
+        $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, paid, prepaid, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
         $st->execute([$a['id'], $from, $to]);
         $rows = [];
         foreach ($st as $r) { $r['data'] = json_decode($r['data'], true); $r['price_lines'] = json_decode($r['price_lines'], true); $rows[] = $r; }
@@ -339,6 +341,58 @@ switch ($action) {
         json_out(['portfolio' => $cfg['portfolio']]);
 
     // ----- копии заявок -----
+    // ----- оплата сезона агентством через ЮKassa владельца -----
+    case 'sub_start':
+        if ($isSuper) fail('Оплачивает само агентство из своего кабинета');
+        $a = current_agency();
+        $cred = owner_cred();
+        if (!$cred) fail('Онлайн-оплата пока не подключена. Напишите владельцу сервиса.');
+        $b = billing_state($a);
+        if (in_array($b['status'] ?? '', ['paid', 'demo'], true) || (string)$a['paid_until'] >= billing_settings()['seasonEnd']) fail('Сезон уже оплачен');
+        rate_limit('substart', 10, 3600, 'a' . (int)$a['id']);
+        $price = billing_price($a);
+        ensure_pay_tables();
+        $pp = db()->prepare("SELECT conf_url FROM payments WHERE kind = 'sub' AND agency_id = ? AND status = 'pending' AND amount = ? AND shop = ? AND created_at > ? ORDER BY created_at DESC LIMIT 1");
+        $pp->execute([(int)$a['id'], $price['amount'], $cred['shop'], date('Y-m-d H:i:s', time() - 1800)]);
+        if ($url = $pp->fetchColumn()) json_out(['url' => $url]);
+        $desc = 'Бронь Праздник: доступ на сезон до ' . ru_date(billing_settings()['seasonEnd']) . ', ' . $a['slug'];
+        $r = yk_create('sub', $cred, (int)$a['id'], 0, $price['amount'], $desc, site_url() . '/admin/?paid=1',
+            $cred['receipt'] ? receipt_for($desc, $price['amount'], '', (string)($a['email'] ?? ''), 'full_payment') : null);
+        if (isset($r['error'])) fail($r['error'], 502);
+        json_out(['url' => $r['url']]);
+    case 'sub_check':
+        $a = current_agency();
+        ensure_pay_tables();
+        $pp = db()->prepare("SELECT id FROM payments WHERE kind = 'sub' AND agency_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 3");
+        $pp->execute([(int)$a['id']]);
+        $res = 'none';
+        foreach ($pp->fetchAll(PDO::FETCH_COLUMN) as $pid) { $r = yk_apply((string)$pid); if ($r === 'succeeded') { $res = $r; break; } if ($res === 'none') $res = $r; }
+        $a = agency_by_id((int)$a['id']);
+        json_out(['status' => $res, 'billing' => billing_state($a)]);
+
+    // ----- ключи ЮKassa агентства для предоплаты клиентов -----
+    case 'pay_settings_get':
+        $a = current_agency();
+        json_out(agency_cred_public((int)$a['id']) + ['webhook' => site_url() . '/api/yookassa.php']);
+    case 'pay_settings_save':
+        $a = current_agency();
+        rate_limit('ykkeys', 10, 3600, 'a' . (int)$a['id']);
+        $shop = trim(in_str($in, 'shop'));
+        $sec = trim(in_str($in, 'secret'));
+        $old = agency_cred((int)$a['id']);
+        if (!shop_id_ok($shop)) fail('Номер магазина (shopId) — только цифры, его видно в личном кабинете ЮKassa');
+        if ($sec === '' && $old && $old['shop'] === $shop) $sec = $old['secret'];  // ключ не меняли
+        if (!secret_key_ok($sec)) fail('Секретный ключ начинается с live_ или test_. Скопируйте его из раздела «Интеграция — Ключи API» в ЮKassa');
+        $chk = yk_check_cred(['shop' => $shop, 'secret' => $sec]);
+        if (!$chk['ok']) fail($chk['error']);
+        setting_set('yk:' . (int)$a['id'], ['shop' => $shop, 'sec' => secret_encrypt($sec), 'tail' => substr($sec, -4), 'test' => !empty($chk['test']) || str_starts_with($sec, 'test_'), 'receipt' => !empty($in['receipt'])]);
+        tell_owner($a, 'подключило онлайн-предоплату через ЮKassa (магазин ' . $shop . ')');
+        json_out(agency_cred_public((int)$a['id']) + ['webhook' => site_url() . '/api/yookassa.php']);
+    case 'pay_settings_off':
+        $a = current_agency();
+        db()->prepare('DELETE FROM settings WHERE name = ?')->execute(['yk:' . (int)$a['id']]);
+        json_out(['ok' => true]);
+
     case 'orders_export':
         $a = current_agency();
         json_out(['filename' => 'zayavki-' . safe_file_part($a['slug']) . '-' . date('Y-m-d') . '.csv', 'csv' => orders_csv($a)]);
@@ -418,11 +472,11 @@ switch ($action) {
         if (!empty($d['demoSlug']) && !preg_match('/^[a-z0-9-]{2,40}$/', (string)$d['demoSlug'])) fail('Адрес демо: латиница, цифры и дефис');
         $clean = function ($v, $max) { return mb_substr(trim((string)$v), 0, $max); };
         $out = [];
-        foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'heroLead', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'itemsTitle', 'itemsLead', 'stepsTitle',
-            'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'buyButton', 'seatsLeft', 'seatsTotal', 'priceNote',
+        foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'stepsTitle',
+            'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'buyButton', 'priceNote',
             'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
-        $out['v'] = 3;
-        foreach (['strip' => ['title'], 'items' => ['title', 'text'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
+        $out['v'] = 4;
+        foreach (['points' => ['title'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }
         }
@@ -463,7 +517,7 @@ switch ($action) {
         need_super();
         $last = setting_get('cronlast') ?: [];
         json_out(['reg' => (setting_get('reg') ?: ['open' => true, 'manual' => false]), 'backup' => (setting_get('ownerbackup') ?: ['tg' => false, 'email' => false, 'password' => '']),
-            'email' => owner_email(), 'tgReady' => tg_ready(), 'tgChats' => count(tg_chats(0)), 'zip' => zip_password_ok(), 'billing' => billing_settings(),
+            'email' => owner_email(), 'tgReady' => tg_ready(), 'tgChats' => count(tg_chats(0)), 'zip' => zip_password_ok(), 'billing' => billing_settings(), 'payOnline' => owner_pay_ready(),
             'cronUrl' => site_url() . '/api/cron.php?key=' . cron_key(), 'cronLast' => ($last['day'] ?? '') ? ru_date($last['day']) . ' в ' . ($last['at'] ?? '') . cron_result($last['report'] ?? null) : '',
             'uploadMax' => ini_get('upload_max_filesize'), 'postMax' => ini_get('post_max_size'),
             'mailMethod' => empty($APP['smtp_host']) ? 'mail' : 'smtp', 'mailFrom' => mail_from()]);
@@ -480,7 +534,13 @@ switch ($action) {
         setting_set('owner', ['email' => $email]);
         setting_set('reg', ['open' => !empty($in['reg']['open']), 'manual' => !empty($in['reg']['manual'])]);
         setting_set('ownerbackup', ['tg' => !empty($bk['tg']), 'email' => !empty($bk['email']), 'password' => $pw]);
-        setting_set('billing', ['freeEnd' => $bl['freeEnd'], 'seasonEnd' => $bl['seasonEnd']]);
+        $nums = [];
+        foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720]] as $k => $r) {
+            $v = $bl[$k] ?? billing_settings()[$k];   // не прислали — оставляем как было
+            if (!is_numeric($v) || (int)$v < $r[0] || (int)$v > $r[1]) fail('Проверьте цены и срок скидки');
+            $nums[$k] = (int)$v;
+        }
+        setting_set('billing', ['freeEnd' => $bl['freeEnd'], 'seasonEnd' => $bl['seasonEnd']] + $nums);
         json_out(['ok' => true]);
 
     case 'mail_test': // проверить отправку писем: отправляет тестовое письмо и показывает точную ошибку
@@ -542,6 +602,7 @@ switch ($action) {
         foreach (['orders', 'blocks', 'users'] as $t) $pdo->prepare("DELETE FROM $t WHERE agency_id = ?")->execute([$aid]);
         $pdo->prepare('DELETE FROM agencies WHERE id = ?')->execute([$aid]);
         $pdo->prepare('DELETE FROM settings WHERE name = ?')->execute(["tgchats:$aid"]);
+        $pdo->prepare('DELETE FROM settings WHERE name = ?')->execute(["yk:$aid"]);   // ключи ЮKassa агентства
         $pdo->commit();
         foreach (['logos', 'heroes', 'chars', 'portfolio', 'videos'] as $d) foreach (glob(APP_ROOT . "/uploads/$d/a$aid-*") ?: [] as $f) @unlink($f);
         if ((int)($_SESSION['agency'] ?? 0) === $aid) unset($_SESSION['agency']);

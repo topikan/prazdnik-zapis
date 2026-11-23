@@ -52,7 +52,7 @@ if (!$user || $user['role'] !== $_SESSION['role'] || !hash_equals(pass_fp($user[
 if ($user['role'] !== 'super' && (int)$user['agency_id'] !== (int)($_SESSION['agency'] ?? 0)) kick('Сессия устарела, войдите снова');
 if (time() - (int)$_SESSION['seen'] > 300) $_SESSION['seen'] = time();
 // Сессию отпускаем сразу: иначе пока один запрос ждёт Telegram или почту, все остальные запросы админки стоят в очереди
-if (!in_array($action, ['logout', 'password', 'agency_open', 'agency_delete'], true)) session_write_close();
+if (!in_array($action, ['logout', 'password', 'agency_open', 'agency_close', 'agency_delete'], true)) session_write_close();
 // «me» только читает и отдаёт токен; остальное требует токен в заголовке
 if ($action !== 'me' && !hash_equals($_SESSION['csrf'] ?? '', (string)($_SERVER['HTTP_X_CSRF'] ?? ''))) fail('Сессия устарела, обновите страницу', 403);
 $isSuper = $_SESSION['role'] === 'super';
@@ -586,6 +586,11 @@ switch ($action) {
         $a = agency_by_id((int)($in['id'] ?? 0));
         if (!$a) fail('Агентство не найдено', 404);
         $_SESSION['agency'] = (int)$a['id'];
+        json_out(me());
+
+    case 'agency_close': // выйти из агентства обратно в кабинет владельца
+        need_super();
+        unset($_SESSION['agency']);
         json_out(me());
 
     case 'agency_toggle':

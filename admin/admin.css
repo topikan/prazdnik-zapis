@@ -512,3 +512,6 @@ input, select, textarea { color: var(--text); border-radius: 10px; }
 .img-person .img-prev, .img-bimg .img-prev { height: 120px; background: #14213D; border-style: solid; }
 .img-person .img-prev .img-tag, .img-bimg .img-prev .img-tag { background: rgba(255,255,255,.92); }
 .design-grid .row { margin-top: 10px; }
+.side-back { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; background: rgba(255,255,255,.08); color: #fff; font: 700 14px/1.2 inherit; font-family: inherit; cursor: pointer; text-align: left; }
+.side-back:hover { background: rgba(255,255,255,.16); }
+.side-back svg { width: 18px; height: 18px; flex: none; }

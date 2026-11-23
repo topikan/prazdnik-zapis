@@ -58,9 +58,16 @@
     me = m; billLoaded = Date.now();
     $("login").hidden = true; $("app").hidden = false;
     document.querySelectorAll(".super-only").forEach(function (x) { x.hidden = me.role !== "super"; });
+    $("backToOwner").hidden = !(me.role === "super" && me.agency);
     if (!me.agency) { setTab(me.role === "super" ? "agencies" : "orders"); renderHeader(); return; }
     api("config_get").then(function (r) { cfg = r.config; slug = r.slug; renderHeader(); setTab(tab === "agencies" && me.role !== "super" ? "orders" : tab); subReturn(); });
   }
+  // владелец вошёл в агентство — кнопка возвращает в общий кабинет
+  $("backToOwner").addEventListener("click", function () {
+    if (Object.keys(dirty).some(function (k) { return dirty[k]; }) && !confirm("Есть несохранённые изменения. Выйти из агентства без сохранения?")) return;
+    Object.keys(dirty).forEach(function (k) { markDirty(k, false); });
+    api("agency_close").then(function (m) { cfg = null; slug = ""; tab = "agencies"; start(m); }).catch(function (err) { flash(err.message, true); });
+  });
   function ruDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v.slice(8, 10) + "." + v.slice(5, 7) + "." + v.slice(0, 4) : ""; }
   function days(n) { return n + " " + plural(n, "день", "дня", "дней"); }
   // Плашка об оплате и проверке страницы: видна агентству над вкладками

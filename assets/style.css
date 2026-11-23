@@ -486,3 +486,4 @@ p.note-wide { margin: 16px 0 26px; }
 .slot.ghost b { font-weight: 600; }
 .time-grid.is-ghost { opacity: .75; }
 .time-grid + .note-tip { margin-top: 18px; }
+.guide-home { text-decoration: none; display: inline-flex; align-items: center; }

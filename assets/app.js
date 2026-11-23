@@ -174,7 +174,7 @@
   // Баннер внизу: текст, кнопку и ссылку агентство задаёт в кабинете; без заголовка баннера нет
   function renderBanner() {
     // в демо баннер ведёт на главную сервиса; у агентств — их текст и ссылка (или баннера нет)
-    var b = cfg.banner || (cfg.demo ? { title: "Хотите такую запись для своего агентства?", text: "Родители сами выбирают программу, дату и время, а вам приходит готовая заявка.", button: "Узнать о сервисе", link: "home" } : {});
+    var b = cfg.banner || (cfg.demo ? { title: "Посмотрите наше портфолио в Instagram", text: "Реальные праздники, наши Деды Морозы в деле и отзывы родителей.", button: "Смотреть в Instagram", link: "none" } : {});
     var title = b.title == null ? "Подарите детям настоящий Новый год!" : b.title;
     $("banner").hidden = !title;
     if (!title) return;
@@ -183,7 +183,8 @@
     $("bannerBtnText").textContent = b.button || "Забронировать праздник";
     var link = b.link || "";
     var btn = $("bannerBtn");
-    if (link === "home") { btn.href = location.hostname.endsWith("github.io") ? "index.html" : "./"; btn.dataset.top = ""; btn.removeAttribute("target"); }
+    if (link === "none") { btn.href = "#"; btn.dataset.top = ""; btn.dataset.none = "1"; btn.removeAttribute("target"); }  // в демо — кнопка-пример без ссылки
+    else if (link === "home") { btn.href = location.hostname.endsWith("github.io") ? "index.html" : "./"; btn.dataset.top = ""; btn.removeAttribute("target"); }
     else if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
     else { btn.href = "#hero"; btn.dataset.top = "1"; btn.removeAttribute("target"); }
   }
@@ -279,6 +280,8 @@
     }
     if (!cfg.demo) return;
     bar.hidden = false; tog.hidden = false; document.body.classList.add("has-guide");
+    $("guideHome").hidden = false;
+    if (location.hostname.endsWith("github.io")) $("guideHome").href = "index.html";
     NOTES.forEach(function (n) {
       var t = document.querySelector(n[0]); if (!t || (t.hidden && n[2])) return;
       var tip = document.createElement("p"); tip.textContent = n[1];
@@ -574,6 +577,7 @@
     // кнопка браузера «Назад» возвращает на предыдущий шаг
     window.addEventListener("popstate", function (e) { goStep(e.state && e.state.step ? e.state.step : 1, false); });
     $("bannerBtn").addEventListener("click", function (e) {
+      if (this.dataset.none) { e.preventDefault(); return; }
       if (!this.dataset.top) return;
       e.preventDefault(); goStep(1, state.step !== 1);
       window.scrollTo({ top: 0, behavior: "smooth" });

@@ -70,6 +70,8 @@ function current_agency(): array {
     if (!$a) fail('Агентство не найдено', 404);
     return $a;
 }
+// какие картинки страницы записи хранятся одним полем в настройках агентства
+const IMG_FIELDS = ['logo' => 'logo', 'hero' => 'heroImage', 'person' => 'heroPerson', 'bimg' => 'bannerImage'];
 function need_super(): void { global $isSuper; if (!$isSuper) fail('Нет доступа', 403); }
 // Удаляет загруженный файл агентства (только свой и только из папок загрузок)
 function remove_upload(int $aid, string $path): void {
@@ -242,8 +244,8 @@ switch ($action) {
     case 'image_upload':
         $a = current_agency(); $aid = (int)$a['id'];
         $kind = in_str($in, 'kind');
-        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'char' => 'chars', 'port' => 'portfolio'];
-        $maxSide = ['logo' => 2000, 'hero' => 4000, 'char' => 3000, 'port' => 3000];
+        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'person' => 'heroes', 'bimg' => 'heroes', 'char' => 'chars', 'port' => 'portfolio'];
+        $maxSide = ['logo' => 2000, 'hero' => 4000, 'person' => 3000, 'bimg' => 3000, 'char' => 3000, 'port' => 3000];
         if ($kind === 'port' && portfolio_counts($a['cfg'])[0] >= PORTFOLIO_MAX_PHOTOS) fail('В портфолио уже ' . PORTFOLIO_MAX_PHOTOS . ' фото. Удалите какое-нибудь, чтобы добавить новое.');
         if (!isset($dirs[$kind])) fail('Неизвестный вид картинки');
         $charId = in_str($in, 'char');
@@ -260,7 +262,7 @@ switch ($action) {
         $img = function_exists('imagecreatefromstring') ? @imagecreatefromstring($bin) : false;
         if ($img && function_exists('imagewebp')) {
             imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true);
-            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", in_array($kind, ['hero', 'port'], true) ? 82 : 88); imagedestroy($img);
+            $file = "$name.webp"; $ok = imagewebp($img, "$dir/$file", in_array($kind, ['hero', 'port', 'bimg'], true) ? 82 : 88); imagedestroy($img);
         } else {
             $file = $name . ['png' => '.png', 'jpeg' => '.jpg', 'webp' => '.webp'][$m[1]]; $ok = file_put_contents("$dir/$file", $bin) !== false;
         }
@@ -279,12 +281,12 @@ switch ($action) {
             foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); $ch['photo'] = $path; }
             unset($ch);
         } else {
-            $field = $kind === 'logo' ? 'logo' : 'heroImage';
+            $field = IMG_FIELDS[$kind];
             remove_upload($aid, (string)($cfg[$field] ?? ''));
             $cfg[$field] = $path;
         }
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $aid]);
-        tell_owner($a, $kind === 'logo' ? 'загрузило логотип' : ($kind === 'hero' ? 'загрузило фон страницы' : 'загрузило фото состава'));
+        tell_owner($a, ['logo' => 'загрузило логотип', 'hero' => 'загрузило фон страницы', 'person' => 'загрузило картинку персонажа на первый экран', 'bimg' => 'загрузило картинку баннера'][$kind] ?? 'загрузило фото состава');
         json_out(['path' => $path, 'logo' => $path]);
 
     // ----- портфолио: видео файлом, ролик с VK или Rutube, удаление -----
@@ -419,8 +421,8 @@ switch ($action) {
             $charId = in_str($in, 'char');
             foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); unset($ch['photo']); }
             unset($ch);
-        } elseif ($kind === 'logo' || $kind === 'hero') {
-            $field = $kind === 'logo' ? 'logo' : 'heroImage';
+        } elseif (isset(IMG_FIELDS[$kind])) {
+            $field = IMG_FIELDS[$kind];
             remove_upload($aid, (string)($cfg[$field] ?? ''));
             unset($cfg[$field]);
         } else fail('Неизвестный вид картинки');

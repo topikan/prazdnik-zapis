@@ -499,11 +499,18 @@
         return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
   }
   function renderSettings() {
-    var root = $("settingsForm");
+    var root = $("settingsForm"), D = cfg.design || {};
     var logoCard = '<div class="card"><h2>Оформление страницы записи</h2><div class="design-grid">' +
       '<div><h3>Логотип</h3><p class="muted">Рядом с названием на странице записи и в кабинете. PNG, JPG или WebP, лучше на прозрачном фоне.</p>' + imgBox("logo", "", cfg.logo) + "</div>" +
       '<div><h3>Фон первого экрана</h3><p class="muted">Своя фотография вместо общей зимней картинки. Лучше горизонтальная, от 1600 px в ширину.</p>' + imgBox("hero", "", cfg.heroImage) + "</div>" +
-      "</div></div>";
+      '<div><h3>Персонаж на первом экране</h3><p class="muted">Картинка справа от заголовка. Лучше PNG без фона, вертикальная.</p>' + imgBox("person", "", cfg.heroPerson) +
+      '<label class="row"><input type="checkbox" data-path="design.personOff"' + (D.personOff ? " checked" : "") + "> Не показывать персонажа</label></div>" +
+      '<div><h3>Картинка в баннере</h3><p class="muted">Справа в баннере внизу страницы. Лучше PNG без фона.</p>' + imgBox("bimg", "", cfg.bannerImage) +
+      '<label class="row"><input type="checkbox" data-path="design.bannerImgOff"' + (D.bannerImgOff ? " checked" : "") + "> Не показывать картинку в баннере</label></div>" +
+      "</div>" +
+      '<div class="fields"><label class="wide">Анимация снега<select data-path="design.snow">' +
+      [["button", "Снег падает, у клиента есть кнопка «Отключить анимацию»"], ["on", "Снег падает, кнопки нет"], ["off", "Анимация снега выключена, кнопки нет"]].map(function (o) { return '<option value="' + o[0] + '"' + ((D.snow || "button") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") +
+      "</select></label></div><p class=\"muted\">Картинки сохраняются сразу, галочки и снег — кнопкой «Сохранить настройки» внизу.</p></div>";
     var pfCard = '<div class="card" id="pfCard"><h2>Портфолио</h2><p class="muted">Фото и видео ваших праздников внизу страницы записи. До 20 фото и 5 видео. Видео — файлом MP4 до 50 МБ или ссылкой на ролик VK Видео и Rutube.</p>' +
       '<div class="fields"><label class="row wide"><input type="checkbox" data-path="portfolio.enabled"' + (getPath(cfg, "portfolio.enabled") ? " checked" : "") + "> Показывать портфолио на странице записи</label>" +
       '<label class="wide">Заголовок блока<input data-path="portfolio.title" maxlength="80" placeholder="Наши праздники" value="' + esc(getPath(cfg, "portfolio.title") || "") + '"></label></div>' +
@@ -617,6 +624,8 @@
   var IMG = {
     logo: { max: 400, empty: "Нет логотипа", def: "" },
     hero: { max: 1920, empty: "Общая зимняя картинка", def: "../assets/img/winter-m.webp" },
+    person: { max: 900, empty: "Стандартный Дед Мороз", def: "../assets/img/santa.webp" },
+    bimg: { max: 1100, empty: "Стандартная картинка", def: "../assets/img/girl.webp" },
     char: { max: 640, empty: "Иконка", def: "" }
   };
   function imgBox(kind, charId, path) {
@@ -624,7 +633,7 @@
     var prev = has ? '<img src="../' + esc(path) + '" alt="">' : (k.def ? '<img src="' + k.def + '" alt=""><span class="img-tag">' + k.empty + "</span>" : "<span>" + k.empty + "</span>");
     return '<div class="img-box img-' + kind + '" data-kind="' + kind + '" data-char="' + esc(charId) + '"><div class="img-prev">' + prev + "</div>" +
       '<div class="acts"><label class="btn ghost small file-btn">' + (has ? "Заменить" : "Загрузить") + '<input type="file" class="img-file" accept="image/png,image/jpeg,image/webp" hidden></label>' +
-      (has ? '<button class="btn danger small img-remove" type="button">' + (kind === "hero" ? "Вернуть общую" : "Убрать") + "</button>" : "") + "</div></div>";
+      (has ? '<button class="btn danger small img-remove" type="button">' + (IMG[kind].def ? "Вернуть стандартную" : "Убрать") + "</button>" : "") + "</div></div>";
   }
   // Уменьшаем картинку в браузере: файл лёгкий, страница записи грузится быстро
   function shrinkImage(file, max) {
@@ -648,6 +657,8 @@
     var kind = box.dataset.kind, ch = box.dataset.char;
     if (kind === "logo") { if (path) cfg.logo = path; else delete cfg.logo; }
     if (kind === "hero") { if (path) cfg.heroImage = path; else delete cfg.heroImage; }
+    if (kind === "person") { if (path) cfg.heroPerson = path; else delete cfg.heroPerson; }
+    if (kind === "bimg") { if (path) cfg.bannerImage = path; else delete cfg.bannerImage; }
     if (kind === "char") {
       (cfg.characters || []).forEach(function (c) { if (c.id === ch) { if (path) c.photo = path; else delete c.photo; } });
       var ed = box.closest(".ed"); if (ed) ed.dispatchEvent(new CustomEvent("photo", { detail: { id: ch, path: path } }));
@@ -665,7 +676,7 @@
   document.addEventListener("click", function (e) {
     if (!e.target.classList || !e.target.classList.contains("img-remove")) return;
     var box = e.target.closest(".img-box"), kind = box.dataset.kind;
-    if (!confirm(kind === "hero" ? "Вернуть общую зимнюю картинку?" : "Убрать картинку? Вместо неё будет иконка.")) return;
+    if (!confirm(IMG[kind].def ? "Вернуть стандартную картинку?" : "Убрать картинку? Вместо неё будет иконка.")) return;
     api("image_remove", { kind: kind, char: box.dataset.char }).then(function () { imgDone(box, ""); flash("Готово"); }).catch(function (err) { flash(err.message, true); });
   });
 

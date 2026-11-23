@@ -214,6 +214,10 @@ function normalize_config(array $c, array &$err): array {
     if (is_string($logo) && preg_match('~^uploads/logos/[a-z0-9-]+\.(webp|png|jpe?g)$~', $logo)) $o['logo'] = $logo;
     $hero = $c['heroImage'] ?? '';
     if (is_string($hero) && preg_match('~^uploads/heroes/[a-z0-9-]+\.(webp|png|jpe?g)$~', $hero)) $o['heroImage'] = $hero;
+    foreach (['heroPerson', 'bannerImage'] as $k) { $v = $c[$k] ?? ''; if (is_string($v) && preg_match('~^uploads/heroes/[a-z0-9-]+\.(webp|png|jpe?g)$~', $v)) $o[$k] = $v; }
+    // оформление: показывать ли персонажа и картинку баннера, снег и кнопку «Отключить анимацию»
+    $dz = is_array($c['design'] ?? null) ? $c['design'] : [];
+    $o['design'] = ['personOff' => !empty($dz['personOff']), 'bannerImgOff' => !empty($dz['bannerImgOff']), 'snow' => in_array($dz['snow'] ?? '', ['button', 'on', 'off'], true) ? $dz['snow'] : 'button'];
     // Предоплата: кнопка со ссылкой агентства после заявки; деньги идут агентству напрямую
     $pay = is_array($c['payment'] ?? null) ? $c['payment'] : [];
     $mode = ($pay['mode'] ?? 'link') === 'yookassa' ? 'yookassa' : 'link';

@@ -9,6 +9,11 @@
   (function () {
     var KEY = "bp-no-anim", btn = document.getElementById("animToggle"), off = false;
     try { off = localStorage.getItem(KEY) === "1"; } catch (e) {}
+    // агентство может решить само: снег всегда (кнопку убираем) или без снега
+    window.bpSnowMode = function (mode) {
+      if (mode !== "on" && mode !== "off") return;
+      off = mode === "off"; apply(); if (btn) btn.hidden = true;
+    };
     function apply() {
       document.documentElement.classList.toggle("no-anim", off);
       if (!btn) return;
@@ -155,9 +160,18 @@
       var img = document.createElement("img"); img.className = "logo-img"; img.src = cfg.logo; img.alt = ""; svg.replaceWith(img);
     });
     // своя картинка первого экрана; наш Дед Мороз тогда не нужен
-    if (/^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.heroImage || "")) {
+    var IMG_RE = /^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/, dz = cfg.design || {};
+    if (IMG_RE.test(cfg.heroImage || "")) {
       var hero = $("hero"); hero.classList.add("custom"); hero.style.backgroundImage = "url(" + cfg.heroImage + ")";
     }
+    // персонаж на первом экране: свой, стандартный или никакого
+    var person = $("heroSanta");
+    if (dz.personOff) person.hidden = true;
+    else if (IMG_RE.test(cfg.heroPerson || "")) { person.src = cfg.heroPerson; person.classList.add("own"); }
+    // картинка в баннере
+    var bimg = document.querySelector(".banner-img");
+    if (bimg) { if (dz.bannerImgOff) bimg.hidden = true; else if (IMG_RE.test(cfg.bannerImage || "")) bimg.src = cfg.bannerImage; }
+    if (window.bpSnowMode) window.bpSnowMode(dz.snow);
     $("demoNote").hidden = !cfg.demo;
     var qs = "?a=" + encodeURIComponent(slug);
     var policy = cfg.legal && /^https:\/\//.test(cfg.legal.policyUrl || "") ? cfg.legal.policyUrl : "privacy" + qs;
@@ -253,7 +267,7 @@
   var NOTES = [
     [".topline .logo", "Ваш логотип и название агентства", "below"],
     [".topline .phone-pill", "Ваш телефон: клиент позвонит в одно нажатие", "below-right"],
-    ["#hero h1", "Фон, заголовок и подпись меняете в кабинете — можно поставить своё фото"],
+    ["#hero h1", "Фон, персонажа справа, заголовок и подпись меняете в кабинете — можно поставить свои фото"],
     ["#characters", "Составы добавляете, удаляете и настраиваете сами: фото, название, подпись и плашку «Чаще всего выбирают»"],
     ["#programs", "Свои программы: что входит и сколько длится. Цену задаёте для каждой программы и состава, а по длительности сайт сам считает, на сколько часов занят выезд с дорогой"],
     [".kids", "Сколько детей входит в цену и доплату за каждого следующего ребёнка настраиваете сами"],
@@ -266,7 +280,7 @@
     ["#step-4 .consent-box", "Согласие и политика обработки данных с вашими реквизитами — готовы автоматически"],
     ["#summary h2", "Итог считается сам по вашему прайсу, со всеми наценками и скидками — клиент видит цену до звонка"],
     ["#portfolio .pf-title", "Ваше портфолио: фото и видео с праздников. Заголовок меняете, блок можно выключить"],
-    ["#banner .banner-text h2", "Рекламный баннер: свой заголовок, текст, кнопка и ссылка. Можно выключить"]
+    ["#banner .banner-text h2", "Рекламный баннер: свой заголовок, текст, кнопка, ссылка и картинка. Можно выключить"]
   ];
   // все заголовки шагов тоже настраиваются: одна пометка над формой
   var NOTE_TITLES = "Все заголовки и подписи на странице можно поменять в кабинете";

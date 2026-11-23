@@ -10,8 +10,9 @@ require dirname(__DIR__) . '/lib/payments.php';
 
 start_session();
 ensure_billing_cols();
-$in = $_SERVER['REQUEST_METHOD'] === 'POST' ? body_json() : [];
 $action = (string)($_GET['action'] ?? '');
+// картинка приходит строкой base64: до 1,5 МБ файла это около 2 МБ текста
+$in = $_SERVER['REQUEST_METHOD'] === 'POST' ? body_json($action === 'image_upload' ? 2200000 : 200000) : [];
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Нужен POST', 405);
 
 // ---------- вход ----------
@@ -243,6 +244,7 @@ switch ($action) {
     case 'logo_upload': $in['kind'] = 'logo'; // старое название действия
     case 'image_upload':
         $a = current_agency(); $aid = (int)$a['id'];
+        if (!empty($GLOBALS['BODY_TOO_BIG'])) fail('Картинка слишком большая, нужна до 1,5 МБ. Уменьшите её или сохраните в JPG.');
         $kind = in_str($in, 'kind');
         $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'person' => 'heroes', 'bimg' => 'heroes', 'char' => 'chars', 'port' => 'portfolio'];
         $maxSide = ['logo' => 2000, 'hero' => 4000, 'person' => 3000, 'bimg' => 3000, 'char' => 3000, 'port' => 3000];

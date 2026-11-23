@@ -653,8 +653,10 @@
         c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
-        var data = c.toDataURL("image/webp", 0.88);
-        ok(data.indexOf("data:image/webp") === 0 ? data : c.toDataURL("image/jpeg", 0.88));
+        // подбираем качество, чтобы файл точно прошёл (сервер принимает до 1,5 МБ)
+        var fmt = c.toDataURL("image/webp", 0.88).indexOf("data:image/webp") === 0 ? "image/webp" : "image/jpeg", data = "";
+        [0.88, 0.8, 0.7, 0.6, 0.5].some(function (q) { data = c.toDataURL(fmt, q); return data.length < 1900000; });
+        ok(data);
       };
       img.onerror = function () { URL.revokeObjectURL(url); bad(new Error("Не получилось открыть картинку")); };
       img.src = url;

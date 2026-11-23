@@ -51,9 +51,13 @@ function json_out($data, int $code = 200): void {
 }
 function fail(string $msg, int $code = 400): void { json_out(['error' => $msg], $code); }
 
-function body_json(): array {
-    $raw = file_get_contents('php://input', false, null, 0, 200000);
-    $d = json_decode($raw ?: '', true);
+// Тело запроса JSON. Обычные запросы — до 200 КБ; загрузка картинок разрешает больше.
+// Если тело длиннее лимита, оно обрезается и не читается — $GLOBALS['BODY_TOO_BIG'] это отмечает.
+function body_json(int $max = 200000): array {
+    $raw = (string)file_get_contents('php://input', false, null, 0, $max + 1);
+    $GLOBALS['BODY_TOO_BIG'] = strlen($raw) > $max;
+    if ($GLOBALS['BODY_TOO_BIG']) return [];
+    $d = json_decode($raw, true);
     return is_array($d) ? $d : [];
 }
 

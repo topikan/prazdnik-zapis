@@ -120,12 +120,7 @@ if (random_int(1, 20) === 1) {
 }
 
 // Ответ клиенту сразу, уведомления агентству — после, чтобы не задерживать страницу
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
 $prepay = prepay_online($a) ? prepay_amount($cfg, (int)$price['total']) : 0;
-echo json_encode(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines'], 'payToken' => $prepay > 0 ? $payToken : '', 'prepay' => $prepay], JSON_UNESCAPED_UNICODE);
-ignore_user_abort(true);
-if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-elseif (function_exists('litespeed_finish_request')) litespeed_finish_request();
+respond_early(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines'], 'payToken' => $prepay > 0 ? $payToken : '', 'prepay' => $prepay]);
 try { notify_order($a, $id, $o, (int)$price['total']); } catch (Throwable $e) { error_log('notify: ' . $e->getMessage()); }
 exit;

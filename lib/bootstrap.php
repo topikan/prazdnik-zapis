@@ -51,6 +51,26 @@ function json_out($data, int $code = 200): void {
 }
 function fail(string $msg, int $code = 400): void { json_out(['error' => $msg], $code); }
 
+// Отдать ответ браузеру сразу и продолжить работу (уведомления) уже без него.
+// На хостинге не всегда есть fastcgi_finish_request: тогда закрываем соединение сами — через
+// Content-Length и Connection: close, иначе клиент ждал бы, пока уйдут Telegram и почта (20–30 секунд).
+function respond_early(array $data): void {
+    $body = json_encode($data, JSON_UNESCAPED_UNICODE);
+    ignore_user_abort(true);
+    @set_time_limit(120);
+    while (ob_get_level() > 0) @ob_end_clean();
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('Content-Encoding: identity');        // иначе сжатие сервера может держать ответ до конца скрипта
+    header('Content-Length: ' . strlen($body));
+    header('Connection: close');
+    echo $body;
+    @flush();
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    elseif (function_exists('litespeed_finish_request')) litespeed_finish_request();
+}
+
 // Тело запроса JSON. Обычные запросы — до 200 КБ; загрузка картинок разрешает больше.
 // Если тело длиннее лимита, оно обрезается и не читается — $GLOBALS['BODY_TOO_BIG'] это отмечает.
 function body_json(int $max = 200000): array {

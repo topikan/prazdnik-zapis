@@ -346,6 +346,18 @@ switch ($action) {
         save_cfg($aid, $cfg);
         json_out(['portfolio' => $cfg['portfolio']]);
 
+    case 'portfolio_cat': // категория фото или видео в галерее
+        $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
+        $src = in_str($in, 'src'); $cat = mb_substr(trim(preg_replace('/\s+/u', ' ', in_str($in, 'cat'))), 0, 30);
+        $found = false;
+        foreach ($cfg['portfolio']['items'] ?? [] as $i => $it) if (($it['src'] ?? '') === $src) {
+            if ($cat === '') unset($cfg['portfolio']['items'][$i]['cat']); else $cfg['portfolio']['items'][$i]['cat'] = $cat;
+            $found = true;
+        }
+        if (!$found) fail('Не найдено');
+        save_cfg($aid, $cfg);
+        json_out(['portfolio' => $cfg['portfolio']]);
+
     // ----- копии заявок -----
     // ----- оплата сезона агентством через ЮKassa владельца -----
     case 'sub_start':

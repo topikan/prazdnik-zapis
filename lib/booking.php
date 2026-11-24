@@ -263,9 +263,12 @@ const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 function portfolio_item_clean($x): ?array {
     if (!is_array($x)) return null;
     $t = $x['t'] ?? ''; $src = is_string($x['src'] ?? null) ? $x['src'] : '';
-    if ($t === 'photo' && preg_match('~^uploads/portfolio/[a-z0-9-]+\.(webp|png|jpe?g)$~', $src)) return ['t' => 'photo', 'src' => $src];
-    if ($t === 'video' && preg_match('~^uploads/videos/[a-z0-9-]+\.(mp4|webm)$~', $src)) return ['t' => 'video', 'src' => $src];
-    if ($t === 'embed' && embed_ok($src)) return ['t' => 'embed', 'src' => $src, 'provider' => str_contains($src, 'rutube.ru') ? 'rutube' : 'vk'];
+    // категория в галерее (например «Утренники», «На дому»): короткий текст, по желанию
+    $cat = is_scalar($x['cat'] ?? null) ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string)$x['cat'])), 0, 30) : '';
+    $extra = $cat !== '' ? ['cat' => $cat] : [];
+    if ($t === 'photo' && preg_match('~^uploads/portfolio/[a-z0-9-]+\.(webp|png|jpe?g)$~', $src)) return ['t' => 'photo', 'src' => $src] + $extra;
+    if ($t === 'video' && preg_match('~^uploads/videos/[a-z0-9-]+\.(mp4|webm)$~', $src)) return ['t' => 'video', 'src' => $src] + $extra;
+    if ($t === 'embed' && embed_ok($src)) return ['t' => 'embed', 'src' => $src, 'provider' => str_contains($src, 'rutube.ru') ? 'rutube' : 'vk'] + $extra;
     return null;
 }
 // Ролик можно вставить только с VK Видео и Rutube, и только по адресу их плеера

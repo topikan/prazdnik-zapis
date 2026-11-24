@@ -154,6 +154,7 @@
   function renderStatic() {
     document.title = "Дед Мороз на дом — " + cfg.name;
     document.querySelectorAll(".js-name").forEach(function (n) { n.textContent = cfg.name; });
+    document.querySelectorAll(".logo-name").forEach(function (n) { n.classList.toggle("is-long", (cfg.name || "").length > 28); n.title = cfg.name; });
     if (cfg.phone) document.querySelectorAll(".js-phone").forEach(function (a) { a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; });
     // свой логотип агентства вместо снежинки
     if (/^uploads\/logos\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.logo || "")) document.querySelectorAll(".logo-mark").forEach(function (svg) {
@@ -219,16 +220,43 @@
     $("portfolio").hidden = !on;
     if (!on) return;
     $("pfTitle").textContent = pf.title || "Наши праздники";
-    // сетка подстраивается под количество: 1–4 в ряд; при 5 и больше первое фото крупнее
-    $("pfGrid").dataset.n = Math.min(pfItems.length, 4);
-    $("pfGrid").classList.toggle("pf-big", pfItems.length >= 5);
-    $("pfGrid").innerHTML = pfItems.map(function (it, i) {
+    // категории: кнопки над слайдером, если у фото и видео указано хотя бы две разных
+    var cats = [];
+    pfItems.forEach(function (it) { if (it.cat && cats.indexOf(it.cat) < 0) cats.push(it.cat); });
+    $("pfCats").hidden = cats.length < 2;
+    $("pfCats").innerHTML = cats.length < 2 ? "" : ['<button type="button" class="pf-cat is-on" data-cat="">Все</button>'].concat(cats.map(function (c) { return '<button type="button" class="pf-cat" data-cat="' + esc(c) + '">' + esc(c) + "</button>"; })).join("");
+    drawPf("");
+  }
+  // слайдер: фото и видео одной высоты листаются по горизонтали; ролики VK и Rutube — сразу плеером со своей обложкой
+  function drawPf(cat) {
+    var list = pfItems.map(function (it, i) { return [it, i]; }).filter(function (x) { return !cat || x[0].cat === cat; });
+    var track = $("pfGrid");
+    track.className = "pf-track" + (list.length === 1 ? " pf-one" : list.length === 2 ? " pf-two" : "");
+    track.innerHTML = list.map(function (x) {
+      var it = x[0], i = x[1];
+      if (it.t === "embed") return '<div class="pf-item pf-embed"><iframe src="' + esc(it.src) + '" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Видео"></iframe></div>';
       var inner = it.t === "photo" ? '<img src="' + esc(it.src) + '" alt="" loading="lazy">'
-        : it.t === "video" ? '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>'
-        : '<span class="pf-embed">' + (/rutube/.test(it.src) ? "Rutube" : "VK Видео") + '</span><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>';
+        : '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>';
       return '<button type="button" class="pf-item pf-' + it.t + '" data-pf="' + i + '" aria-label="' + (it.t === "photo" ? "Открыть фото " : "Смотреть видео ") + (i + 1) + '">' + inner + "</button>";
     }).join("");
+    track.scrollLeft = 0;
+    setTimeout(pfArrows, 50);
   }
+  function pfArrows() {
+    var t = $("pfGrid"), over = t.scrollWidth > t.clientWidth + 4;
+    $("pfArrows").hidden = !over;
+    $("pfPrev").disabled = t.scrollLeft < 4; $("pfNext").disabled = t.scrollLeft + t.clientWidth > t.scrollWidth - 4;
+  }
+  $("pfGrid").addEventListener("scroll", function () { clearTimeout(pfArrows.t); pfArrows.t = setTimeout(pfArrows, 60); });
+  window.addEventListener("resize", function () { if (!$("portfolio").hidden) pfArrows(); });
+  ["pfPrev", "pfNext"].forEach(function (id, k) {
+    $(id).addEventListener("click", function () { var t = $("pfGrid"); t.scrollBy({ left: (k ? 1 : -1) * Math.max(240, t.clientWidth * 0.8), behavior: "smooth" }); });
+  });
+  $("pfCats").addEventListener("click", function (e) {
+    var b = e.target.closest(".pf-cat"); if (!b) return;
+    [].forEach.call(this.children, function (x) { x.classList.toggle("is-on", x === b); });
+    drawPf(b.dataset.cat);
+  });
   function lbShow(i) {
     lbIndex = (i + pfItems.length) % pfItems.length;
     var it = pfItems[lbIndex], st = $("lbStage");

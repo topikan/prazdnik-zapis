@@ -524,3 +524,5 @@ input, select, textarea { color: var(--text); border-radius: 10px; }
 .pf-list { align-items: start; }
 .pf-prev { min-height: 0; overflow: hidden; }
 .pf-prev img, .pf-prev video { position: absolute; inset: 0; }
+.pf-cat { display: block; width: 100%; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 7px 8px; font: inherit; font-size: 13px; background: #fff; min-height: 0; }
+.pf-cat:focus { outline: 2px solid var(--ink); outline-offset: -2px; }

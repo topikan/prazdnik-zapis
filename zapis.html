@@ -19,7 +19,7 @@
     <img class="hero-santa" id="heroSanta" src="assets/img/santa.webp" width="549" height="566" alt="">
     <div class="wrap">
       <div class="topline">
-        <span class="logo"><svg class="logo-mark" aria-hidden="true"><use href="#i-flake"/></svg><span class="js-name">&nbsp;</span></span>
+        <span class="logo"><svg class="logo-mark" aria-hidden="true"><use href="#i-flake"/></svg><span class="js-name logo-name">&nbsp;</span></span>
         <div class="top-acts">
           <button type="button" class="anim-toggle" id="animToggle" aria-pressed="false" title="Отключить анимацию снега"><svg aria-hidden="true"><use href="#i-flake"/></svg><span>Отключить анимацию</span></button>
           <a class="phone-pill js-phone" href="#" hidden><svg aria-hidden="true"><use href="#i-phone"/></svg><span></span></a>
@@ -28,6 +28,7 @@
       <h1><span id="tHeroTitle">Дед Мороз</span> <em id="tHeroAccent">к вам домой</em></h1>
       <p class="lead" id="tHeroLead">Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков.</p>
     </div>
+    <svg class="hero-wave" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52C180 18 360 6 560 26s420 58 620 44 220-38 260-44V90H0z"/></svg>
   </header>
 
   <main class="wrap main" id="app">
@@ -162,8 +163,12 @@
 
   <section class="portfolio" id="portfolio" hidden>
     <div class="wrap">
-      <h2 class="pf-title" id="pfTitle">Наши праздники</h2>
-      <div class="pf-grid" id="pfGrid"></div>
+      <div class="pf-head">
+        <h2 class="pf-title" id="pfTitle">Наши праздники</h2>
+        <div class="pf-arrows" id="pfArrows"><button type="button" class="pf-arr" id="pfPrev" aria-label="Назад">‹</button><button type="button" class="pf-arr" id="pfNext" aria-label="Дальше">›</button></div>
+      </div>
+      <div class="pf-cats" id="pfCats" role="tablist" aria-label="Категории" hidden></div>
+      <div class="pf-track" id="pfGrid"></div>
     </div>
   </section>
 

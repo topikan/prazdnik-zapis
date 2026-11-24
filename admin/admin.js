@@ -538,7 +538,7 @@
       '<div class="fields"><label class="wide">Анимация снега<select data-path="design.snow">' +
       [["button", "Снег падает, у клиента есть кнопка «Отключить анимацию»"], ["on", "Снег падает, кнопки нет"], ["off", "Анимация снега выключена, кнопки нет"]].map(function (o) { return '<option value="' + o[0] + '"' + ((D.snow || "button") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") +
       "</select></label></div><p class=\"muted\">Картинки сохраняются сразу, галочки и снег — кнопкой «Сохранить настройки» внизу.</p></div>";
-    var pfCard = '<div class="card" id="pfCard"><h2>Портфолио</h2><p class="muted">Фото и видео ваших праздников внизу страницы записи. До 20 фото и 5 видео. Видео — файлом MP4 до 50 МБ или ссылкой на ролик VK Видео и Rutube.</p>' +
+    var pfCard = '<div class="card" id="pfCard"><h2>Портфолио</h2><p class="muted">Фото и видео ваших праздников внизу страницы записи, листаются слайдером. До 20 фото и 5 видео. Видео — файлом MP4 до 50 МБ или ссылкой на ролик VK Видео и Rutube. Если указать категории (например «На дому», «Утренники»), клиент сможет переключать их кнопками.</p>' +
       '<div class="fields"><label class="row wide"><input type="checkbox" data-path="portfolio.enabled"' + (getPath(cfg, "portfolio.enabled") ? " checked" : "") + "> Показывать портфолио на странице записи</label>" +
       '<label class="wide">Заголовок блока<input data-path="portfolio.title" maxlength="80" placeholder="Наши праздники" value="' + esc(getPath(cfg, "portfolio.title") || "") + '"></label></div>' +
       '<div class="no-dirty"><div class="acts pf-acts"><label class="btn ghost small file-btn">Добавить фото<input type="file" id="pfPhotos" accept="image/png,image/jpeg,image/webp" multiple hidden></label>' +
@@ -594,12 +594,21 @@
     var items = (cfg.portfolio && cfg.portfolio.items) || [];
     box.innerHTML = items.length ? items.map(function (it, i) {
       var prev = it.t === "photo" ? '<img src="../' + esc(it.src) + '" alt="">' : it.t === "video" ? '<video src="../' + esc(it.src) + '#t=0.5" preload="metadata" muted></video><span class="pf-tag">Видео</span>' : '<span class="pf-tag">' + (/rutube/.test(it.src) ? "Rutube" : "VK Видео") + "</span>";
-      return '<div class="pf-cell"><div class="pf-prev">' + prev + '</div><div class="pf-btns">' +
+      return '<div class="pf-cell"><div class="pf-prev">' + prev + '</div>' +
+        '<input class="pf-cat" list="pfCats" maxlength="30" placeholder="Категория" data-pfcat="' + esc(it.src) + '" value="' + esc(it.cat || "") + '" aria-label="Категория">' +
+        '<div class="pf-btns">' +
         '<button type="button" data-pfmove="-1" data-src="' + esc(it.src) + '" aria-label="Левее"' + (i ? "" : " disabled") + ">←</button>" +
         '<button type="button" data-pfmove="1" data-src="' + esc(it.src) + '" aria-label="Правее"' + (i < items.length - 1 ? "" : " disabled") + ">→</button>" +
         '<button type="button" class="pf-del" data-pfdel="' + esc(it.src) + '" aria-label="Удалить">×</button></div></div>';
-    }).join("") : '<p class="muted">Пока пусто. Добавьте фото с праздников или видео.</p>';
+    }).join("") + '<datalist id="pfCats">' + uniq(items.map(function (x) { return x.cat || ""; }).filter(Boolean)).map(function (c) { return '<option value="' + esc(c) + '">'; }).join("") + "</datalist>"
+      : '<p class="muted">Пока пусто. Добавьте фото с праздников или видео.</p>';
   }
+  function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  // категория сохраняется сразу, как только убрали курсор из поля
+  document.addEventListener("change", function (e) {
+    var src = e.target.dataset && e.target.dataset.pfcat; if (!src) return;
+    api("portfolio_cat", { src: src, cat: e.target.value }).then(function (r) { cfg.portfolio = r.portfolio; flash("Категория сохранена"); }).catch(function (err) { flash(err.message, true); });
+  }, true);
   function pfSet(r) { cfg.portfolio = r.portfolio; renderPfList(); }
   function pfProgress(t) { var p = $("pfProgress"); if (!p) return; p.textContent = t || ""; p.hidden = !t; }
   function uploadVideo(file) {

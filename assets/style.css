@@ -491,3 +491,36 @@ p.note-wide { margin: 16px 0 26px; }
 .guide-home { text-decoration: none; display: inline-flex; align-items: center; }
 .hero.custom .hero-santa.own { display: block; }
 .hero-santa.own { max-height: 80%; object-fit: contain; object-position: bottom; }
+
+/* Волна внизу первого экрана, как на главной */
+.hero-wave { position: absolute; left: 0; right: 0; bottom: -1px; z-index: 0; width: 100%; height: 70px; fill: var(--cream); pointer-events: none; }
+@media (max-width: 640px) { .hero-wave { height: 40px; } }
+
+/* Длинное название агентства: не больше двух строк и не шире половины шапки */
+.logo { min-width: 0; max-width: min(520px, 58%); }
+.logo-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.logo-name.is-long { font-size: 16px; }
+@media (max-width: 640px) { .logo { max-width: 62%; } .logo-name.is-long { font-size: 14px; } }
+
+/* Портфолио: слайдер */
+.pf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.pf-head .pf-title { margin: 0; }
+.pf-arrows { display: flex; gap: 8px; flex: none; }
+.pf-arr { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0 0 3px; }
+.pf-arr:hover:not(:disabled) { border-color: var(--accent-strong); }
+.pf-arr:disabled { opacity: .35; cursor: default; }
+.pf-cats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.pf-cat { border: 1.5px solid var(--line); background: #fff; color: var(--ink); border-radius: 999px; padding: 8px 16px; font: 600 14px/1.2 var(--font); cursor: pointer; }
+.pf-cat.is-on { background: var(--accent); border-color: var(--accent-strong); color: var(--on-accent); }
+.pf-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding-bottom: 6px; scrollbar-width: thin; }
+.pf-track .pf-item { flex: 0 0 auto; width: auto; height: 300px; aspect-ratio: 4 / 3; scroll-snap-align: start; }
+.pf-track .pf-embed { aspect-ratio: 16 / 9; background: #000; cursor: default; }
+.pf-track .pf-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
+.pf-track.pf-one .pf-item { flex: 1 1 auto; height: auto; max-height: 560px; aspect-ratio: 16 / 9; }
+.pf-track.pf-two .pf-item { flex: 1 1 0; height: auto; min-width: 0; }
+@media (max-width: 640px) {
+  .pf-track .pf-item { height: 220px; }
+  .pf-track.pf-two .pf-item { flex: 0 0 85%; height: auto; }
+  .pf-arr { width: 38px; height: 38px; }
+}
+.pf-head .pf-title { min-width: 0; overflow-wrap: anywhere; }

@@ -582,3 +582,12 @@ html.no-anim { scroll-behavior: auto; }
   .pp-arrow { height: 30px; transform: rotate(90deg); }
 }
 .pp-fit img { width: 100%; }
+/* карточка заявки: целиком и по центру */
+.shot .shot-pic.shot-center { display: grid; place-items: center; padding: 16px; }
+.shot .shot-pic.shot-center::after { display: none; }
+.shot:not(.shot-wide) .shot-pic.shot-center img { width: auto; max-width: 100%; max-height: 100%; border-radius: 12px; }
+/* аватар бота: маленький логотип, а не растянутая картинка */
+.shot .shot-pic .tg-ava img { width: 22px; max-width: none; height: auto; border-radius: 0; box-shadow: none; }
+.shot .shot-pic.shot-center { display: flex; align-items: center; justify-content: center; }
+.shot:not(.shot-wide) .shot-pic.shot-center img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+.shot:not(.shot-wide) .shot-pic.shot-center img { height: auto; width: 100%; }

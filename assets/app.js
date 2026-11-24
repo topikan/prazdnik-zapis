@@ -235,26 +235,36 @@
     $("pfGrid").innerHTML = pfList.map(function (x) {
       var it = x[0], i = x[1], cap = it.title ? '<span class="pf-cap"><b>' + esc(it.title) + "</b>" + (it.sub ? "<small>" + esc(it.sub) + "</small>" : "") + "</span>" : "";
       var poster = it.t !== "photo" && PF_PHOTO.test(it.poster || "");
-      if (it.t === "embed" && !poster) return '<div class="pf-slide pf-embed"><iframe src="' + esc(it.src) + '" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Видео"></iframe></div>';
+      if (it.t === "embed" && !poster) return '<div class="pf-cell"><div class="pf-slide pf-embed"><iframe src="' + esc(it.src) + '" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Видео"></iframe></div></div>';
       var media = it.t === "photo" ? '<img src="' + esc(it.src) + '" alt="" loading="lazy">'
         : poster ? '<img src="' + esc(it.poster) + '" alt="" loading="lazy">'
         : '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video>';
       var play = it.t !== "photo" ? '<span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>' : "";
-      return '<button type="button" class="pf-slide' + (it.t !== "photo" ? " is-video" : "") + (cap ? " has-cap" : "") + '" data-pf="' + i + '" aria-label="' + (it.t === "photo" ? "Открыть фото" : "Смотреть видео") + (it.title ? ": " + esc(it.title) : "") + '">' + media + play + cap + "</button>";
+      return '<div class="pf-cell"><button type="button" class="pf-slide' + (it.t !== "photo" ? " is-video" : "") + (cap ? " has-cap" : "") + '" data-pf="' + i + '" aria-label="' + (it.t === "photo" ? "Открыть фото" : "Смотреть видео") + (it.title ? ": " + esc(it.title) : "") + '">' + media + play + cap + "</button></div>";
     }).join("");
-    $("pfDots").innerHTML = pfList.length > 1 ? pfList.map(function (x, k) { return '<i class="' + (k ? "" : "on") + '"></i>'; }).join("") : "";
-    pfGo(0);
+    pfGo(0, true);
   }
-  function pfGo(k) {
-    var n = pfList.length; if (!n) return;
-    var old = $("pfGrid").children[pfPos];
-    pfPos = (k + n) % n;
-    // ролик VK или Rutube, с которого ушли, останавливаем: перезагружаем плеер
-    var f = old && old !== $("pfGrid").children[pfPos] && old.querySelector("iframe"); if (f) f.src = f.src;
-    $("pfGrid").style.transform = "translateX(" + (-pfPos * 100) + "%)";
+  // сколько слайдов видно сразу: 3 на компьютере, 2 на планшете, 1 на телефоне
+  function pfPerView() { return innerWidth >= 1000 ? 3 : innerWidth >= 640 ? 2 : 1; }
+  var pfPv = pfPerView();
+  function pfGo(k, redraw) {
+    var n = pfList.length, pv = pfPerView(); if (!n) return;
+    var steps = Math.max(1, n - pv + 1);            // столько положений у ленты
+    if (redraw || pv !== pfPv || $("pfDots").children.length !== (steps > 1 ? steps : 0)) {
+      pfPv = pv;
+      $("pfDots").innerHTML = steps > 1 ? Array(steps + 1).join("<i></i>") : "";
+    }
+    $("pfCar").style.setProperty("--pv", pv);
+    $("pfCar").classList.toggle("pf-few", n < pv);
+    var before = pfPos;
+    pfPos = ((k % steps) + steps) % steps;
+    // ролики VK и Rutube, ушедшие за край, останавливаем: перезагружаем плеер
+    if (before !== pfPos) [].forEach.call($("pfGrid").children, function (c, i) { var f = c.querySelector("iframe"); if (f && (i < pfPos || i >= pfPos + pv) && i >= before && i < before + pv) f.src = f.src; });
+    $("pfGrid").style.transform = n < pv ? "none" : "translateX(" + (-pfPos * 100 / pv) + "%)";
     [].forEach.call($("pfDots").children, function (d, i) { d.className = i === pfPos ? "on" : ""; });
-    $("pfPrev").hidden = $("pfNext").hidden = n < 2;
+    $("pfPrev").hidden = $("pfNext").hidden = steps < 2;
   }
+  window.addEventListener("resize", function () { clearTimeout(pfGo.t); pfGo.t = setTimeout(function () { if (pfList.length) pfGo(pfPos); }, 120); });
   $("pfPrev").addEventListener("click", function () { pfGo(pfPos - 1); });
   $("pfNext").addEventListener("click", function () { pfGo(pfPos + 1); });
   // свайп пальцем на телефоне

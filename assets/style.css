@@ -577,3 +577,26 @@ p.note-wide { margin: 16px 0 26px; }
   .pf-cats { gap: 4px 20px; }
   .portfolio .pf-cat { font-size: 15px; }
 }
+
+/* Карусель: несколько слайдов в ряд (--pv задаёт скрипт: 3 / 2 / 1) */
+.pf-car { --pv: 3; max-width: none; }
+.pf-viewport { overflow: hidden; margin: 0 -8px; border-radius: 0; background: none; box-shadow: none; }
+.pf-cell { flex: 0 0 calc(100% / var(--pv)); padding: 0 8px; box-sizing: border-box; min-width: 0; }
+.pf-few .pf-slides { justify-content: center; }
+.pf-cell .pf-slide { width: 100%; aspect-ratio: 4 / 5; border-radius: 20px; box-shadow: 0 14px 34px rgba(20, 33, 61, .16); }
+.pf-cell .pf-slide.pf-embed { aspect-ratio: 4 / 5; }
+.pf-cap b { font-size: clamp(19px, 1.9vw, 26px); }
+.pf-cap { padding: 0 20px 26px; }
+.pf-dots { top: auto; bottom: -26px; }
+.pf-dots i { background: rgba(20, 33, 61, .22); box-shadow: none; }
+.pf-dots i.on { background: var(--accent-strong); }
+.pf-nav { width: 50px; height: 50px; margin-top: -25px; }
+.pf-nav-prev { left: -10px; } .pf-nav-next { right: -10px; }
+.pf-cats { margin-top: 44px; }
+.pf-car:has(.pf-dots:empty) + .pf-cats { margin-top: 22px; }
+@media (max-width: 999px) { .pf-cell .pf-slide { aspect-ratio: 4 / 5; } }
+@media (max-width: 640px) {
+  .pf-cell .pf-slide { border-radius: 18px; }
+  .pf-nav-prev { left: 6px; } .pf-nav-next { right: 6px; }
+}
+.pf-viewport { padding: 4px 0 18px; } .pf-dots { bottom: -10px; } .pf-nav { margin-top: -32px; } .pf-cats { margin-top: 30px; }

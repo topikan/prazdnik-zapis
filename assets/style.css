@@ -615,3 +615,8 @@ p.note-wide { margin: 16px 0 26px; }
   .hero-santa { bottom: calc(var(--hx) - 150px); }  /* Дед Мороз остаётся рядом с заголовком */
   .hero .hero-wave { height: 90px; }
 }
+
+/* Свой персонаж агентства: такой же высоты, как стандартный Дед Мороз, ширина — по пропорциям картинки */
+.hero-santa.own { width: auto; height: 340px; max-height: none; max-width: 420px; object-fit: contain; object-position: bottom; }
+@media (max-width: 1080px) { .hero-santa.own { height: 270px; max-width: 320px; } }
+@media (max-width: 640px) { .hero-santa.own { height: 175px; max-width: 200px; } }

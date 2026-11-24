@@ -606,3 +606,12 @@ p.note-wide { margin: 16px 0 26px; }
 .pf-dots { bottom: -22px; }
 .pf-nav { margin-top: -25px; }
 .pf-cats { margin-top: 40px; }
+
+/* Компьютер: фон первого экрана уходит ниже, как на главной (≈60% высоты); форма записи наезжает на него */
+@media (min-width: 1081px) {
+  :root { --hx: max(150px, calc(62vh - 380px)); }   /* насколько фон уходит ниже текста */
+  .hero { padding-bottom: var(--hx); }
+  .main { margin-top: calc(40px - var(--hx)); }     /* форма начинается там же, где и раньше */
+  .hero-santa { bottom: calc(var(--hx) - 150px); }  /* Дед Мороз остаётся рядом с заголовком */
+  .hero .hero-wave { height: 90px; }
+}

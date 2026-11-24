@@ -600,3 +600,9 @@ p.note-wide { margin: 16px 0 26px; }
   .pf-nav-prev { left: 6px; } .pf-nav-next { right: 6px; }
 }
 .pf-viewport { padding: 4px 0 18px; } .pf-dots { bottom: -10px; } .pf-nav { margin-top: -32px; } .pf-cats { margin-top: 30px; }
+/* без тени: обрезанная по краям ленты тень давала серые полосы сверху и снизу */
+.pf-viewport { padding: 0; }
+.pf-cell .pf-slide { box-shadow: none; }
+.pf-dots { bottom: -22px; }
+.pf-nav { margin-top: -25px; }
+.pf-cats { margin-top: 40px; }

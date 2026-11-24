@@ -620,3 +620,9 @@ p.note-wide { margin: 16px 0 26px; }
 .hero-santa.own { width: auto; height: 340px; max-height: none; max-width: 420px; object-fit: contain; object-position: bottom; }
 @media (max-width: 1080px) { .hero-santa.own { height: 270px; max-width: 320px; } }
 @media (max-width: 640px) { .hero-santa.own { height: 175px; max-width: 200px; } }
+/* Свой персонаж на компьютере крупнее: низ уходит за карточку «Ваша бронь», как у стандартного Деда Мороза */
+@media (min-width: 1081px) {
+  .hero-santa.own { height: 480px; max-width: 460px; bottom: calc(var(--hx) - 300px); -webkit-mask-image: none; mask-image: none; }
+}
+@media (max-width: 1080px) and (min-width: 641px) { .hero-santa.own { height: 320px; } }
+@media (max-width: 640px) { .hero-santa.own { height: 210px; } }

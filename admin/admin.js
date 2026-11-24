@@ -598,7 +598,7 @@
         : it.poster ? '<img src="../' + esc(it.poster) + '" alt=""><span class="pf-tag">' + tag + " · обложка</span>"
         : it.t === "video" ? '<video src="../' + esc(it.src) + '#t=0.5" preload="metadata" muted></video><span class="pf-tag">Видео</span>' : '<span class="pf-tag">' + tag + "</span>";
       // у видео: своя обложка и надписи на ней
-      var cover = !vid ? "" : '<div class="pf-cover-ed">' +
+      var cover = !vid ? '<div class="pf-cover-ed"><input class="pf-cat" maxlength="60" placeholder="Подпись на слайде" data-pfv="title" data-src="' + esc(it.src) + '" value="' + esc(it.title || "") + '"></div>' : '<div class="pf-cover-ed">' +
         '<input class="pf-cat" maxlength="60" placeholder="Надпись на обложке" data-pfv="title" data-src="' + esc(it.src) + '" value="' + esc(it.title || "") + '">' +
         '<input class="pf-cat" maxlength="100" placeholder="Подпись под ней" data-pfv="sub" data-src="' + esc(it.src) + '" value="' + esc(it.sub || "") + '">' +
         '<div class="pf-cover-btns"><label class="pf-cover-up">' + (it.poster ? "Заменить" : "Своя обложка") + '<input type="file" accept="image/png,image/jpeg,image/webp" hidden data-pfposter="' + esc(it.src) + '"></label>' +

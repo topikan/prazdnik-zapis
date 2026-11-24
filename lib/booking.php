@@ -270,8 +270,9 @@ function portfolio_item_clean($x): ?array {
     if ($t === 'video' || $t === 'embed') {
         $pv = is_string($x['poster'] ?? null) ? $x['poster'] : '';
         if (preg_match('~^uploads/portfolio/[a-z0-9-]+\.(webp|png|jpe?g)$~', $pv)) $extra['poster'] = $pv;
-        foreach (['title' => 60, 'sub' => 100] as $k => $max) { $v = is_scalar($x[$k] ?? null) ? mb_substr(trim((string)$x[$k]), 0, $max) : ''; if ($v !== '') $extra[$k] = $v; }
     }
+    // подпись на слайде — у фото и у видео
+    foreach (['title' => 60, 'sub' => 100] as $k => $max) { $v = is_scalar($x[$k] ?? null) ? mb_substr(trim((string)$x[$k]), 0, $max) : ''; if ($v !== '') $extra[$k] = $v; }
     if ($t === 'photo' && preg_match('~^uploads/portfolio/[a-z0-9-]+\.(webp|png|jpe?g)$~', $src)) return ['t' => 'photo', 'src' => $src] + $extra;
     if ($t === 'video' && preg_match('~^uploads/videos/[a-z0-9-]+\.(mp4|webm)$~', $src)) return ['t' => 'video', 'src' => $src] + $extra;
     if ($t === 'embed' && embed_ok($src)) return ['t' => 'embed', 'src' => $src, 'provider' => str_contains($src, 'rutube.ru') ? 'rutube' : 'vk'] + $extra;

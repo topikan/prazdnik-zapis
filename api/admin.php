@@ -362,7 +362,7 @@ switch ($action) {
     case 'portfolio_video': // надписи на обложке видео или убрать обложку
         $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
         $src = in_str($in, 'src'); $found = false;
-        foreach ($cfg['portfolio']['items'] ?? [] as $i => $it) if (($it['src'] ?? '') === $src && in_array($it['t'] ?? '', ['video', 'embed'], true)) {
+        foreach ($cfg['portfolio']['items'] ?? [] as $i => $it) if (($it['src'] ?? '') === $src) {
             $found = true;
             foreach (['title' => 60, 'sub' => 100] as $k => $max) if (array_key_exists($k, $in)) {
                 $v = mb_substr(trim(in_str($in, $k)), 0, $max);

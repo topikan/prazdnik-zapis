@@ -535,3 +535,45 @@ p.note-wide { margin: 16px 0 26px; }
 .pf-cover-s { font-size: 15px; opacity: .92; text-shadow: 0 1px 8px rgba(0, 0, 0, .5); }
 .pf-cover:hover img { transform: scale(1.03); }
 @media (max-width: 640px) { .pf-cover .pf-play { width: 56px; height: 56px; } .pf-cover-t { font-size: 20px; } .pf-cover-s { font-size: 13px; } }
+
+/* ===== Портфолио: карусель по одному слайду ===== */
+.portfolio .pf-title { margin: 0 0 18px; }
+.pf-car { position: relative; max-width: 900px; margin: 0 auto; }
+.pf-viewport { overflow: hidden; border-radius: 22px; background: var(--night); box-shadow: 0 18px 44px rgba(20, 33, 61, .18); }
+.pf-slides { display: flex; transition: transform .45s cubic-bezier(.25, .8, .25, 1); }
+.pf-slide { position: relative; flex: 0 0 100%; aspect-ratio: 3 / 2; border: 0; padding: 0; margin: 0; background: var(--night); cursor: zoom-in; overflow: hidden; display: block; }
+.pf-slide.is-video { cursor: pointer; }
+.pf-slide img, .pf-slide video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.pf-slide.pf-embed { cursor: default; background: #000; }
+.pf-slide.pf-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.pf-slide.has-cap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background: linear-gradient(180deg, rgba(10, 19, 40, 0), rgba(10, 19, 40, .78)); pointer-events: none; }
+.pf-slide.is-video:not(.has-cap)::after { content: ""; position: absolute; inset: 0; background: rgba(10, 19, 40, .18); }
+.pf-slide .pf-play { z-index: 2; width: 76px; height: 76px; margin: -38px 0 0 -38px; }
+.pf-slide.has-cap .pf-play { top: 42%; }
+.pf-cap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: grid; justify-items: center; gap: 6px; padding: 0 28px 34px; color: #fff; text-align: center; }
+.pf-cap b { font-weight: 800; font-size: clamp(22px, 3vw, 36px); line-height: 1.12; text-shadow: 0 2px 14px rgba(0, 0, 0, .4); }
+.pf-cap small { font-size: 15px; opacity: .9; }
+.pf-cap::after { content: ""; width: 56px; height: 3px; border-radius: 2px; background: var(--gold); margin-top: 6px; }
+.pf-dots { position: absolute; left: 0; right: 0; top: 16px; z-index: 3; display: flex; justify-content: center; gap: 7px; pointer-events: none; }
+.pf-dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .55); box-shadow: 0 1px 4px rgba(0, 0, 0, .3); transition: background .2s, transform .2s; }
+.pf-dots i.on { background: #fff; transform: scale(1.25); }
+.pf-nav { position: absolute; top: 50%; z-index: 3; width: 52px; height: 52px; margin-top: -26px; border: 0; border-radius: 50%; background: rgba(20, 16, 14, .62); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(4px); transition: background .2s; }
+.pf-nav:hover { background: rgba(20, 16, 14, .85); }
+.pf-nav svg { width: 22px; height: 22px; }
+.pf-nav-prev { left: 14px; }
+.pf-nav-prev svg { transform: rotate(180deg); }
+.pf-nav-next { right: 14px; }
+.pf-cats { justify-content: center; gap: 6px 28px; margin: 22px 0 0; }
+.portfolio .pf-cat { border: 0; background: none; border-radius: 0; padding: 6px 2px; font: 600 16px/1.2 var(--font); color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.portfolio .pf-cat:hover { color: var(--ink); }
+.portfolio .pf-cat.is-on { background: none; color: var(--ink); border-bottom-color: var(--accent-strong); }
+@media (max-width: 640px) {
+  .pf-viewport { border-radius: 18px; }
+  .pf-slide { aspect-ratio: 4 / 5; }
+  .pf-nav { width: 42px; height: 42px; margin-top: -21px; }
+  .pf-nav-prev { left: 8px; } .pf-nav-next { right: 8px; }
+  .pf-slide .pf-play { width: 60px; height: 60px; margin: -30px 0 0 -30px; }
+  .pf-cap { padding: 0 18px 26px; }
+  .pf-cats { gap: 4px 20px; }
+  .portfolio .pf-cat { font-size: 15px; }
+}

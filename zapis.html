@@ -163,12 +163,14 @@
 
   <section class="portfolio" id="portfolio" hidden>
     <div class="wrap">
-      <div class="pf-head">
-        <h2 class="pf-title" id="pfTitle">Наши праздники</h2>
-        <div class="pf-arrows" id="pfArrows"><button type="button" class="pf-arr" id="pfPrev" aria-label="Назад">‹</button><button type="button" class="pf-arr" id="pfNext" aria-label="Дальше">›</button></div>
+      <h2 class="pf-title" id="pfTitle">Наши праздники</h2>
+      <div class="pf-car" id="pfCar">
+        <div class="pf-viewport"><div class="pf-slides" id="pfGrid"></div></div>
+        <div class="pf-dots" id="pfDots" aria-hidden="true"></div>
+        <button type="button" class="pf-nav pf-nav-prev" id="pfPrev" aria-label="Предыдущее"><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+        <button type="button" class="pf-nav pf-nav-next" id="pfNext" aria-label="Следующее"><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
       </div>
       <div class="pf-cats" id="pfCats" role="tablist" aria-label="Категории" hidden></div>
-      <div class="pf-track" id="pfGrid"></div>
     </div>
   </section>
 

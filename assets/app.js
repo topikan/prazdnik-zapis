@@ -224,41 +224,52 @@
     var cats = [];
     pfItems.forEach(function (it) { if (it.cat && cats.indexOf(it.cat) < 0) cats.push(it.cat); });
     $("pfCats").hidden = cats.length < 2;
-    $("pfCats").innerHTML = cats.length < 2 ? "" : ['<button type="button" class="pf-cat is-on" data-cat="">Все</button>'].concat(cats.map(function (c) { return '<button type="button" class="pf-cat" data-cat="' + esc(c) + '">' + esc(c) + "</button>"; })).join("");
+    $("pfCats").innerHTML = cats.length < 2 ? "" : ['<button type="button" class="pf-cat is-on" role="tab" aria-selected="true" data-cat="">Все</button>'].concat(cats.map(function (c) { return '<button type="button" class="pf-cat" role="tab" aria-selected="false" data-cat="' + esc(c) + '">' + esc(c) + "</button>"; })).join("");
     drawPf("");
   }
-  // слайдер: фото и видео одной высоты листаются по горизонтали; ролики VK и Rutube — сразу плеером со своей обложкой
+  // карусель: по одному большому слайду, точки сверху, стрелки по бокам, подпись внизу, категории под ней
+  var pfList = [], pfPos = 0;
   function drawPf(cat) {
-    var list = pfItems.map(function (it, i) { return [it, i]; }).filter(function (x) { return !cat || x[0].cat === cat; });
-    var track = $("pfGrid");
-    track.className = "pf-track" + (list.length === 1 ? " pf-one" : list.length === 2 ? " pf-two" : "");
-    track.innerHTML = list.map(function (x) {
-      var it = x[0], i = x[1];
-      // видео со своей обложкой: картинка, кнопка запуска и надписи; по нажатию — плеер на весь экран
-      if (it.t !== "photo" && PF_PHOTO.test(it.poster || "")) return '<button type="button" class="pf-item pf-cover" data-pf="' + i + '" aria-label="Смотреть видео' + (it.title ? ": " + esc(it.title) : "") + '">' +
-        '<img src="' + esc(it.poster) + '" alt="" loading="lazy"><span class="pf-cover-in"><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>' +
-        (it.title ? '<b class="pf-cover-t">' + esc(it.title) + "</b>" : "") + (it.sub ? '<span class="pf-cover-s">' + esc(it.sub) + "</span>" : "") + "</span></button>";
-      if (it.t === "embed") return '<div class="pf-item pf-embed"><iframe src="' + esc(it.src) + '" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Видео"></iframe></div>';
-      var inner = it.t === "photo" ? '<img src="' + esc(it.src) + '" alt="" loading="lazy">'
-        : '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>';
-      return '<button type="button" class="pf-item pf-' + it.t + '" data-pf="' + i + '" aria-label="' + (it.t === "photo" ? "Открыть фото " : "Смотреть видео ") + (i + 1) + '">' + inner + "</button>";
+    pfList = pfItems.map(function (it, i) { return [it, i]; }).filter(function (x) { return !cat || x[0].cat === cat; });
+    pfPos = 0;
+    $("pfGrid").innerHTML = pfList.map(function (x) {
+      var it = x[0], i = x[1], cap = it.title ? '<span class="pf-cap"><b>' + esc(it.title) + "</b>" + (it.sub ? "<small>" + esc(it.sub) + "</small>" : "") + "</span>" : "";
+      var poster = it.t !== "photo" && PF_PHOTO.test(it.poster || "");
+      if (it.t === "embed" && !poster) return '<div class="pf-slide pf-embed"><iframe src="' + esc(it.src) + '" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Видео"></iframe></div>';
+      var media = it.t === "photo" ? '<img src="' + esc(it.src) + '" alt="" loading="lazy">'
+        : poster ? '<img src="' + esc(it.poster) + '" alt="" loading="lazy">'
+        : '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video>';
+      var play = it.t !== "photo" ? '<span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>' : "";
+      return '<button type="button" class="pf-slide' + (it.t !== "photo" ? " is-video" : "") + (cap ? " has-cap" : "") + '" data-pf="' + i + '" aria-label="' + (it.t === "photo" ? "Открыть фото" : "Смотреть видео") + (it.title ? ": " + esc(it.title) : "") + '">' + media + play + cap + "</button>";
     }).join("");
-    track.scrollLeft = 0;
-    setTimeout(pfArrows, 50);
+    $("pfDots").innerHTML = pfList.length > 1 ? pfList.map(function (x, k) { return '<i class="' + (k ? "" : "on") + '"></i>'; }).join("") : "";
+    pfGo(0);
   }
-  function pfArrows() {
-    var t = $("pfGrid"), over = t.scrollWidth > t.clientWidth + 4;
-    $("pfArrows").hidden = !over;
-    $("pfPrev").disabled = t.scrollLeft < 4; $("pfNext").disabled = t.scrollLeft + t.clientWidth > t.scrollWidth - 4;
+  function pfGo(k) {
+    var n = pfList.length; if (!n) return;
+    var old = $("pfGrid").children[pfPos];
+    pfPos = (k + n) % n;
+    // ролик VK или Rutube, с которого ушли, останавливаем: перезагружаем плеер
+    var f = old && old !== $("pfGrid").children[pfPos] && old.querySelector("iframe"); if (f) f.src = f.src;
+    $("pfGrid").style.transform = "translateX(" + (-pfPos * 100) + "%)";
+    [].forEach.call($("pfDots").children, function (d, i) { d.className = i === pfPos ? "on" : ""; });
+    $("pfPrev").hidden = $("pfNext").hidden = n < 2;
   }
-  $("pfGrid").addEventListener("scroll", function () { clearTimeout(pfArrows.t); pfArrows.t = setTimeout(pfArrows, 60); });
-  window.addEventListener("resize", function () { if (!$("portfolio").hidden) pfArrows(); });
-  ["pfPrev", "pfNext"].forEach(function (id, k) {
-    $(id).addEventListener("click", function () { var t = $("pfGrid"); t.scrollBy({ left: (k ? 1 : -1) * Math.max(240, t.clientWidth * 0.8), behavior: "smooth" }); });
-  });
+  $("pfPrev").addEventListener("click", function () { pfGo(pfPos - 1); });
+  $("pfNext").addEventListener("click", function () { pfGo(pfPos + 1); });
+  // свайп пальцем на телефоне
+  (function () {
+    var x0 = null, y0 = 0, vp = $("pfGrid");
+    vp.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    vp.addEventListener("touchend", function (e) {
+      if (x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { pfGo(pfPos + (dx < 0 ? 1 : -1)); e.preventDefault(); }
+    });
+  })();
   $("pfCats").addEventListener("click", function (e) {
     var b = e.target.closest(".pf-cat"); if (!b) return;
-    [].forEach.call(this.children, function (x) { x.classList.toggle("is-on", x === b); });
+    [].forEach.call(this.children, function (x) { x.classList.toggle("is-on", x === b); x.setAttribute("aria-selected", x === b ? "true" : "false"); });
     drawPf(b.dataset.cat);
   });
   function lbShow(i) {

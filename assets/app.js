@@ -791,7 +791,17 @@
     var hex = /^#[0-9a-f]{6}$/i, col = cfg.colors || {}, root = document.documentElement.style;
     if (hex.test(col.accent || "") && col.accent.toUpperCase() !== "#163A2F") {
       root.setProperty("--accent", col.accent);
-      var n = parseInt(col.accent.slice(1), 16); root.setProperty("--accent-soft", "rgba(" + (n >> 16) + "," + (n >> 8 & 255) + "," + (n & 255) + ",.12)");
+      var n = parseInt(col.accent.slice(1), 16), r = n >> 16, g = n >> 8 & 255, bl = n & 255;
+      root.setProperty("--accent-soft", "rgba(" + r + "," + g + "," + bl + ",.12)");
+      // светлый цвет (белый, жёлтый): текст на кнопках делаем тёмным, а рамки и значки на светлом фоне — темнее, чтобы не сливались
+      var lum = (0.2126 * r + 0.7152 * g + 0.0722 * bl) / 255;
+      if (lum > 0.62) {
+        root.setProperty("--on-accent", "#14213D");
+        var k = lum > 0.85 ? 0.55 : 0.7;
+        root.setProperty("--accent-strong", "rgb(" + Math.round(r * k) + "," + Math.round(g * k) + "," + Math.round(bl * k) + ")");
+        if (lum > 0.85) root.setProperty("--accent-strong", "#14213D");
+        root.setProperty("--accent-soft", "rgba(20,33,61,.12)");
+      }
     }
     if (hex.test(col.gold || "") && col.gold.toUpperCase() !== "#C9A24A") root.setProperty("--gold", col.gold);
     buildMonths();

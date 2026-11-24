@@ -221,6 +221,8 @@ switch ($action) {
         if (!$isSuper) $c['demo'] = $a['cfg']['demo'] ?? false; // демо-режим меняет только владелец сервиса
         $c['logo'] = $a['cfg']['logo'] ?? '';                   // логотип и фон меняются только загрузкой файла
         $c['heroImage'] = $a['cfg']['heroImage'] ?? '';
+        $c['heroPerson'] = $a['cfg']['heroPerson'] ?? '';
+        $c['bannerImage'] = $a['cfg']['bannerImage'] ?? '';
         // фото и видео портфолио добавляются и убираются своими действиями; здесь меняются только «показывать» и заголовок
         $c['portfolio'] = ['enabled' => !empty($c['portfolio']['enabled']), 'title' => $c['portfolio']['title'] ?? '', 'items' => $a['cfg']['portfolio']['items'] ?? []];
         $errors = [];

@@ -21,8 +21,7 @@
 
   function flash(msg, bad) {
     var f = $("flash"); f.textContent = msg; f.className = "flash" + (bad ? " bad" : ""); f.hidden = false;
-    clearTimeout(flash.t); flash.t = setTimeout(function () { f.hidden = true; }, 4000);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    clearTimeout(flash.t); flash.t = setTimeout(function () { f.hidden = true; }, bad ? 6000 : 4000);
   }
 
   function api(action, data) {
@@ -62,6 +61,10 @@
     if (!me.agency) { setTab(me.role === "super" ? "agencies" : "orders"); renderHeader(); return; }
     api("config_get").then(function (r) { cfg = r.config; slug = r.slug; renderHeader(); setTab(tab === "agencies" && me.role !== "super" ? "orders" : tab); subReturn(); });
   }
+  // логотип и название — на главную кабинета: «Заявки» у агентства, «Агентства» у владельца
+  function goHome() { if (me) setTab(me.agency ? "orders" : "agencies"); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  $("sideHome").addEventListener("click", goHome);
+  $("sideHome").addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHome(); } });
   // владелец вошёл в агентство — кнопка возвращает в общий кабинет
   $("backToOwner").addEventListener("click", function () {
     if (Object.keys(dirty).some(function (k) { return dirty[k]; }) && !confirm("Есть несохранённые изменения. Выйти из агентства без сохранения?")) return;
@@ -477,7 +480,24 @@
   });
   function save(c) {
     api("config_save", { config: c }).then(function (r) { cfg = r.config || c; flash("Сохранено. Изменения уже на странице записи."); if (me.agency) { me.agency.name = c.name; renderHeader(); } })
-      .catch(function (e) { flash(e.message, true); });
+      .catch(function (e) { flash(e.message, true); showBadField(e.message); });
+  }
+  // по тексту ошибки находим поле, прокручиваем к нему и подсвечиваем
+  var BAD_FIELDS = [[/название агентства/i, "name"], [/Почта для обращений/i, "legal.email"], [/политик/i, "legal.policyUrl"], [/Цвет/i, "colors.accent"],
+    [/сезон/i, "season.start"], [/часы работы|Первый визит/i, "hours.from"], [/Почта для уведомлений/i, "notify.email"], [/ссылк\S* на оплату|Ссылка на оплату/i, "payment.link"],
+    [/предоплат\S* в процентах|сумму предоплаты/i, "payment.ykValue"], [/баннера/i, "banner.link"], [/Пароль для архива/i, "backup.password"]];
+  function showBadField(msg) {
+    var tabEl = document.querySelector(".tab:not([hidden])"); if (!tabEl) return;
+    var el = null;
+    BAD_FIELDS.some(function (m) { if (m[0].test(msg)) { el = tabEl.querySelector('[data-path="' + m[1] + '"]'); return !!el; } });
+    if (!el && /Нет цены/.test(msg)) el = [].filter.call(tabEl.querySelectorAll(".matrix input"), function (i) { return i.value.trim() === ""; })[0];
+    if (!el) el = [].filter.call(tabEl.querySelectorAll("input[required], input:invalid"), function (i) { return !i.validity.valid || i.value.trim() === ""; })[0];
+    if (!el) return;
+    var item = el.closest(".re-item"); if (item && !item.classList.contains("is-open")) { var b = item.querySelector("[data-edit]"); if (b) b.click(); }
+    var det = el.closest("details"); if (det) det.open = true;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("field-bad"); setTimeout(function () { el.focus({ preventScroll: true }); }, 350);
+    el.addEventListener("input", function off() { el.classList.remove("field-bad"); el.removeEventListener("input", off); });
   }
 
   /* ---------- настройки ---------- */

@@ -593,8 +593,17 @@
     var box = $("pfList"); if (!box) return;
     var items = (cfg.portfolio && cfg.portfolio.items) || [];
     box.innerHTML = items.length ? items.map(function (it, i) {
-      var prev = it.t === "photo" ? '<img src="../' + esc(it.src) + '" alt="">' : it.t === "video" ? '<video src="../' + esc(it.src) + '#t=0.5" preload="metadata" muted></video><span class="pf-tag">Видео</span>' : '<span class="pf-tag">' + (/rutube/.test(it.src) ? "Rutube" : "VK Видео") + "</span>";
-      return '<div class="pf-cell"><div class="pf-prev">' + prev + '</div>' +
+      var vid = it.t !== "photo", tag = it.t === "video" ? "Видео" : /rutube/.test(it.src) ? "Rutube" : "VK Видео";
+      var prev = it.t === "photo" ? '<img src="../' + esc(it.src) + '" alt="">'
+        : it.poster ? '<img src="../' + esc(it.poster) + '" alt=""><span class="pf-tag">' + tag + " · обложка</span>"
+        : it.t === "video" ? '<video src="../' + esc(it.src) + '#t=0.5" preload="metadata" muted></video><span class="pf-tag">Видео</span>' : '<span class="pf-tag">' + tag + "</span>";
+      // у видео: своя обложка и надписи на ней
+      var cover = !vid ? "" : '<div class="pf-cover-ed">' +
+        '<input class="pf-cat" maxlength="60" placeholder="Надпись на обложке" data-pfv="title" data-src="' + esc(it.src) + '" value="' + esc(it.title || "") + '">' +
+        '<input class="pf-cat" maxlength="100" placeholder="Подпись под ней" data-pfv="sub" data-src="' + esc(it.src) + '" value="' + esc(it.sub || "") + '">' +
+        '<div class="pf-cover-btns"><label class="pf-cover-up">' + (it.poster ? "Заменить" : "Своя обложка") + '<input type="file" accept="image/png,image/jpeg,image/webp" hidden data-pfposter="' + esc(it.src) + '"></label>' +
+        (it.poster ? '<button type="button" class="pf-cover-del" data-pfposterdel="' + esc(it.src) + '">Убрать</button>' : "") + "</div></div>";
+      return '<div class="pf-cell"><div class="pf-prev">' + prev + '</div>' + cover +
         '<input class="pf-cat" list="pfCats" maxlength="30" placeholder="Категория" data-pfcat="' + esc(it.src) + '" value="' + esc(it.cat || "") + '" aria-label="Категория">' +
         '<div class="pf-btns">' +
         '<button type="button" data-pfmove="-1" data-src="' + esc(it.src) + '" aria-label="Левее"' + (i ? "" : " disabled") + ">←</button>" +
@@ -604,6 +613,22 @@
       : '<p class="muted">Пока пусто. Добавьте фото с праздников или видео.</p>';
   }
   function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  // обложка видео и надписи на ней
+  document.addEventListener("change", function (e) {
+    var d = e.target.dataset || {};
+    if (d.pfv) {
+      var body = { src: d.src }; body[d.pfv] = e.target.value;
+      api("portfolio_video", body).then(function (r) { cfg.portfolio = r.portfolio; flash("Надпись сохранена"); }).catch(function (err) { flash(err.message, true); });
+    }
+    if (d.pfposter && e.target.files[0]) {
+      shrinkImage(e.target.files[0], 1600).then(function (data) { return api("image_upload", { kind: "poster", src: d.pfposter, data: data }); })
+        .then(function (r) { pfSet(r); flash("Обложка загружена"); }).catch(function (err) { flash(err.message, true); });
+    }
+  }, true);
+  document.addEventListener("click", function (e) {
+    var src = e.target.dataset && e.target.dataset.pfposterdel; if (!src) return;
+    api("portfolio_video", { src: src, removePoster: true }).then(function (r) { pfSet(r); flash("Обложка убрана"); }).catch(function (err) { flash(err.message, true); });
+  });
   // категория сохраняется сразу, как только убрали курсор из поля
   document.addEventListener("change", function (e) {
     var src = e.target.dataset && e.target.dataset.pfcat; if (!src) return;

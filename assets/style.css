@@ -524,3 +524,14 @@ p.note-wide { margin: 16px 0 26px; }
   .pf-arr { width: 38px; height: 38px; }
 }
 .pf-head .pf-title { min-width: 0; overflow-wrap: anywhere; }
+
+/* Видео со своей обложкой и надписью */
+.pf-track .pf-cover { cursor: pointer; }
+.pf-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 19, 40, .05) 0%, rgba(10, 19, 40, .35) 55%, rgba(10, 19, 40, .7) 100%); }
+.pf-cover-in { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; text-align: center; color: #fff; }
+.pf-cover .pf-play { position: static; margin: 0; width: 72px; height: 72px; flex: none; }
+.pf-cover .pf-play svg { width: 30px; height: 30px; }
+.pf-cover-t { font-weight: 800; font-size: clamp(22px, 2.6vw, 34px); line-height: 1.1; text-shadow: 0 2px 14px rgba(0, 0, 0, .45); }
+.pf-cover-s { font-size: 15px; opacity: .92; text-shadow: 0 1px 8px rgba(0, 0, 0, .5); }
+.pf-cover:hover img { transform: scale(1.03); }
+@media (max-width: 640px) { .pf-cover .pf-play { width: 56px; height: 56px; } .pf-cover-t { font-size: 20px; } .pf-cover-s { font-size: 13px; } }

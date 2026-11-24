@@ -526,3 +526,9 @@ input, select, textarea { color: var(--text); border-radius: 10px; }
 .pf-prev img, .pf-prev video { position: absolute; inset: 0; }
 .pf-cat { display: block; width: 100%; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 7px 8px; font: inherit; font-size: 13px; background: #fff; min-height: 0; }
 .pf-cat:focus { outline: 2px solid var(--ink); outline-offset: -2px; }
+.pf-cover-ed { border-top: 1px solid var(--line); background: #fff; }
+.pf-cover-ed .pf-cat { border-top: 0; border-bottom: 1px solid var(--line); }
+.pf-cover-btns { display: flex; }
+.pf-cover-up, .pf-cover-del { flex: 1; padding: 7px 6px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; background: #fff; border: 0; color: var(--ink); font-family: inherit; }
+.pf-cover-del { border-left: 1px solid var(--line); color: var(--red); }
+.pf-cover-up:hover, .pf-cover-del:hover { background: var(--soft); }

@@ -248,8 +248,14 @@ switch ($action) {
         $a = current_agency(); $aid = (int)$a['id'];
         if (!empty($GLOBALS['BODY_TOO_BIG'])) fail('Картинка слишком большая, нужна до 1,5 МБ. Уменьшите её или сохраните в JPG.');
         $kind = in_str($in, 'kind');
-        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'person' => 'heroes', 'bimg' => 'heroes', 'char' => 'chars', 'port' => 'portfolio'];
-        $maxSide = ['logo' => 2000, 'hero' => 4000, 'person' => 3000, 'bimg' => 3000, 'char' => 3000, 'port' => 3000];
+        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'person' => 'heroes', 'bimg' => 'heroes', 'char' => 'chars', 'port' => 'portfolio', 'poster' => 'portfolio'];
+        $maxSide = ['logo' => 2000, 'hero' => 4000, 'person' => 3000, 'bimg' => 3000, 'char' => 3000, 'port' => 3000, 'poster' => 3000];
+        // обложка — только для видео, которое уже есть в портфолио
+        $posterOf = in_str($in, 'src'); $posterIdx = null;
+        if ($kind === 'poster') {
+            foreach ($a['cfg']['portfolio']['items'] ?? [] as $i => $it) if (($it['src'] ?? '') === $posterOf && in_array($it['t'] ?? '', ['video', 'embed'], true)) $posterIdx = $i;
+            if ($posterIdx === null) fail('Видео не найдено');
+        }
         if ($kind === 'port' && portfolio_counts($a['cfg'])[0] >= PORTFOLIO_MAX_PHOTOS) fail('В портфолио уже ' . PORTFOLIO_MAX_PHOTOS . ' фото. Удалите какое-нибудь, чтобы добавить новое.');
         if (!isset($dirs[$kind])) fail('Неизвестный вид картинки');
         $charId = in_str($in, 'char');
@@ -273,6 +279,13 @@ switch ($action) {
         if (!$ok) fail('Не удалось сохранить файл на сервере', 500);
         $path = 'uploads/' . $dirs[$kind] . '/' . $file;
         $cfg = $a['cfg'];
+        if ($kind === 'poster') {
+            remove_upload($aid, (string)($cfg['portfolio']['items'][$posterIdx]['poster'] ?? ''));
+            $cfg['portfolio']['items'][$posterIdx]['poster'] = $path;
+            save_cfg($aid, $cfg);
+            tell_owner($a, 'загрузило обложку видео в портфолио');
+            json_out(['path' => $path, 'portfolio' => $cfg['portfolio']]);
+        }
         if ($kind === 'port') {
             $cfg['portfolio'] = is_array($cfg['portfolio'] ?? null) ? $cfg['portfolio'] : ['enabled' => true, 'title' => '', 'items' => []];
             $cfg['portfolio']['items'][] = ['t' => 'photo', 'src' => $path];
@@ -333,7 +346,7 @@ switch ($action) {
     case 'portfolio_remove':
         $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
         $src = in_str($in, 'src'); $items = [];
-        foreach ($cfg['portfolio']['items'] ?? [] as $it) { if (($it['src'] ?? '') === $src) { if (($it['t'] ?? '') !== 'embed') remove_upload($aid, $src); continue; } $items[] = $it; }
+        foreach ($cfg['portfolio']['items'] ?? [] as $it) { if (($it['src'] ?? '') === $src) { if (($it['t'] ?? '') !== 'embed') remove_upload($aid, $src); remove_upload($aid, (string)($it['poster'] ?? '')); continue; } $items[] = $it; }
         $cfg['portfolio']['items'] = $items;
         save_cfg($aid, $cfg);
         json_out(['portfolio' => $cfg['portfolio']]);
@@ -343,6 +356,21 @@ switch ($action) {
         $items = $cfg['portfolio']['items'] ?? []; $src = in_str($in, 'src'); $dir = (int)($in['dir'] ?? 0) < 0 ? -1 : 1;
         foreach ($items as $i => $it) if (($it['src'] ?? '') === $src && isset($items[$i + $dir])) { [$items[$i], $items[$i + $dir]] = [$items[$i + $dir], $items[$i]]; break; }
         $cfg['portfolio']['items'] = array_values($items);
+        save_cfg($aid, $cfg);
+        json_out(['portfolio' => $cfg['portfolio']]);
+
+    case 'portfolio_video': // надписи на обложке видео или убрать обложку
+        $a = current_agency(); $aid = (int)$a['id']; $cfg = $a['cfg'];
+        $src = in_str($in, 'src'); $found = false;
+        foreach ($cfg['portfolio']['items'] ?? [] as $i => $it) if (($it['src'] ?? '') === $src && in_array($it['t'] ?? '', ['video', 'embed'], true)) {
+            $found = true;
+            foreach (['title' => 60, 'sub' => 100] as $k => $max) if (array_key_exists($k, $in)) {
+                $v = mb_substr(trim(in_str($in, $k)), 0, $max);
+                if ($v === '') unset($cfg['portfolio']['items'][$i][$k]); else $cfg['portfolio']['items'][$i][$k] = $v;
+            }
+            if (!empty($in['removePoster'])) { remove_upload($aid, (string)($it['poster'] ?? '')); unset($cfg['portfolio']['items'][$i]['poster']); }
+        }
+        if (!$found) fail('Видео не найдено');
         save_cfg($aid, $cfg);
         json_out(['portfolio' => $cfg['portfolio']]);
 

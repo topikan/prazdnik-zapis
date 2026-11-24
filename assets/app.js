@@ -234,6 +234,10 @@
     track.className = "pf-track" + (list.length === 1 ? " pf-one" : list.length === 2 ? " pf-two" : "");
     track.innerHTML = list.map(function (x) {
       var it = x[0], i = x[1];
+      // видео со своей обложкой: картинка, кнопка запуска и надписи; по нажатию — плеер на весь экран
+      if (it.t !== "photo" && PF_PHOTO.test(it.poster || "")) return '<button type="button" class="pf-item pf-cover" data-pf="' + i + '" aria-label="Смотреть видео' + (it.title ? ": " + esc(it.title) : "") + '">' +
+        '<img src="' + esc(it.poster) + '" alt="" loading="lazy"><span class="pf-cover-in"><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>' +
+        (it.title ? '<b class="pf-cover-t">' + esc(it.title) + "</b>" : "") + (it.sub ? '<span class="pf-cover-s">' + esc(it.sub) + "</span>" : "") + "</span></button>";
       if (it.t === "embed") return '<div class="pf-item pf-embed"><iframe src="' + esc(it.src) + '" loading="lazy" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Видео"></iframe></div>';
       var inner = it.t === "photo" ? '<img src="' + esc(it.src) + '" alt="" loading="lazy">'
         : '<video src="' + esc(it.src) + '#t=0.5" preload="metadata" muted playsinline></video><span class="pf-play"><svg aria-hidden="true"><use href="#i-play"/></svg></span>';

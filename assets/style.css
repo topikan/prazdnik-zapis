@@ -626,3 +626,8 @@ p.note-wide { margin: 16px 0 26px; }
 }
 @media (max-width: 1080px) and (min-width: 641px) { .hero-santa.own { height: 320px; } }
 @media (max-width: 640px) { .hero-santa.own { height: 210px; } }
+/* свой персонаж: крупнее, ноги чуть заходят за форму записи */
+.hero-santa.own { height: clamp(340px, 46vh, 470px); max-width: 480px; }
+@media (min-width: 1081px) { .hero-santa.own { bottom: calc(var(--hx) - 200px); } }
+@media (max-width: 1080px) { .hero-santa.own { height: 300px; max-width: 340px; } }
+@media (max-width: 640px) { .hero-santa.own { height: 190px; max-width: 210px; } }

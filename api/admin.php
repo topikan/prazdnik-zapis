@@ -483,7 +483,7 @@ switch ($action) {
     case 'tg_link':
         $a = current_agency();
         if (!tg_ready()) fail('Уведомления в Telegram пока не настроены владельцем сервиса');
-        $bot = tg_bot();
+        $bot = tg_bot(true); // при подключении всегда спрашиваем Telegram: бот мог смениться
         if (!$bot) fail('Не удалось связаться с Telegram. Попробуйте через минуту.', 502);
         foreach (db()->query("SELECT name, value FROM settings WHERE name LIKE 'tglink:%'")->fetchAll() as $row) {
             if ((json_decode($row['value'], true)['exp'] ?? 0) < time()) db()->prepare('DELETE FROM settings WHERE name = ?')->execute([$row['name']]);
@@ -601,7 +601,7 @@ switch ($action) {
     case 'tg_link_owner':
         need_super();
         if (!tg_ready()) fail('Telegram не настроен в config.local.php');
-        $bot = tg_bot();
+        $bot = tg_bot(true); // при подключении всегда спрашиваем Telegram: бот мог смениться
         if (!$bot) fail('Не удалось связаться с Telegram. Попробуйте через минуту.', 502);
         $code = bin2hex(random_bytes(8));
         setting_set('tglink:' . $code, ['aid' => 0, 'exp' => time() + 3600]);

@@ -52,11 +52,11 @@ function tg_set_chats(int $aid, array $chats): void {
 }
 // Узнаёт имя бота и включает приём сообщений: вебхук при прямом доступе, опрос при работе через реле.
 // Результат запоминается, повторно не вызывается.
-function tg_bot(): ?array {
+function tg_bot(bool $fresh = false): ?array {
     $mode = tg_relay() ? 'poll' : site_url() . '/api/tg.php';
     $bot = setting_get('tgbot');
     // имя бота перепроверяем раз в час: если @имя сменили в BotFather, ссылки «Подключить Telegram» не должны вести на старое
-    if ($bot && ($bot['mode'] ?? '') === $mode && !empty($bot['username']) && time() - (int)($bot['at'] ?? 0) < 3600) return $bot;
+    if ($bot && ($bot['mode'] ?? '') === $mode && !empty($bot['username']) && time() - (int)($bot['at'] ?? 0) < 3600 && !$fresh) return $bot;
     if ($bot && ($bot['mode'] ?? '') === $mode && !empty($bot['username'])) {
         $me = tg_api('getMe');
         if (!empty($me['result']['username'])) {

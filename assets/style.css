@@ -631,3 +631,5 @@ p.note-wide { margin: 16px 0 26px; }
 @media (min-width: 1081px) { .hero-santa.own { bottom: calc(var(--hx) - 200px); } }
 @media (max-width: 1080px) { .hero-santa.own { height: 300px; max-width: 340px; } }
 @media (max-width: 640px) { .hero-santa.own { height: 190px; max-width: 210px; } }
+img.logo-mark.logo-def { width: 38px; height: auto; }
+@media (max-width: 640px) { img.logo-mark.logo-def { width: 32px; } }

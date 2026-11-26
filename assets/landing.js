@@ -48,7 +48,7 @@
     var demo = /^[a-z0-9-]{2,40}$/.test(d.demoSlug || "") ? d.demoSlug : "demo";
     var demoHref = location.hostname.endsWith("github.io") ? "zapis.html?a=" + demo : demo;
     ["demoButton", "finalDemoButton"].forEach(function (id) { if ($(id)) $(id).href = demoHref; });
-    document.querySelectorAll('a.shot-cta, a.shot-demo').forEach(function (a) { a.href = demoHref; });
+    document.querySelectorAll('a.shot-cta').forEach(function (a) { a.href = demoHref; });
     $("steps").innerHTML = (d.steps || []).map(function (x) { return "<li><b>" + esc(x.title) + "</b><span>" + esc(x.text) + "</span></li>"; }).join("");
     $("faq").innerHTML = (d.faq || []).map(function (x) { return "<details><summary>" + esc(x.q) + "</summary><p>" + esc(x.a) + "</p></details>"; }).join("");
   }

@@ -511,7 +511,6 @@ html.no-anim { scroll-behavior: auto; }
 .hc-small { font-size: 14px; }
 
 /* ===== Карточки со скриншотами ===== */
-#adapt { padding-top: 70px; }
 .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .shot { margin: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; box-shadow: 0 12px 30px rgba(20, 33, 61, .07); }
 .shot-wide { grid-column: span 2; }
@@ -550,7 +549,6 @@ html.no-anim { scroll-behavior: auto; }
   .shots { grid-template-columns: 1fr; gap: 14px; }
   .shot-wide { grid-column: auto; }
   .shot-pic, .shot-wide .shot-pic { height: 200px; padding: 14px 14px 0; }
-  #adapt { padding-top: 50px; }
 }
 /* в маленьких карточках показываем фрагмент скриншота крупно, чтобы текст читался */
 .shot:not(.shot-wide) .shot-pic img { width: 170%; max-width: none; }
@@ -560,28 +558,6 @@ html.no-anim { scroll-behavior: auto; }
 @media (max-width: 680px) { #panel { padding-top: 60px; } }
 @media (max-width: 480px) { .fact + .fact { border-left: 0; padding-left: 0; } .hero-facts { gap: 12px 0; } }
 
-/* Пары «в панели → у клиента» */
-.shots-adapt { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.shots-adapt .shot-wide { grid-column: 1 / -1; }
-.shots-adapt .shot-wide .shot-pic { height: 320px; }
-.shots-adapt .shot-wide .shot-pic img { width: 100%; max-width: 900px; margin: 0 auto; }
-.pair-pics { display: grid; grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr); align-items: center; gap: 0; padding: 18px; background: #EEF2EE; }
-.pp { position: relative; height: 210px; overflow: hidden; border-radius: 12px; background: #fff; box-shadow: 0 8px 22px rgba(20, 33, 61, .14); }
-.pp img { display: block; width: 175%; max-width: none; height: auto; }
-.pp-client { background: var(--cream); }
-.pp-tag { position: absolute; left: 8px; bottom: 8px; z-index: 1; padding: 3px 9px; border-radius: 999px; background: rgba(20, 33, 61, .82); color: #fff; font-size: 12px; font-weight: 700; }
-.pp-client .pp-tag { background: var(--red); }
-.pp-arrow { display: grid; place-items: center; color: var(--red); }
-.pp-arrow svg { width: 22px; height: 22px; }
-@media (max-width: 1060px) { .shots-adapt { grid-template-columns: 1fr; } }
-@media (max-width: 680px) {
-  .shots-adapt .shot-wide .shot-pic { height: 200px; }
-  .shots-adapt .shot-wide .shot-pic img { width: 190%; max-width: none; }
-  .pair-pics { grid-template-columns: 1fr; padding: 14px; }
-  .pp { height: 170px; }
-  .pp-arrow { height: 30px; transform: rotate(90deg); }
-}
-.pp-fit img { width: 100%; }
 /* карточка заявки: целиком и по центру */
 .shot .shot-pic.shot-center { display: grid; place-items: center; padding: 16px; }
 .shot .shot-pic.shot-center::after { display: none; }

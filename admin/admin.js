@@ -821,7 +821,7 @@
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
     ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"]]],
-    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка (ведёт на регистрацию)"], ["priceNote", "Строка под карточками", "area"]]],
+    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка тарифа «Агентство»"], ["priceNote", "Строка под карточками", "area"]]],
     ["Заголовки блоков", [["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
     ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
@@ -841,6 +841,7 @@
         if ((+saved.v || 0) < 3) { delete saved.strip; delete saved.heroLead; }
         if ((+saved.v || 0) < 4) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
         if ((+saved.v || 0) < 5) ["heroBadge", "points", "pricePaidText", "faq", "finalText", "steps"].forEach(function (k) { delete saved[k]; });
+        if ((+saved.v || 0) < 6) ["priceFreeText", "pricePaidText", "buyButton"].forEach(function (k) { delete saved[k]; });
         Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
         return saved;
       });
@@ -868,7 +869,7 @@
   $("saveSite").addEventListener("click", function () {
     var d = clone(siteData || {});
     document.querySelectorAll("#siteForm [data-site]").forEach(function (i) { d[i.dataset.site] = i.value.trim(); });
-    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 5;
+    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 6;
     api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 

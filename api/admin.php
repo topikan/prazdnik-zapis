@@ -523,7 +523,7 @@ switch ($action) {
         foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'stepsTitle',
             'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'buyButton', 'priceNote',
             'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
-        $out['v'] = 5;
+        $out['v'] = 6;
         foreach (['points' => ['title'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }

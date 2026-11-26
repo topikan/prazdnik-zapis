@@ -24,6 +24,7 @@
   function text(id, v) { if ($(id)) $(id).textContent = v || ""; }
 
   // v4: новый первый экран (пункты вместо подзаголовка), цена со скидкой в первые сутки, онлайн-предоплата
+  var V6_KEYS = ["priceFreeText", "pricePaidText", "buyButton"]; // v6: единый блок тарифов
   var V5_KEYS = ["heroBadge", "points", "pricePaidText", "faq", "finalText", "steps"]; // v5: частные аниматоры
   var V4_KEYS = ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"];
   var V3_KEYS = ["strip", "heroLead"]; // «Ни одной двойной брони» заменено на понятный текст
@@ -37,6 +38,7 @@
     if (defaults && (+d.v || 0) < 3) V3_KEYS.forEach(function (k) { delete d[k]; });
     if (defaults && (+d.v || 0) < 4) V4_KEYS.forEach(function (k) { delete d[k]; });
     if (defaults && (+d.v || 0) < 5) V5_KEYS.forEach(function (k) { delete d[k]; });
+    if (defaults && (+d.v || 0) < 6) V6_KEYS.forEach(function (k) { delete d[k]; });
     // поля, которых нет в сохранённой версии, берём из текстов по умолчанию
     Object.keys(defaults || {}).forEach(function (k) { if (d[k] == null || d[k] === "" || (Array.isArray(d[k]) && !d[k].length)) d[k] = defaults[k]; });
     ["heroBadge", "heroTitle", "heroAccent", "ctaNote", "stepsTitle", "priceTitle", "priceFreeTitle", "priceFreeText", "pricePaidTitle", "pricePaidSum", "pricePaidText", "priceNote", "faqTitle", "finalTitle", "finalText", "footer", "footerTagline"].forEach(function (k) { text(k, d[k]); });
@@ -46,7 +48,7 @@
     text("loginText", d.loginLink || "Вход для агентств");
     var tg = safeUrl(d.telegram, "https://t.me/rodionfrontend");
     ["tgFoot", "finalContactButton"].forEach(function (id) { if ($(id)) $(id).href = tg; });
-    text("buyButtonText", d.buyButton || "Зарегистрироваться");
+    text("buyButtonText", d.buyButton || "Подключить агентство");
     var demo = /^[a-z0-9-]{2,40}$/.test(d.demoSlug || "") ? d.demoSlug : "demo";
     var demoHref = location.hostname.endsWith("github.io") ? "zapis.html?a=" + demo : demo;
     ["demoButton", "finalDemoButton"].forEach(function (id) { if ($(id)) $(id).href = demoHref; });
@@ -59,9 +61,8 @@
   getJson("api/service.php").then(function (s) {
     if (!s || !s.priceEarly) return;
     var rub = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
-    text("rateAgency", rub(s.priceEarly)); text("rateAgencyFull", "потом " + rub(s.priceFull));
-    text("rateSolo", rub(s.soloEarly)); text("rateSoloFull", "потом " + rub(s.soloFull));
-    text("whoAgency", rub(s.priceEarly)); text("whoSolo", rub(s.soloEarly));
+    text("rateAgency", rub(s.priceEarly)); text("rateAgencyFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.priceFull));
+    text("rateSolo", rub(s.soloEarly)); text("rateSoloFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.soloFull));
   }).catch(function () {});
   // Сначала тексты из админки (сервер), недостающие — из текстов по умолчанию
   getJson("assets/landing.json").then(function (defaults) {

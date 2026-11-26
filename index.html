@@ -34,7 +34,6 @@
       <a class="brand" href="./" aria-label="Аниматорская Система, на главную"><img src="assets/img/logo-white.svg" alt="" width="40" height="33"><span>Аниматорская Система</span></a>
       <nav class="menu" aria-label="Разделы">
         <a href="#panel">Панель</a>
-        <a href="#who">Для кого</a>
         <a href="#price">Цена</a>
         <a href="#faq-block">Вопросы</a>
         <a href="#contacts">Контакты</a>
@@ -126,54 +125,39 @@
     </div>
   </section>
 
-  <section class="cream" id="who">
+  <section class="cream" id="price">
     <div class="wrap">
-      <h2 class="sec-title">Для агентств и частных аниматоров</h2>
-      <div class="who-grid">
-        <article class="who-card">
+      <div class="sec-head">
+        <h2 class="sec-title" id="priceTitle">Тарифы</h2>
+        <p class="sec-lead">Для агентств праздников и частных аниматоров</p>
+      </div>
+      <div class="plan-free">
+        <span class="pf-badge">0 ₽</span>
+        <div><b id="priceFreeTitle">До 15 декабря</b> — <span id="priceFreeText">все функции бесплатно, без привязки карты</span></div>
+      </div>
+      <div class="plans">
+        <article class="plan">
           <h3>Агентство праздников</h3>
           <ul>
             <li>Несколько бригад: сайт сам следит, сколько выездов свободно</li>
             <li>Заявки приходят всем сотрудникам в Telegram</li>
             <li>Свои составы, программы, наценки и портфолио</li>
           </ul>
-          <p class="who-price">Сезон от <b id="whoAgency">3 000 ₽</b></p>
+          <div class="plan-price"><b id="rateAgency">3 000 ₽</b><span>за сезон до 10 января</span><small id="rateAgencyFull">если оплатить в первые 24 часа, потом 5 000 ₽</small></div>
+          <a class="btn btn-dark" id="buyButton" href="register"><span id="buyButtonText">Подключить агентство</span></a>
         </article>
-        <article class="who-card who-solo">
+        <article class="plan plan-solo">
           <h3>Частный аниматор</h3>
           <ul>
             <li>Своя страница записи вместо переписки в мессенджерах</li>
             <li>Занятое время скрывается само — двойных броней не будет</li>
-            <li>Предоплата онлайн прямо вам на карту через ЮKassa</li>
+            <li>Предоплата онлайн прямо вам через ЮKassa</li>
           </ul>
-          <p class="who-price">Сезон от <b id="whoSolo">1 000 ₽</b></p>
+          <div class="plan-price"><b id="rateSolo">1 000 ₽</b><span>за сезон до 10 января</span><small id="rateSoloFull">если оплатить в первые 24 часа, потом 2 000 ₽</small></div>
+          <a class="btn btn-red" href="register">Подключиться</a>
         </article>
       </div>
-      <p class="feat4-cta"><a class="btn btn-red" href="register">Подключить бесплатно</a></p>
-    </div>
-  </section>
-
-  <section class="cream" id="price">
-    <div class="wrap">
-      <h2 class="sec-title" id="priceTitle"></h2>
-      <div class="price-grid">
-        <article class="p-card p-free">
-          <p class="p-when" id="priceFreeTitle"></p>
-          <p class="p-sum">0 ₽</p>
-          <p class="p-text" id="priceFreeText"></p>
-          <a class="btn btn-red" href="register">Подключить бесплатно</a>
-        </article>
-        <article class="p-card">
-          <p class="p-when" id="pricePaidTitle"></p>
-          <div class="p-rates">
-            <div class="p-rate"><span>Агентство</span><b id="rateAgency">3 000 ₽</b><small id="rateAgencyFull">потом 5 000 ₽</small></div>
-            <div class="p-rate"><span>Частный аниматор</span><b id="rateSolo">1 000 ₽</b><small id="rateSoloFull">потом 2 000 ₽</small></div>
-          </div>
-          <p class="p-text" id="pricePaidText"></p>
-          <a class="btn btn-dark" id="buyButton" href="register"><span id="buyButtonText">Зарегистрироваться</span></a>
-        </article>
-      </div>
-      <p class="p-note" id="priceNote"></p>
+      <p class="p-note"><span id="pricePaidText"></span> <span id="priceNote"></span></p>
     </div>
   </section>
 

@@ -59,7 +59,11 @@ function tg_bot(): ?array {
     if ($bot && ($bot['mode'] ?? '') === $mode && !empty($bot['username']) && time() - (int)($bot['at'] ?? 0) < 3600) return $bot;
     if ($bot && ($bot['mode'] ?? '') === $mode && !empty($bot['username'])) {
         $me = tg_api('getMe');
-        if (!empty($me['result']['username'])) { $bot['username'] = $me['result']['username']; }
+        if (!empty($me['result']['username'])) {
+            // в реле поставили токен другого бота: начинаем читать его сообщения с начала
+            if (!empty($bot['id']) && (int)$me['result']['id'] !== (int)$bot['id']) setting_set('tgoffset', ['v' => 0]);
+            $bot['username'] = $me['result']['username']; $bot['id'] = (int)$me['result']['id'];
+        }
         $bot['at'] = time(); setting_set('tgbot', $bot);
         return $bot;
     }
@@ -69,7 +73,8 @@ function tg_bot(): ?array {
         ? tg_api('deleteWebhook', ['drop_pending_updates' => false])
         : tg_api('setWebhook', ['url' => $mode, 'secret_token' => tg_secret(), 'allowed_updates' => ['message'], 'drop_pending_updates' => true]);
     if (empty($r['ok'])) return null;
-    $bot = ['username' => $me['result']['username'], 'mode' => $mode, 'at' => time()];
+    if (!empty($bot['id']) && (int)$me['result']['id'] !== (int)$bot['id']) setting_set('tgoffset', ['v' => 0]);
+    $bot = ['username' => $me['result']['username'], 'id' => (int)$me['result']['id'], 'mode' => $mode, 'at' => time()];
     setting_set('tgbot', $bot);
     return $bot;
 }

@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /install/
+Disallow: /uploads/
+Disallow: /consent
+Disallow: /privacy
+Disallow: /*?pay=
+Allow: /
+
+Sitemap: https://anisis.ru/sitemap.xml

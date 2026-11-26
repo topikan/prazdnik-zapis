@@ -25,9 +25,11 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
   # Переезд на anisis.ru: все адреса старого домена ведут на те же адреса нового (301 — навсегда).
-  # Включить, когда anisis.ru уже открывается с замочком (https): убрать «# » в начале двух строк ниже.
-  # RewriteCond %{HTTP_HOST} ^(www\.)?bronprazdnik\.ru$ [NC]
-  # RewriteRule ^(.*)$ https://anisis.ru/$1 [R=301,L,NE]
+  # Запросы к api/ не переадресуем: уведомления ЮKassa и задание по расписанию со старым адресом
+  # отправляют данные POST-запросом, а переадресация такой запрос теряет. api/ работает на обоих доменах.
+  RewriteCond %{HTTP_HOST} ^(www\.)?bronprazdnik\.ru$ [NC]
+  RewriteCond %{REQUEST_URI} !^/api/
+  RewriteRule ^(.*)$ https://anisis.ru/$1 [R=301,L,NE]
   # Чистые адреса: /register, /rules, /consent, /privacy вместо .html (старые ссылки с .html переадресуются)
   RewriteCond %{THE_REQUEST} \s/(register|rules|consent|privacy)\.html[\s?#]
   RewriteRule ^(register|rules|consent|privacy)\.html$ /$1 [R=301,L]

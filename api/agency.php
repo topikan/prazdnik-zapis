@@ -23,6 +23,7 @@ if (billing_closed($a) && !$preview) {
 }
 $season = $cfg['season'];
 $cfg['live'] = true;
+$cfg['kind'] = ($a['kind'] ?? 'agency') === 'solo' ? 'solo' : 'agency';
 if ($preview) $cfg['preview'] = !$a['active'] ? 'off' : 'closed';
 $cfg['occupancy'] = occupancy((int)$a['id'], $season['start'], $season['end']);
 $cfg['legal']['processor'] = $APP['processor'] ?? '';

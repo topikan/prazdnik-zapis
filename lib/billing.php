@@ -3,14 +3,15 @@
 // Даты храним строками ГГГГ-ММ-ДД: одинаково в MySQL и SQLite.
 declare(strict_types=1);
 
-const BILLING_DEFAULTS = ['freeEnd' => '2026-12-15', 'seasonEnd' => '2027-01-10', 'graceDays' => 3, 'trialDays' => 3, 'priceEarly' => 3000, 'priceFull' => 5000, 'earlyHours' => 24];
+const BILLING_DEFAULTS = ['freeEnd' => '2026-12-15', 'seasonEnd' => '2027-01-10', 'graceDays' => 3, 'trialDays' => 3, 'priceEarly' => 3000, 'priceFull' => 5000, 'earlyHours' => 24, 'soloEarly' => 1000, 'soloFull' => 2000];
 
 // Колонки оплаты и регистрации у агентств; в старых базах добавляются при первом обращении
 function ensure_billing_cols(): void {
     static $done = false; if ($done) return;
-    try { db()->query('SELECT paid_until, trial_until, email FROM agencies LIMIT 1'); }
+    try { db()->query('SELECT paid_until, trial_until, email, kind FROM agencies LIMIT 1'); }
     catch (Throwable $e) {
-        foreach (["paid_until VARCHAR(10) NOT NULL DEFAULT ''", "trial_until VARCHAR(10) NOT NULL DEFAULT ''", "email VARCHAR(120) NOT NULL DEFAULT ''"] as $col) {
+        // kind: agency — агентство, solo — частный исполнитель (один выезд, своя цена). Меняет только владелец сервиса.
+        foreach (["paid_until VARCHAR(10) NOT NULL DEFAULT ''", "trial_until VARCHAR(10) NOT NULL DEFAULT ''", "email VARCHAR(120) NOT NULL DEFAULT ''", "kind VARCHAR(8) NOT NULL DEFAULT 'agency'"] as $col) {
             try { db()->exec("ALTER TABLE agencies ADD COLUMN $col"); } catch (Throwable $e2) { /* колонка уже есть */ }
         }
     }
@@ -22,7 +23,7 @@ function billing_settings(): array {
     $s = setting_get('billing') ?: [];
     $o = BILLING_DEFAULTS;
     foreach (['freeEnd', 'seasonEnd'] as $k) if (!empty($s[$k]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$s[$k])) $o[$k] = $s[$k];
-    foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720]] as $k => $r) if (isset($s[$k]) && is_numeric($s[$k]) && $s[$k] >= $r[0] && $s[$k] <= $r[1]) $o[$k] = (int)$s[$k];
+    foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720], 'soloEarly' => [100, 1000000], 'soloFull' => [100, 1000000]] as $k => $r) if (isset($s[$k]) && is_numeric($s[$k]) && $s[$k] >= $r[0] && $s[$k] <= $r[1]) $o[$k] = (int)$s[$k];
     return $o;
 }
 
@@ -34,7 +35,9 @@ function billing_price(array $a, ?int $now = null): array {
     $created = strtotime((string)($a['created_at'] ?? '')) ?: $now;
     $until = $created + $s['earlyHours'] * 3600;
     $early = $now < $until;
-    return ['amount' => $early ? $s['priceEarly'] : $s['priceFull'], 'early' => $early, 'priceEarly' => $s['priceEarly'], 'priceFull' => $s['priceFull'],
+    $solo = is_solo($a);
+    $pe = $solo ? $s['soloEarly'] : $s['priceEarly']; $pf = $solo ? $s['soloFull'] : $s['priceFull'];
+    return ['amount' => $early ? $pe : $pf, 'early' => $early, 'priceEarly' => $pe, 'priceFull' => $pf, 'solo' => $solo,
         'earlyUntil' => date('Y-m-d H:i', $until), 'earlyLeft' => max(0, $until - $now), 'earlyHours' => $s['earlyHours']];
 }
 // Через DateTime: строку вида «2026-12-15 -1 day» strtotime читает как часовой пояс −1 и ошибается на два дня
@@ -69,6 +72,8 @@ function billing_state(array $a, ?string $today = null): array {
 }
 function billing_closed(array $a): bool { return (billing_state($a)['status'] ?? '') === 'closed'; }
 
+function is_solo(array $a): bool { return ($a['kind'] ?? 'agency') === 'solo'; }
+
 // Пробный период для зарегистрированных после окончания бесплатного: сегодня и ещё 2 дня
 function trial_for_new(?string $today = null): string {
     $today = $today ?? date('Y-m-d');
@@ -85,7 +90,7 @@ function slug_problem(string $slug): string {
     return '';
 }
 // Новое агентство из шаблона (цены и программы-примеры, которые агентство потом меняет)
-function create_agency(string $slug, string $name, string $city, string $phone, string $email, bool $active, string $trial): int {
+function create_agency(string $slug, string $name, string $city, string $phone, string $email, bool $active, string $trial, string $kind = 'agency'): int {
     ensure_billing_cols();
     $tpl = json_decode((string)file_get_contents(APP_ROOT . '/agencies/demo.json'), true);
     $tpl['name'] = mb_substr($name, 0, 80);
@@ -94,8 +99,13 @@ function create_agency(string $slug, string $name, string $city, string $phone, 
     $tpl['demo'] = false;
     $tpl['legal'] = ['operator' => '', 'inn' => '', 'ogrn' => '', 'address' => '', 'email' => '', 'keepMonths' => 12, 'updated' => date('d.m.Y'), 'policyUrl' => ''];
     $tpl['notify'] = ['email' => $email];
+    if ($kind === 'solo') {
+        // частник: один выезд одновременно, тексты от первого лица
+        $tpl['pairs'] = 1;
+        $tpl['texts'] = ['contSub' => 'Я перезвоню, чтобы подтвердить визит'];
+    }
     unset($tpl['portfolio'], $tpl['backup'], $tpl['logo'], $tpl['heroImage']);
-    db()->prepare('INSERT INTO agencies (slug, config, active, created_at, paid_until, trial_until, email) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        ->execute([$slug, json_encode($tpl, JSON_UNESCAPED_UNICODE), $active ? 1 : 0, date('Y-m-d H:i:s'), '', $trial, $email]);
+    db()->prepare('INSERT INTO agencies (slug, config, active, created_at, paid_until, trial_until, email, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$slug, json_encode($tpl, JSON_UNESCAPED_UNICODE), $active ? 1 : 0, date('Y-m-d H:i:s'), '', $trial, $email, $kind === 'solo' ? 'solo' : 'agency']);
     return (int)db()->lastInsertId();
 }

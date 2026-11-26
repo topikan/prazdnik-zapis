@@ -24,6 +24,7 @@
   function text(id, v) { if ($(id)) $(id).textContent = v || ""; }
 
   // v4: новый первый экран (пункты вместо подзаголовка), цена со скидкой в первые сутки, онлайн-предоплата
+  var V5_KEYS = ["heroBadge", "points", "pricePaidText", "faq", "finalText", "steps"]; // v5: частные аниматоры
   var V4_KEYS = ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"];
   var V3_KEYS = ["strip", "heroLead"]; // «Ни одной двойной брони» заменено на понятный текст
   var V2_KEYS = ["heroBadge", "heroTitle", "heroAccent", "heroLead", "regButton", "ctaNote", "demoButton", "contactButton", "strip", "itemsLead", "items", "steps", "faq", "finalText"];
@@ -35,11 +36,12 @@
     if (defaults && (+d.v || 0) < 2) V2_KEYS.forEach(function (k) { delete d[k]; });
     if (defaults && (+d.v || 0) < 3) V3_KEYS.forEach(function (k) { delete d[k]; });
     if (defaults && (+d.v || 0) < 4) V4_KEYS.forEach(function (k) { delete d[k]; });
+    if (defaults && (+d.v || 0) < 5) V5_KEYS.forEach(function (k) { delete d[k]; });
     // поля, которых нет в сохранённой версии, берём из текстов по умолчанию
     Object.keys(defaults || {}).forEach(function (k) { if (d[k] == null || d[k] === "" || (Array.isArray(d[k]) && !d[k].length)) d[k] = defaults[k]; });
     ["heroBadge", "heroTitle", "heroAccent", "ctaNote", "stepsTitle", "priceTitle", "priceFreeTitle", "priceFreeText", "pricePaidTitle", "pricePaidSum", "pricePaidText", "priceNote", "faqTitle", "finalTitle", "finalText", "footer", "footerTagline"].forEach(function (k) { text(k, d[k]); });
     text("regButtonText", d.regButton);
-    $("points").innerHTML = (d.points || []).slice(0, 4).map(function (x) { return "<li>" + esc(x.title) + "</li>"; }).join("");
+    $("points").innerHTML = (d.points || []).slice(0, 5).map(function (x) { return "<li>" + esc(x.title) + "</li>"; }).join("");
     text("demoButtonText", d.demoButton); text("finalDemoText", d.finalDemoButton); text("finalContactText", d.finalContactButton);
     text("loginText", d.loginLink || "Вход для агентств");
     var tg = safeUrl(d.telegram, "https://t.me/rodionfrontend");
@@ -53,6 +55,14 @@
     $("faq").innerHTML = (d.faq || []).map(function (x) { return "<details><summary>" + esc(x.q) + "</summary><p>" + esc(x.a) + "</p></details>"; }).join("");
   }
 
+  // цены — из настроек сервиса, чтобы на главной всегда были актуальные
+  getJson("api/service.php").then(function (s) {
+    if (!s || !s.priceEarly) return;
+    var rub = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
+    text("rateAgency", rub(s.priceEarly)); text("rateAgencyFull", "потом " + rub(s.priceFull));
+    text("rateSolo", rub(s.soloEarly)); text("rateSoloFull", "потом " + rub(s.soloFull));
+    text("whoAgency", rub(s.priceEarly)); text("whoSolo", rub(s.soloEarly));
+  }).catch(function () {});
   // Сначала тексты из админки (сервер), недостающие — из текстов по умолчанию
   getJson("assets/landing.json").then(function (defaults) {
     return getJson("api/site.php").then(function (d) { if (!d || !d.heroTitle) throw new Error("empty"); render(d, defaults); })

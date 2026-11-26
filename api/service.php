@@ -12,7 +12,7 @@ json_out([
     'email' => (string)((setting_get('owner') ?: [])['email'] ?? ''),
     'freeEnd' => ru_date($b['freeEnd']), 'seasonEnd' => ru_date($b['seasonEnd']),
     'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽'),
-    'priceEarly' => $b['priceEarly'], 'priceFull' => $b['priceFull'], 'earlyHours' => $b['earlyHours'],
+    'priceEarly' => $b['priceEarly'], 'priceFull' => $b['priceFull'], 'earlyHours' => $b['earlyHours'], 'soloEarly' => $b['soloEarly'], 'soloFull' => $b['soloFull'],
     'regOpen' => ($reg['open'] ?? true) !== false,
     'site' => (string)($APP['site_url'] ?? 'https://anisis.ru'),
 ]);

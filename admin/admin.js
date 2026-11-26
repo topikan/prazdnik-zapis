@@ -117,7 +117,7 @@
   function renderHeader() {
     renderBill();
     $("agencyTitle").textContent = me.agency ? me.agency.name : "Аниматорская Система";
-    $("agencySub").textContent = me.agency ? "Праздничное агентство" + (cfg && cfg.city ? " · " + cfg.city : "") : "Владелец сервиса";
+    $("agencySub").textContent = me.agency ? (isSolo() ? "Частный аниматор" : "Праздничное агентство") + (cfg && cfg.city ? " · " + cfg.city : "") : "Владелец сервиса";
     $("agencyLogo").src = me.agency && cfg && /^uploads\/logos\//.test(cfg.logo || "") ? "../" + cfg.logo : "../assets/img/logo-white.svg";
     var pl = $("publicLink");
     if (me.agency) { pl.href = "../" + me.agency.slug; pl.hidden = false; } else pl.hidden = true;
@@ -221,7 +221,9 @@
   $("schDate").addEventListener("change", loadSchedule);
   var HOURS_FIELDS = [["hours.from", "Первый визит в", "time"], ["hours.to", "Последний визит в", "time"], ["hours.lastDay.date", "Особый день, например 31 декабря", "date"], ["hours.lastDay.to", "Особый день: последний визит в", "time"],
     ["pairs", "Сколько выездов одновременно", "number"], ["travelMinutes", "Дорога между визитами, мин", "number"], ["leadHours", "Заказ минимум за, часов", "number"]];
-  function renderHours() { $("hoursForm").innerHTML = HOURS_FIELDS.map(fieldHtml).join(""); }
+  function isSolo() { return !!(me && me.agency && me.agency.kind === "solo"); }
+  // частный аниматор работает один: поля «сколько выездов одновременно» у него нет
+  function renderHours() { $("hoursForm").innerHTML = HOURS_FIELDS.filter(function (f) { return !(isSolo() && f[0] === "pairs"); }).map(fieldHtml).join(""); }
   $("saveHours").addEventListener("click", function () {
     var c = clone(cfg);
     document.querySelectorAll("#hoursForm [data-path]").forEach(function (i) { setPath(c, i.dataset.path, i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim()); });
@@ -569,8 +571,11 @@
       '<li>Сохраните. Ключ хранится у нас зашифрованным и больше нигде не показывается.</li></ol></details></div></div>' +
       '<div id="payLink"' + (mode === "link" ? "" : " hidden") + '><div class="fields"><label>Сколько внести, например «1 000 ₽» или «30%»<input data-path="payment.amount" value="' + esc(P.amount || "") + '"></label>' +
       '<label class="wide">Ссылка на оплату из вашего банка или СБП (https://…)<input data-path="payment.link" type="text" value="' + esc(P.link || "") + '"></label></div></div></div>';
+    // у частного аниматора — свои подписи: имя вместо названия агентства, тексты от первого лица
+    var SOLO = { name: "Ваше имя на странице записи", "texts.contSub": "ph:Я перезвоню, чтобы подтвердить визит" };
+    var adapt = function (f) { if (!isSolo() || !SOLO[f[0]]) return f; var g = f.slice(); if (/^ph:/.test(SOLO[f[0]])) g[2] = SOLO[f[0]]; else g[1] = SOLO[f[0]]; return g; };
     root.innerHTML = logoCard + pfCard + SETTINGS.map(function (g) {
-      return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(fieldHtml).join("") + "</div></div>";
+      return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(adapt).map(fieldHtml).join("") + "</div></div>";
     }).join("") +
       '<div class="card"><h2>Уведомления о новых заявках</h2>' +
       '<p class="muted">В уведомлении будут дата, время, программа и сумма. Имя, телефон и адрес клиента видны только здесь, во вкладке «Заявки».</p>' +
@@ -816,7 +821,7 @@
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
     ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"]]],
-    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidSum", "Цена (показывается и в плашке у агентств)"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка (ведёт на регистрацию)"], ["priceNote", "Строка под карточками", "area"]]],
+    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка (ведёт на регистрацию)"], ["priceNote", "Строка под карточками", "area"]]],
     ["Заголовки блоков", [["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
     ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
@@ -835,6 +840,7 @@
         if ((+saved.v || 0) < 2) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "regButton", "ctaNote", "demoButton", "contactButton", "strip", "itemsLead", "items", "steps", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
         if ((+saved.v || 0) < 3) { delete saved.strip; delete saved.heroLead; }
         if ((+saved.v || 0) < 4) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
+        if ((+saved.v || 0) < 5) ["heroBadge", "points", "pricePaidText", "faq", "finalText", "steps"].forEach(function (k) { delete saved[k]; });
         Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
         return saved;
       });
@@ -850,7 +856,7 @@
         }).join("") + "</div></details>";
       }).join("");
       root.querySelectorAll("details.fold").forEach(function (dt) { dt.addEventListener("toggle", function () { if (dt.open) autosize(dt); dt.querySelector(".fold-btn").textContent = dt.open ? "Свернуть" : "Изменить"; }); });
-      siteEd.points = rowsEditor("Пункты с галочками на первом экране", "До четырёх коротких пунктов.", d.points, [{ k: "title", label: "Текст" }], function () { return { title: "" }; }, 4);
+      siteEd.points = rowsEditor("Пункты с галочками на первом экране", "До пяти коротких пунктов.", d.points, [{ k: "title", label: "Текст" }], function () { return { title: "" }; }, 5);
       siteEd.steps = rowsEditor("Шаги «Как подключиться»", "", d.steps, [{ k: "title", label: "Шаг" }, { k: "text", label: "Пояснение", long: 1 }], function () { return { title: "", text: "" }; });
       siteEd.faq = rowsEditor("Частые вопросы", "Здесь же цена подключения.", d.faq, [{ k: "q", label: "Вопрос" }, { k: "a", label: "Ответ", long: 1 }], function () { return { q: "", a: "" }; });
       [siteEd.points, siteEd.steps, siteEd.faq].forEach(function (x) { root.appendChild(x); });
@@ -862,7 +868,7 @@
   $("saveSite").addEventListener("click", function () {
     var d = clone(siteData || {});
     document.querySelectorAll("#siteForm [data-site]").forEach(function (i) { d[i.dataset.site] = i.value.trim(); });
-    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 4;
+    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 5;
     api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 
@@ -880,6 +886,8 @@
         '<label>Цена в первые часы после регистрации, ₽<input type="number" id="ownPriceEarly" min="100" value="' + esc(o.billing.priceEarly) + '"></label>' +
         '<label>Сколько часов действует эта цена<input type="number" id="ownEarlyHours" min="1" max="720" value="' + esc(o.billing.earlyHours) + '"></label>' +
         '<label>Обычная цена сезона, ₽<input type="number" id="ownPriceFull" min="100" value="' + esc(o.billing.priceFull) + '"></label>' +
+        '<label>Частник: цена в первые часы, ₽<input type="number" id="ownSoloEarly" min="100" value="' + esc(o.billing.soloEarly) + '"></label>' +
+        '<label>Частник: обычная цена, ₽<input type="number" id="ownSoloFull" min="100" value="' + esc(o.billing.soloFull) + '"></label>' +
         '<p class="muted">После окончания срока 3 дня отсрочки, потом страница записи закрывается. Онлайн-оплата: ' + (o.payOnline ? "подключена" : "не подключена — впишите yk_shop_id и yk_secret в config.local.php") + '.</p></div>' +
         '<div><h3>Копия всех заявок</h3><label class="row"><input type="checkbox" id="ownBkTg"' + (o.backup.tg ? " checked" : "") + "> В мой Telegram</label>" +
         '<label class="row"><input type="checkbox" id="ownBkMail"' + (o.backup.email ? " checked" : "") + '> На мою почту</label>' +
@@ -912,7 +920,7 @@
     if (id === "ownSave") api("owner_save", {
       email: $("ownEmail").value.trim(), reg: { open: $("ownRegOpen").checked, manual: $("ownRegManual").checked },
       backup: { tg: $("ownBkTg").checked, email: $("ownBkMail").checked, password: $("ownBkPass").value },
-      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value, priceEarly: +$("ownPriceEarly").value, priceFull: +$("ownPriceFull").value, earlyHours: +$("ownEarlyHours").value }
+      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value, priceEarly: +$("ownPriceEarly").value, priceFull: +$("ownPriceFull").value, earlyHours: +$("ownEarlyHours").value, soloEarly: +$("ownSoloEarly").value, soloFull: +$("ownSoloFull").value }
     }).then(function () { flash("Настройки сервиса сохранены"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
     if (id === "mailTest") {
       e.target.disabled = true; $("mailRes").textContent = "Отправляю…";
@@ -933,12 +941,13 @@
   function loadAgencies() {
     api("agencies").then(function (r) {
       $("agencies").innerHTML = r.agencies.map(function (a) {
-        return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.demo ? ' <span class="st st-new">демо</span>' : billBadge(a.billing)) + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') + (a.demo || a.legal ? "" : ' <span class="st st-warn" title="Без них согласие и политика на странице записи неполные">нет реквизитов</span>') +
+        return '<div class="card agency-row"><div><b>' + esc(a.name) + "</b>" + (a.kind === "solo" ? ' <span class="st st-confirmed">частник</span>' : "") + (a.demo ? ' <span class="st st-new">демо</span>' : billBadge(a.billing)) + (a.active ? "" : ' <span class="st st-cancelled">выключено</span>') + (a.demo || a.legal ? "" : ' <span class="st st-warn" title="Без них согласие и политика на странице записи неполные">нет реквизитов</span>') +
           '<br><small class="muted">/' + esc(a.slug) + (a.city ? " · " + esc(a.city) : "") + " · вход: " + esc(a.login || "не создан") + (a.phone ? " · " + esc(a.phone) : "") + "</small></div>" +
           "<div class=\"ag-count\"><b>" + a.orders + "</b> " + plural(a.orders, "заявка", "заявки", "заявок") + "</div>" +
           '<div class="acts"><button class="btn small" data-open="' + a.id + '">Открыть</button>' +
           '<button class="btn ghost small" data-user="' + a.id + '" data-login="' + esc(a.login || a.slug) + '" data-slug="' + esc(a.slug) + '">Вход для агентства</button>' +
           (a.demo ? "" : '<button class="btn ghost small" data-paid="' + a.id + '" data-until="' + esc((a.billing && a.billing.paidUntil) || "") + '" data-season="' + esc((a.billing && a.billing.seasonEnd) || "") + '">Оплата</button>') +
+          (a.demo ? "" : '<button class="btn ghost small" data-kind="' + a.id + '" data-to="' + (a.kind === "solo" ? "agency" : "solo") + '">' + (a.kind === "solo" ? "Сделать агентством" : "Сделать частником") + "</button>") +
           '<button class="btn ' + (a.active ? "danger" : "ghost") + ' small" data-toggle="' + a.id + '" data-active="' + (a.active ? 0 : 1) + '">' + (a.active ? "Выключить" : "Включить") + "</button>" +
           (a.slug === "demo" ? "" : '<button class="btn danger small" data-del="' + a.id + '" data-slug="' + esc(a.slug) + '">Удалить</button>') + "</div></div>";
       }).join("") || '<div class="card empty">Агентств пока нет</div>';
@@ -1087,6 +1096,9 @@
       if (until === null) { flash("Дата в формате ДД.ММ.ГГГГ, например " + isoToRu(t.dataset.season), true); return; }
       api("agency_paid", { id: +t.dataset.paid, until: until }).then(function () { flash(until ? "Оплата отмечена по " + v : "Отметка об оплате снята"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
       return;
+    }
+    if (t.dataset.kind && confirm(t.dataset.to === "solo" ? "Сделать частным аниматором? Будет один выезд одновременно и цена для частников." : "Сделать агентством? Выездов можно будет ставить сколько угодно, цена — как для агентств.")) {
+      api("agency_kind", { id: +t.dataset.kind, kind: t.dataset.to }).then(function () { flash("Готово"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
     }
     if (t.dataset.open) api("agency_open", { id: +t.dataset.open }).then(function (m) { start(m); tab = "orders"; }).catch(function (err) { flash(err.message, true); });
     if (t.dataset.toggle) api("agency_toggle", { id: +t.dataset.toggle, active: t.dataset.active === "1" }).then(loadAgencies);

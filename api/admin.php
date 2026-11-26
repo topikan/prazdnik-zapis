@@ -60,7 +60,7 @@ $isSuper = $_SESSION['role'] === 'super';
 
 function me(): array {
     $agency = null;
-    if (!empty($_SESSION['agency'])) { $a = agency_by_id((int)$_SESSION['agency']); if ($a) $agency = ['id' => (int)$a['id'], 'slug' => $a['slug'], 'name' => $a['cfg']['name'] ?? $a['slug'], 'active' => (bool)$a['active'], 'billing' => billing_state($a), 'price' => billing_price($a), 'payOnline' => owner_pay_ready()]; }
+    if (!empty($_SESSION['agency'])) { $a = agency_by_id((int)$_SESSION['agency']); if ($a) $agency = ['id' => (int)$a['id'], 'slug' => $a['slug'], 'name' => $a['cfg']['name'] ?? $a['slug'], 'active' => (bool)$a['active'], 'billing' => billing_state($a), 'price' => billing_price($a), 'payOnline' => owner_pay_ready(), 'kind' => is_solo($a) ? 'solo' : 'agency']; }
     $land = setting_get('landing') ?: [];
     $contact = preg_match('#^https://[^\s<>"]+$#', (string)($land['telegram'] ?? '')) ? $land['telegram'] : 'https://t.me/rodionfrontend';
     return ['role' => $_SESSION['role'], 'agency' => $agency, 'csrf' => $_SESSION['csrf'], 'contact' => $contact, 'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽')];
@@ -227,6 +227,7 @@ switch ($action) {
         $c['portfolio'] = ['enabled' => !empty($c['portfolio']['enabled']), 'title' => $c['portfolio']['title'] ?? '', 'items' => $a['cfg']['portfolio']['items'] ?? []];
         $errors = [];
         $clean = normalize_config($c, $errors);
+        if (is_solo($a)) $clean['pairs'] = 1;   // частный исполнитель — всегда один выезд
         if ($errors) fail(implode('. ', array_slice(array_values(array_unique($errors)), 0, 5)));
         $aid = (int)$a['id'];
         // фото составов — только свои файлы этого агентства
@@ -522,7 +523,7 @@ switch ($action) {
         foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'stepsTitle',
             'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'buyButton', 'priceNote',
             'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
-        $out['v'] = 4;
+        $out['v'] = 5;
         foreach (['points' => ['title'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }
@@ -537,7 +538,7 @@ switch ($action) {
         foreach (db()->query('SELECT a.id, a.slug, a.config, a.active, a.created_at, a.paid_until, a.trial_until, a.email, (SELECT COUNT(*) FROM orders o WHERE o.agency_id = a.id) AS orders_count, (SELECT login FROM users u WHERE u.agency_id = a.id LIMIT 1) AS login FROM agencies a ORDER BY a.id DESC') as $r) {
             $cfg = json_decode($r['config'], true) ?: [];
             $r['cfg'] = $cfg;
-            $rows[] = ['billing' => billing_state($r), 'phone' => $cfg['phone'] ?? '', 'email' => $r['email'], 'id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
+            $rows[] = ['billing' => billing_state($r), 'phone' => $cfg['phone'] ?? '', 'email' => $r['email'], 'id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'kind' => $r['kind'] ?? 'agency', 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
         }
         json_out(['agencies' => $rows]);
 
@@ -582,7 +583,7 @@ switch ($action) {
         setting_set('reg', ['open' => !empty($in['reg']['open']), 'manual' => !empty($in['reg']['manual'])]);
         setting_set('ownerbackup', ['tg' => !empty($bk['tg']), 'email' => !empty($bk['email']), 'password' => $pw]);
         $nums = [];
-        foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720]] as $k => $r) {
+        foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720], 'soloEarly' => [100, 1000000], 'soloFull' => [100, 1000000]] as $k => $r) {
             $v = $bl[$k] ?? billing_settings()[$k];   // не прислали — оставляем как было
             if (!is_numeric($v) || (int)$v < $r[0] || (int)$v > $r[1]) fail('Проверьте цены и срок скидки');
             $nums[$k] = (int)$v;
@@ -632,6 +633,15 @@ switch ($action) {
         if (!$a) fail('Агентство не найдено', 404);
         $_SESSION['agency'] = (int)$a['id'];
         json_out(me());
+
+    case 'agency_kind': // владелец меняет тип: агентство или частный исполнитель
+        need_super();
+        $a = agency_by_id((int)($in['id'] ?? 0));
+        if (!$a) fail('Агентство не найдено', 404);
+        $kind = in_str($in, 'kind') === 'solo' ? 'solo' : 'agency';
+        db()->prepare('UPDATE agencies SET kind = ? WHERE id = ?')->execute([$kind, (int)$a['id']]);
+        if ($kind === 'solo') { $cfg = $a['cfg']; $cfg['pairs'] = 1; save_cfg((int)$a['id'], $cfg); }
+        json_out(['ok' => true]);
 
     case 'agency_close': // выйти из агентства обратно в кабинет владельца
         need_super();

@@ -33,6 +33,15 @@
     if (el.type !== "password") el.setAttribute("autocomplete", "x-" + Math.random().toString(36).slice(2, 8)); // незнакомое значение: подсказок нет
     if (el.type === "email") { el.type = "text"; el.inputMode = "email"; el.spellcheck = false; el.autocapitalize = "off"; }
   });
+  // агентство или частный аниматор: подписи и подсказки меняются
+  var kind = "agency";
+  [].forEach.call(f.querySelectorAll('input[name="kind"]'), function (r) {
+    r.addEventListener("change", function () {
+      kind = r.value;
+      $("nameLabel").dataset.t = kind === "solo" ? "Ваше имя или псевдоним" : "Название агентства";
+      $("nameHint").textContent = kind === "solo" ? "Например «Дед Мороз Иван» — так вас увидят клиенты." : "Так его увидят клиенты на странице записи.";
+    });
+  });
   F.name.addEventListener("input", function () { if (!slugTouched) { F.slug.value = slugify(F.name.value); checkSlug(); } });
   F.slug.addEventListener("input", function () {
     slugTouched = true;
@@ -79,11 +88,11 @@
   /* ---------- регистрация ---------- */
   function check(form) {
     var d = {
-      name: F.name.value.trim(), city: F.city.value.trim(), phone: F.phone.value, email: F.email.value.trim(), password: F.password.value,
+      kind: kind, name: F.name.value.trim(), city: F.city.value.trim(), phone: F.phone.value, email: F.email.value.trim(), password: F.password.value,
       slug: F.slug.value.trim(), agreeRules: F.agreeRules.checked, agreePd: F.agreePd.checked
     };
     var bad = null;
-    if (d.name.length < 2) bad = [F.name, "Укажите название агентства"];
+    if (d.name.length < 2) bad = [F.name, kind === "solo" ? "Укажите ваше имя" : "Укажите название агентства"];
     else if (!d.city) bad = [F.city, "Укажите город"];
     else if (d.phone.replace(/\D/g, "").length !== 11) bad = [F.phone, "Проверьте номер телефона"];
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) bad = [F.email, "Проверьте адрес почты"];
@@ -163,6 +172,7 @@
       document.querySelectorAll(".js-p1").forEach(function (x) { x.textContent = rub(s.priceEarly); });
       document.querySelectorAll(".js-p2").forEach(function (x) { x.textContent = rub(s.priceFull); });
       document.querySelectorAll(".js-ph").forEach(function (x) { x.textContent = s.earlyHours; });
+      if (s.soloEarly) { document.querySelectorAll(".js-s1").forEach(function (x) { x.textContent = rub(s.soloEarly); }); document.querySelectorAll(".js-s2").forEach(function (x) { x.textContent = rub(s.soloFull); }); }
     }
     if (!s) return;
     document.querySelectorAll(".js-free").forEach(function (x) { x.textContent = s.freeEnd; });

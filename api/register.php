@@ -70,7 +70,8 @@ switch ($action) {
         $email = norm_email(in_str($in, 'email'));
         $pass = in_str($in, 'password');
         $slug = strtolower(trim(in_str($in, 'slug')));
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 80) fail('Укажите название агентства');
+        $kind = in_str($in, 'kind') === 'solo' ? 'solo' : 'agency';
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 80) fail($kind === 'solo' ? 'Укажите ваше имя' : 'Укажите название агентства');
         if ($city === '' || mb_strlen($city) > 60) fail('Укажите город');
         if (strlen($phoneDigits) !== 11 || $phoneDigits[0] !== '7') fail('Проверьте номер телефона');
         if (strlen($pass) < 8) fail('Пароль — не короче 8 символов');
@@ -81,7 +82,7 @@ switch ($action) {
         rate_limit('regmail', 8, 3600, 'm:' . $email);
         $token = bin2hex(random_bytes(16)); $code = new_code();
         $phone = '+7 (' . substr($phoneDigits, 1, 3) . ') ' . substr($phoneDigits, 4, 3) . '-' . substr($phoneDigits, 7, 2) . '-' . substr($phoneDigits, 9);
-        setting_set('reg:' . $token, ['name' => mb_substr($name, 0, 80), 'city' => mb_substr($city, 0, 60), 'phone' => $phone, 'email' => $email, 'slug' => $slug,
+        setting_set('reg:' . $token, ['kind' => $kind, 'name' => mb_substr($name, 0, 80), 'city' => mb_substr($city, 0, 60), 'phone' => $phone, 'email' => $email, 'slug' => $slug,
             'pass' => password_hash($pass, PASSWORD_DEFAULT), 'code' => code_hash($code, $token), 'exp' => time() + CODE_TTL, 'tries' => 0, 'sent' => time(), 'ip' => client_key()]);
         if (!send_code($email, $code, 'Введите его на странице регистрации, чтобы подтвердить почту.')) { pending_del('reg:' . $token); fail('Не получилось отправить письмо. Проверьте адрес или попробуйте через пару минут.', 502); }
         json_out(['token' => $token, 'email' => $email]);
@@ -113,13 +114,15 @@ switch ($action) {
         $manual = reg_settings()['manual'];
         $pdo = db();
         $pdo->beginTransaction();
-        $aid = create_agency($p['slug'], $p['name'], $p['city'], $p['phone'], $p['email'], !$manual, trial_for_new());
+        $kind = ($p['kind'] ?? 'agency') === 'solo' ? 'solo' : 'agency';
+        $aid = create_agency($p['slug'], $p['name'], $p['city'], $p['phone'], $p['email'], !$manual, trial_for_new(), $kind);
         $pdo->prepare('INSERT INTO users (agency_id, login, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)')->execute([$aid, $p['email'], $p['pass'], 'agency', date('Y-m-d H:i:s')]);
         $uid = (int)$pdo->lastInsertId();
         $pdo->commit();
         session_login(['id' => $uid, 'login' => $p['email'], 'role' => 'agency', 'agency_id' => $aid, 'password_hash' => $p['pass']]);
         session_write_close();
-        notify_owner('Новое агентство: ' . $p['name'], "Новое агентство зарегистрировалось\n\n{$p['name']}, {$p['city']}\nТелефон: {$p['phone']}\nПочта: {$p['email']}\nСтраница: " . site_url() . '/' . $p['slug']
+        $who = $kind === 'solo' ? 'Новый частный исполнитель' : 'Новое агентство';
+        notify_owner($who . ': ' . $p['name'], $who . " зарегистрировался\n\n{$p['name']}, {$p['city']}\nТелефон: {$p['phone']}\nПочта: {$p['email']}\nСтраница: " . site_url() . '/' . $p['slug']
             . ($manual ? "\n\nСтраница ждёт одобрения: «Агентства» → «Включить»." : "\n\nЕсли что-то не так: «Агентства» → «Выключить».") . "\n" . site_url() . '/admin/');
         json_out(['ok' => true, 'manual' => $manual]);
 

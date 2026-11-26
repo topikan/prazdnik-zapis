@@ -759,7 +759,7 @@
     if (server && server.lines) pr = { lines: server.lines, total: server.total };
     $("doneText").textContent = cfg.demo
       ? "Это демо-версия, поэтому заявка никуда не ушла. В рабочей версии она сразу придёт агентству, и с вами свяжутся для подтверждения."
-      : "Заявка № " + (server ? server.id : "") + " у агентства. Мы перезвоним по номеру " + f.elements.phone.value + ", чтобы подтвердить визит.";
+      : "Заявка № " + (server ? server.id : "") + (solo() ? " принята. Я перезвоню по номеру " : " у агентства. Мы перезвоним по номеру ") + f.elements.phone.value + ", чтобы подтвердить визит.";
     var kids = state.children.filter(function (c) { return c.name.trim(); }).map(function (c) { return c.name.trim() + (c.age ? ", " + c.age : ""); }).join("; ");
     var rows = [["Когда", human(state.date) + ", " + state.time]];
     if (kids) rows.push(["Дети", kids]);
@@ -775,16 +775,17 @@
       payToken = server.payToken;
       $("payBtn").removeAttribute("target"); $("payBtn").href = "#";
       $("payBtn").firstChild.nodeValue = "Внести предоплату " + rub(server.prepay);
-      $("payNote").textContent = "Картой или по СБП. Деньги поступают сразу агентству, заявка отметится как оплаченная.";
+      $("payNote").textContent = "Картой или по СБП. Деньги поступают сразу " + (solo() ? "исполнителю" : "агентству") + ", заявка отметится как оплаченная.";
     } else if (payOn) {
       payToken = "";
       $("payBtn").setAttribute("target", "_blank"); $("payBtn").href = pay.link;
-      $("payNote").textContent = (pay.amount ? "Предоплата: " + pay.amount + ". " : "") + "Оплата идёт напрямую агентству. Укажите в комментарии к платежу номер заявки № " + (server ? server.id : "") + ".";
+      $("payNote").textContent = (pay.amount ? "Предоплата: " + pay.amount + ". " : "") + "Оплата идёт напрямую " + (solo() ? "исполнителю" : "агентству") + ". Укажите в комментарии к платежу номер заявки № " + (server ? server.id : "") + ".";
     }
     $("doneClose").textContent = payOn ? "Закрыть" : "Хорошо";
     $("done").hidden = false; (payOn ? $("payBtn") : $("doneClose")).focus();
   }
 
+  function solo() { return !!(cfg && cfg.kind === "solo"); }
   /* ---------- онлайн-предоплата ---------- */
   var payToken = "";
   $("payBtn").addEventListener("click", function (e) {
@@ -810,7 +811,7 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.error) { showPayResult(false, d.error); return; }
-          if (d.paid) { showPayResult(true, "Предоплата " + rub(d.prepaid) + " по заявке № " + d.order + " получена. Агентство уже видит оплату и свяжется с вами."); return; }
+          if (d.paid) { showPayResult(true, "Предоплата " + rub(d.prepaid) + " по заявке № " + d.order + " получена. " + (solo() ? "Исполнитель" : "Агентство") + " уже видит оплату и свяжется с вами."); return; }
           if (d.status === "pending" && ++tries < 6) { showPayResult(null, "Проверяем оплату…"); setTimeout(ask, 3000); return; }
           payToken = tok;
           showPayResult(false, d.status === "canceled" ? "Оплата не прошла или была отменена. Можно попробовать ещё раз." : "Оплата пока не подтвердилась. Если деньги списались, агентство увидит платёж в течение нескольких минут.");

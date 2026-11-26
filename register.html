@@ -28,9 +28,10 @@
     <div class="wrap auth-in">
       <div class="auth-text" id="sideReg">
         <h1>Подключите онлайн-запись за пару минут</h1>
+        <p class="lead">Для агентств праздников и частных аниматоров.</p>
         <ul class="auth-points">
           <li><b>Бесплатно до <span class="js-free">15.12.2026</span></b><span>Все функции, без оплаты и привязки карты.</span></li>
-          <li><b>Сезон за <span class="js-p1">3 000 ₽</span></b><span>Если оплатить в первые <span class="js-ph">24</span> ч после регистрации. Потом — <span class="js-p2">5 000 ₽</span>.</span></li>
+          <li><b>Сезон за <span class="js-p1">3 000 ₽</span></b><span>Если оплатить в первые <span class="js-ph">24</span> ч после регистрации. Потом — <span class="js-p2">5 000 ₽</span>. Для частных аниматоров — <span class="js-s1">1 000 ₽</span> и <span class="js-s2">2 000 ₽</span>.</span></li>
           <li><b>Своя ссылка сразу</b><span>anisis.ru/ваше-название — для ВК, сайта и 2ГИС.</span></li>
           <li><b>Прайс вносите сами</b><span>Цены, программы, фото и часы работы меняются в панели.</span></li>
         </ul>
@@ -43,9 +44,13 @@
       <div class="auth-card">
         <!-- Регистрация: шаг 1 -->
         <form id="regForm" novalidate autocomplete="off">
-          <h2>Регистрация агентства</h2>
+          <h2 id="regTitle">Регистрация</h2>
+          <div class="kind-switch" role="radiogroup" aria-label="Кто вы">
+            <label class="kind-opt"><input type="radio" name="kind" value="agency" checked><span><b>Агентство</b><small>Несколько бригад, выездов одновременно сколько угодно</small></span></label>
+            <label class="kind-opt"><input type="radio" name="kind" value="solo"><span><b>Частный аниматор</b><small>Работаю сам, один выезд за раз. Дешевле</small></span></label>
+          </div>
           <p class="auth-closed" id="regClosed" hidden>Регистрация временно закрыта. <a class="js-tg" href="#" target="_blank" rel="noopener noreferrer">Напишите нам в Telegram</a>, подключим вручную.</p>
-          <label><span class="lt" data-t="Название агентства"></span><input name="name" maxlength="80" autocomplete="off" required></label>
+          <label><span class="lt" id="nameLabel" data-t="Название агентства"></span><input name="name" maxlength="80" autocomplete="off" required><small id="nameHint">Так его увидят клиенты на странице записи.</small></label>
           <div class="two">
             <label><span class="lt" data-t="Город"></span><input name="city" maxlength="60" autocomplete="off" required></label>
             <label><span class="lt" data-t="Телефон"></span><input name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="+7 (___) ___-__-__" autocomplete="off" required></label>

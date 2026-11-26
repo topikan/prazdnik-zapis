@@ -30,6 +30,7 @@
     <div class="wrap top-in">
       <a class="brand" href="./" aria-label="Аниматорская Система, на главную"><img src="assets/img/logo-white.svg" alt="" width="40" height="33"><span>Аниматорская Система</span></a>
       <nav class="menu" aria-label="Разделы">
+        <a href="#who">Для кого</a>
         <a href="#panel">Панель</a>
         <a href="#price">Цена</a>
         <a href="#faq-block">Вопросы</a>
@@ -83,6 +84,33 @@
     <svg class="wave" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 52C180 18 360 6 560 26s420 58 620 44 220-38 260-44V90H0z"/></svg>
   </section>
 
+  <section class="cream" id="who">
+    <div class="wrap">
+      <h2 class="sec-title">Для агентств и частных аниматоров</h2>
+      <div class="who-grid">
+        <article class="who-card">
+          <h3>Агентство праздников</h3>
+          <ul>
+            <li>Несколько бригад: сайт сам следит, сколько выездов свободно</li>
+            <li>Заявки приходят всем сотрудникам в Telegram</li>
+            <li>Свои составы, программы, наценки и портфолио</li>
+          </ul>
+          <p class="who-price">Сезон от <b id="whoAgency">3 000 ₽</b></p>
+        </article>
+        <article class="who-card who-solo">
+          <h3>Частный аниматор</h3>
+          <ul>
+            <li>Своя страница записи вместо переписки в мессенджерах</li>
+            <li>Занятое время скрывается само — двойных броней не будет</li>
+            <li>Предоплата онлайн прямо вам на карту через ЮKassa</li>
+          </ul>
+          <p class="who-price">Сезон от <b id="whoSolo">1 000 ₽</b></p>
+        </article>
+      </div>
+      <p class="feat4-cta"><a class="btn btn-red" href="register">Подключить бесплатно</a></p>
+    </div>
+  </section>
+
   <section class="cream" id="panel">
     <div class="wrap">
       <div class="sec-head">
@@ -134,7 +162,10 @@
         </article>
         <article class="p-card">
           <p class="p-when" id="pricePaidTitle"></p>
-          <p class="p-sum" id="pricePaidSum"></p>
+          <div class="p-rates">
+            <div class="p-rate"><span>Агентство</span><b id="rateAgency">3 000 ₽</b><small id="rateAgencyFull">потом 5 000 ₽</small></div>
+            <div class="p-rate"><span>Частный аниматор</span><b id="rateSolo">1 000 ₽</b><small id="rateSoloFull">потом 2 000 ₽</small></div>
+          </div>
           <p class="p-text" id="pricePaidText"></p>
           <a class="btn btn-dark" id="buyButton" href="register"><span id="buyButtonText">Зарегистрироваться</span></a>
         </article>

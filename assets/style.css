@@ -633,3 +633,14 @@ p.note-wide { margin: 16px 0 26px; }
 @media (max-width: 640px) { .hero-santa.own { height: 190px; max-width: 210px; } }
 img.logo-mark.logo-def { width: 38px; height: auto; }
 @media (max-width: 640px) { img.logo-mark.logo-def { width: 32px; } }
+
+/* Устойчивость к длинным текстам агентства: длинные слова переносятся, ничего не вылезает за экран */
+body { overflow-wrap: break-word; }
+.banner-text, .banner h2, .banner p, .card-body, .tile-body, .chip span, .sum-who, .done-sum, .pf-cap, .logo-name, .step-title, .step-sub, .hero h1, .lead { overflow-wrap: anywhere; min-width: 0; }
+.banner .btn { white-space: normal; text-align: center; max-width: 100%; }
+.banner-in > * { min-width: 0; }
+/* длинный заголовок первого экрана — мельче, чтобы форма не уезжала далеко вниз */
+.hero h1.is-long { font-size: clamp(30px, 4vw, 48px); }
+.hero h1.is-xlong { font-size: clamp(24px, 3vw, 36px); }
+.lead.is-long { font-size: 16px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+.who-art .badge, .badge { max-width: calc(100% - 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }

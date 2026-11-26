@@ -182,6 +182,10 @@
     // заголовки и подписи, которые агентство поменяло в кабинете
     var T = cfg.texts || {};
     Object.keys(TEXT_IDS).forEach(function (k) { if (T[k] && $(TEXT_IDS[k])) $(TEXT_IDS[k]).textContent = T[k]; });
+    var hl = ($("tHeroTitle").textContent + $("tHeroAccent").textContent).length;
+    $("hero").querySelector("h1").classList.toggle("is-long", hl > 32 && hl <= 60);
+    $("hero").querySelector("h1").classList.toggle("is-xlong", hl > 60);
+    $("tHeroLead").classList.toggle("is-long", $("tHeroLead").textContent.length > 140);
     renderBanner();
     renderPortfolio();
     renderGuide();

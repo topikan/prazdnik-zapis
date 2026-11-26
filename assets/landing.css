@@ -604,3 +604,5 @@ html.no-anim { scroll-behavior: auto; }
 .p-rate span { font-weight: 700; }
 .p-rate b { font-weight: 800; font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.02em; text-align: right; }
 .p-rate small { grid-column: 2; text-align: right; color: var(--muted); font-size: 14px; }
+.p-card .p-rates { width: 100%; }
+.p-card .p-text { max-width: none; }

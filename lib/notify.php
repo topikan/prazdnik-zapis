@@ -7,7 +7,10 @@ function site_url(): string {
     if (!empty($APP['site_url'])) return rtrim($APP['site_url'], '/');
     // Не берём адрес из заголовка Host: его можно подделать и подсунуть агентству ссылку на чужой сайт
     if (is_local_host()) return 'http://' . preg_replace('/[^a-z0-9.\-:\[\]]/i', '', (string)$_SERVER['HTTP_HOST']);
-    return 'https://bronprazdnik.ru';
+    // переезд: пока новый адрес не заработал, ссылки ведут туда, откуда пришёл запрос (только на свои домены)
+    $h = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+    if (in_array($h, ['bronprazdnik.ru', 'www.bronprazdnik.ru'], true)) return 'https://bronprazdnik.ru';
+    return 'https://anisis.ru';
 }
 
 // Запрос к Telegram: напрямую или через реле в Google Apps Script.
@@ -108,7 +111,7 @@ function tg_handle(array $msg): void {
         }
         tg_send($chat, 'Уведомления отключены. Подключить снова можно в личном кабинете.');
     } else {
-        tg_send($chat, "Это бот уведомлений о заявках Бронь Праздник.\n\nЧтобы получать заявки, откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram».");
+        tg_send($chat, "Это бот уведомлений о заявках Аниматорская Система.\n\nЧтобы получать заявки, откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram».");
     }
 }
 function tg_send(int $chat, string $text): bool {

@@ -1,6 +1,6 @@
 <?php
 // Ночной запуск: копии заявок агентствам и владельцу. Запускается заданием по расписанию в панели хостинга:
-//   wget -q -O - "https://bronprazdnik.ru/api/cron.php?key=КЛЮЧ"
+//   wget -q -O - "https://anisis.ru/api/cron.php?key=КЛЮЧ"
 // Ключ показан во вкладке «Агентства». Без ключа ничего не происходит. За сутки копии уходят один раз.
 declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';

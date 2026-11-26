@@ -14,5 +14,5 @@ json_out([
     'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽'),
     'priceEarly' => $b['priceEarly'], 'priceFull' => $b['priceFull'], 'earlyHours' => $b['earlyHours'],
     'regOpen' => ($reg['open'] ?? true) !== false,
-    'site' => (string)($APP['site_url'] ?? 'https://bronprazdnik.ru'),
+    'site' => (string)($APP['site_url'] ?? 'https://anisis.ru'),
 ]);

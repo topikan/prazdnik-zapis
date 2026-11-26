@@ -87,7 +87,7 @@ function backup_owner(): array {
     }
     $zip = zip_with_password($files, (string)($b['password'] ?? ''));
     if ($zip === null) { $res['skipped'] = 'zip'; return $res; }
-    $file = "bronprazdnik-vse-zayavki-$day.zip";
+    $file = "anisis-vse-zayavki-$day.zip";
     $caption = 'Копия заявок всех агентств на ' . ru_date($day) . ' (' . count($files) . ' шт.). Пароль — из вкладки «Агентства».';
     if (!empty($b['tg'])) foreach (tg_chats(0) as $chat) if (tg_send_document($chat, $file, $zip, $caption)) $res['tg']++;
     if (!empty($b['email']) && owner_email() !== '' && send_mail_file(owner_email(), 'Копия всех заявок на ' . ru_date($day), $caption, $file, $zip)) $res['email']++;

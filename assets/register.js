@@ -48,7 +48,7 @@
     slugTimer = setTimeout(function () {
       post("slug", { slug: v }).then(function (r) {
         if (F.slug.value !== v) return;
-        hint.textContent = r.ok ? "Адрес свободен: bronprazdnik.ru/" + v : r.error;
+        hint.textContent = r.ok ? "Адрес свободен: anisis.ru/" + v : r.error;
         hint.className = r.ok ? "ok" : "bad";
       }).catch(function () {});
     }, 400);
@@ -152,7 +152,7 @@
   function mode() {
     var reset = location.hash === "#reset";
     $("sideReg").hidden = reset; $("sideReset").hidden = !reset;
-    document.title = (reset ? "Восстановление пароля" : "Подключить агентство") + " — Бронь Праздник";
+    document.title = (reset ? "Восстановление пароля" : "Подключить агентство") + " — Аниматорская Система";
     show(reset ? "resetForm" : "regForm");
   }
   window.addEventListener("hashchange", mode);

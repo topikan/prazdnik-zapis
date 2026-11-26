@@ -71,6 +71,12 @@ function respond_early(array $data): void {
     elseif (function_exists('litespeed_finish_request')) litespeed_finish_request();
 }
 
+// Старое название и адрес в сохранённых текстах (до переименования) заменяем на новые
+function rebrand(array $d): array {
+    array_walk_recursive($d, function (&$v) { if (is_string($v)) $v = str_replace(['Бронь Праздник', 'bronprazdnik.ru'], ['Аниматорская Система', 'anisis.ru'], $v); });
+    return $d;
+}
+
 // Тело запроса JSON. Обычные запросы — до 200 КБ; загрузка картинок разрешает больше.
 // Если тело длиннее лимита, оно обрезается и не читается — $GLOBALS['BODY_TOO_BIG'] это отмечает.
 function body_json(int $max = 200000): array {
@@ -226,7 +232,7 @@ function session_peek(): array {
 function mail_from(): string {
     global $APP;
     if (!empty($APP['smtp_user']) && filter_var($APP['smtp_user'], FILTER_VALIDATE_EMAIL)) return (string)$APP['smtp_user'];
-    $host = parse_url((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), PHP_URL_HOST) ?: 'bronprazdnik.ru';
+    $host = parse_url((string)($APP['site_url'] ?? 'https://anisis.ru'), PHP_URL_HOST) ?: 'anisis.ru';
     return "noreply@$host";
 }
 function mail_error(?string $e = null): string { static $last = ''; if ($e !== null) $last = $e; return $last; }
@@ -235,7 +241,7 @@ function mail_send(string $to, string $subject, string $contentHeaders, string $
     if (!filter_var($to, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $to)) { mail_error('Неверный адрес'); return false; }
     $from = mail_from();
     $subj = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-    $fromHdr = '=?UTF-8?B?' . base64_encode('Бронь Праздник') . "?= <$from>";
+    $fromHdr = '=?UTF-8?B?' . base64_encode('Аниматорская Система') . "?= <$from>";
     if (!empty($APP['smtp_host'])) return smtp_send($to, $subj, $fromHdr, $from, $contentHeaders, $body);
     $ok = @mail($to, $subj, $body, "From: $fromHdr\r\nMIME-Version: 1.0\r\n" . $contentHeaders, "-f$from");
     mail_error($ok ? '' : 'Хостинг не принял письмо (функция mail вернула ошибку)');
@@ -275,17 +281,17 @@ function smtp_send(string $to, string $subj, string $fromHdr, string $from, stri
 // так письмо одинаково выглядит в Gmail, Яндексе, Mail.ru и Outlook.
 function mail_html(string $innerHtml, string $preheader = ''): string {
     global $APP;
-    $site = rtrim((string)($APP['site_url'] ?? 'https://bronprazdnik.ru'), '/');
-    $host = parse_url($site, PHP_URL_HOST) ?: 'bronprazdnik.ru';
+    $site = rtrim((string)($APP['site_url'] ?? 'https://anisis.ru'), '/');
+    $host = parse_url($site, PHP_URL_HOST) ?: 'anisis.ru';
     $f = "font-family:Arial,Helvetica,sans-serif;";
-    return '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бронь Праздник</title></head>'
+    return '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Аниматорская Система</title></head>'
         . '<body style="margin:0;padding:0;background:#F4EFE7;">'
         . '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#F4EFE7;">' . htmlspecialchars($preheader) . '</div>'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE7;"><tr><td align="center" style="padding:28px 12px;">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">'
         . '<tr><td style="background:#0E1A33;padding:20px 28px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
         . '<td style="padding-right:12px;"><img src="' . $site . '/assets/img/mail-logo.png" width="40" height="40" alt="" style="display:block;border-radius:10px;"></td>'
-        . '<td style="' . $f . 'font-size:19px;font-weight:bold;color:#FFFFFF;">Бронь Праздник</td></tr></table></td></tr>'
+        . '<td style="' . $f . 'font-size:19px;font-weight:bold;color:#FFFFFF;">Аниматорская Система</td></tr></table></td></tr>'
         . '<tr><td style="' . $f . 'padding:30px 28px 26px;font-size:16px;line-height:1.55;color:#14213D;">' . $innerHtml . '</td></tr>'
         . '<tr><td style="' . $f . 'padding:18px 28px;border-top:1px solid #EFE8DD;font-size:12px;line-height:1.5;color:#7A8293;">Письмо отправлено автоматически, отвечать на него не нужно.<br>'
         . '<a href="' . $site . '" style="color:#7A8293;">' . htmlspecialchars($host) . '</a></td></tr>'

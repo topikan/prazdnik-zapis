@@ -401,7 +401,7 @@ switch ($action) {
         $pp = db()->prepare("SELECT conf_url FROM payments WHERE kind = 'sub' AND agency_id = ? AND status = 'pending' AND amount = ? AND shop = ? AND created_at > ? ORDER BY created_at DESC LIMIT 1");
         $pp->execute([(int)$a['id'], $price['amount'], $cred['shop'], date('Y-m-d H:i:s', time() - 1800)]);
         if ($url = $pp->fetchColumn()) json_out(['url' => $url]);
-        $desc = 'Бронь Праздник: доступ на сезон до ' . ru_date(billing_settings()['seasonEnd']) . ', ' . $a['slug'];
+        $desc = 'Аниматорская Система: доступ на сезон до ' . ru_date(billing_settings()['seasonEnd']) . ', ' . $a['slug'];
         $r = yk_create('sub', $cred, (int)$a['id'], 0, $price['amount'], $desc, site_url() . '/admin/?paid=1',
             $cred['receipt'] ? receipt_for($desc, $price['amount'], '', (string)($a['email'] ?? ''), 'full_payment') : null);
         if (isset($r['error'])) fail($r['error'], 502);
@@ -508,7 +508,8 @@ switch ($action) {
     // ----- главная страница (владелец) -----
     case 'site_get':
         need_super();
-        json_out(['landing' => setting_get('landing')]);
+        $l = setting_get('landing');
+        json_out(['landing' => $l ? rebrand($l) : null]);
 
     case 'site_save':
         need_super();
@@ -594,7 +595,7 @@ switch ($action) {
         rate_limit('mtest', 10, 600);
         $to = trim(in_str($in, 'to'));
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) fail('Укажите почту, на которую отправить проверку');
-        $ok = mail_text($to, 'Проверка почты — Бронь Праздник', "Это проверочное письмо с сайта " . site_url() . ".\n\nЕсли вы его видите, коды регистрации и уведомления тоже доходят.");
+        $ok = mail_text($to, 'Проверка почты — Аниматорская Система', "Это проверочное письмо с сайта " . site_url() . ".\n\nЕсли вы его видите, коды регистрации и уведомления тоже доходят.");
         json_out(['ok' => $ok, 'error' => $ok ? '' : mail_error(), 'method' => empty($APP['smtp_host']) ? 'mail' : 'smtp', 'from' => mail_from()]);
 
     case 'tg_link_owner':

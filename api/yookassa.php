@@ -1,5 +1,5 @@
 <?php
-// Уведомления ЮKassa о платежах (адрес указывается в настройках магазина: https://bronprazdnik.ru/api/yookassa.php).
+// Уведомления ЮKassa о платежах (адрес указывается в настройках магазина: https://anisis.ru/api/yookassa.php).
 // Содержимому уведомления не верим: берём из него только номер платежа и спрашиваем ЮKassa сами, с нашими ключами.
 declare(strict_types=1);
 require dirname(__DIR__) . '/lib/bootstrap.php';

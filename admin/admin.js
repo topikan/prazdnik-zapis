@@ -116,7 +116,7 @@
   }
   function renderHeader() {
     renderBill();
-    $("agencyTitle").textContent = me.agency ? me.agency.name : "Бронь Праздник";
+    $("agencyTitle").textContent = me.agency ? me.agency.name : "Аниматорская Система";
     $("agencySub").textContent = me.agency ? "Праздничное агентство" + (cfg && cfg.city ? " · " + cfg.city : "") : "Владелец сервиса";
     $("agencyLogo").src = me.agency && cfg && /^uploads\/logos\//.test(cfg.logo || "") ? "../" + cfg.logo : "../assets/img/logo-white.svg";
     var pl = $("publicLink");

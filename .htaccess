@@ -24,11 +24,15 @@ Options -Indexes
 # за прокси хостинга правило здесь вызывает бесконечную переадресацию.
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  # Переезд на anisis.ru: все адреса старого домена ведут на те же адреса нового (301 — навсегда).
+  # Включить, когда anisis.ru уже открывается с замочком (https): убрать «# » в начале двух строк ниже.
+  # RewriteCond %{HTTP_HOST} ^(www\.)?bronprazdnik\.ru$ [NC]
+  # RewriteRule ^(.*)$ https://anisis.ru/$1 [R=301,L,NE]
   # Чистые адреса: /register, /rules, /consent, /privacy вместо .html (старые ссылки с .html переадресуются)
   RewriteCond %{THE_REQUEST} \s/(register|rules|consent|privacy)\.html[\s?#]
   RewriteRule ^(register|rules|consent|privacy)\.html$ /$1 [R=301,L]
   RewriteRule ^(register|rules|consent|privacy)$ $1.html [L]
-  # Короткие ссылки агентств: bronprazdnik.ru/fabrika-skazok → страница записи
+  # Короткие ссылки агентств: anisis.ru/fabrika-skazok → страница записи
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^([a-z0-9-]{2,40})/$ /$1 [R=301,L]
   RewriteCond %{REQUEST_FILENAME} !-f

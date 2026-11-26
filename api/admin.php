@@ -588,7 +588,10 @@ switch ($action) {
             if (!is_numeric($v) || (int)$v < $r[0] || (int)$v > $r[1]) fail('Проверьте цены и срок скидки');
             $nums[$k] = (int)$v;
         }
+        $oldEnd = billing_settings()['seasonEnd'];
         setting_set('billing', ['freeEnd' => $bl['freeEnd'], 'seasonEnd' => $bl['seasonEnd']] + $nums);
+        // сезон продлили: кто оплатил до старого конца сезона, тот получает доступ до нового
+        if ($bl['seasonEnd'] > $oldEnd) db()->prepare('UPDATE agencies SET paid_until = ? WHERE paid_until = ?')->execute([$bl['seasonEnd'], $oldEnd]);
         json_out(['ok' => true]);
 
     case 'mail_test': // проверить отправку писем: отправляет тестовое письмо и показывает точную ошибку

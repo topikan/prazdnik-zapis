@@ -632,3 +632,14 @@ html.no-anim { scroll-behavior: auto; }
   .plan-free { align-items: flex-start; font-size: 15px; padding: 14px 16px; }
   .pf-badge { min-width: 60px; height: 40px; font-size: 18px; }
 }
+/* Тарифы: строки обеих карточек на одном уровне (заголовок, каждый пункт, цена, кнопка) */
+@supports (grid-template-rows: subgrid) {
+  .plans { row-gap: 0; }
+  .plan { display: grid; grid-row: span 6; grid-template-rows: subgrid; gap: 0; }
+  .plan ul { display: contents; }
+  .plan h3 { margin-bottom: 16px; }
+  .plan li { margin-bottom: 10px; }
+  .plan-price { margin-top: 8px; align-self: end; }
+  .plan .btn { margin-top: 18px; align-self: start; justify-self: start; }
+  @media (max-width: 760px) { .plans { row-gap: 18px; } .plan { grid-row: auto; grid-template-rows: none; } .plan .btn { justify-self: stretch; } }
+}

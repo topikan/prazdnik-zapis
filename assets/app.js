@@ -837,6 +837,8 @@
     // скрытые агентством составы, программы и допы на странице не показываем
     ["characters", "programs", "addons"].forEach(function (k) { if (cfg[k]) cfg[k] = cfg[k].filter(function (x) { return !x.off; }); });
     if (cfg.demo) cfg.occupancy = demoOccupancy(cfg);
+    // Метрика — только в демо: на страницах агентств данные их клиентов
+    if (cfg.demo && slug === "demo") { var ms = document.createElement("script"); ms.src = "assets/metrika.js"; ms.defer = true; document.head.appendChild(ms); }
     var popular = cfg.characters.filter(function (c) { return c.badge; })[0] || cfg.characters[0];
     state.character = popular.id;
     state.program = (cfg.programs[1] || cfg.programs[0]).id;

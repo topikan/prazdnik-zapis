@@ -106,7 +106,7 @@
     e.preventDefault(); err("regErr", "");
     var d; try { d = check(f); } catch (x) { err("regErr", x.message); return; }
     busy(f, true);
-    post("start", d).then(function (r) { token = r.token; $("codeEmail").textContent = r.email || d.email; $("codeForm").code.value = ""; show("codeForm"); startResendTimer(); })
+    post("start", d).then(function (r) { if (window.bpGoal) bpGoal("register_start"); token = r.token; $("codeEmail").textContent = r.email || d.email; $("codeForm").code.value = ""; show("codeForm"); startResendTimer(); })
       .catch(function (x) { err("regErr", x.message); })
       .finally(function () { busy(f, false); });
   });
@@ -117,6 +117,7 @@
     if (cf.code.value.length !== 6) { err("codeErr", "Введите 6 цифр из письма"); return; }
     busy(cf, true);
     post("verify", { token: token, code: cf.code.value }).then(function (r) {
+      if (window.bpGoal) bpGoal(kind === "solo" ? "register_done_solo" : "register_done");
       show("regDone");
       if (r.manual) $("doneText").textContent = "Страница отправлена на проверку и откроется для клиентов в ближайшее время. А пока настройте цены и оформление в панели.";
       else setTimeout(function () { location.href = "admin/"; }, 1200);

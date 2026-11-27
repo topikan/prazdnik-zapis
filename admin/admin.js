@@ -137,7 +137,9 @@
     orders: ["Заявки", "Заявки с сайта и внесённые вручную: телефоны, адреса, статусы, суммы."],
     schedule: ["Расписание", "Часы работы, число выездов, загрузка по часам и заказы по телефону."],
     prices: ["Цены и услуги", "Кто приедет, какие программы и сколько это стоит."],
-    settings: ["Настройки", "Оформление страницы, уведомления, предоплата и копии заявок."],
+    content: ["Оформление", "Как выглядит ваша страница записи: картинки, цвета, портфолио, тексты и баннер."],
+    notify: ["Уведомления", "Куда приходят новые заявки и ночные копии всех заявок."],
+    settings: ["Настройки", "Название, сезон, реквизиты, предоплата и пароль."],
     agencies: ["Агентства", "Подключённые агентства, оплата и настройки сервиса."],
     site: ["Главная страница", "Тексты сайта для агентств. После сохранения сразу появляются на сайте."]
   };
@@ -149,7 +151,7 @@
     if (t === "orders") loadOrders();
     if (t === "schedule") { renderHours(); loadSchedule(); }
     if (t === "prices") renderPrices();
-    if (t === "settings") renderSettings();
+    if (t === "settings" || t === "content" || t === "notify") renderSettings();
     if (t === "agencies") { loadAgencies(); loadOwner(); }
     if (t === "site") loadSite();
   }
@@ -490,7 +492,7 @@
     return box;
   }
   // Поля для длинного текста растут по содержимому, без полос прокрутки
-  function autosize(root) { (root || document).querySelectorAll("textarea.auto, #siteForm textarea, #settingsForm textarea").forEach(grow); }
+  function autosize(root) { (root || document).querySelectorAll("textarea.auto, #siteForm textarea, #settingsForm textarea, #contentForm textarea").forEach(grow); }
   function grow(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
   document.addEventListener("input", function (e) { if (e.target.tagName === "TEXTAREA" && !e.target.closest(".cred")) grow(e.target); });
   // select меняет значение через событие change: синхронизируем отдельно
@@ -574,6 +576,19 @@
     var tabEl = document.querySelector(".tab:not([hidden])"); if (!tabEl) return;
     var el = null;
     BAD_FIELDS.some(function (m) { if (m[0].test(msg)) { el = tabEl.querySelector('[data-path="' + m[1] + '"]'); return !!el; } });
+    // поле с ошибкой на соседней вкладке (Оформление / Уведомления / Настройки): показываем, где оно
+    if (!el) BAD_FIELDS.some(function (m) {
+      if (!m[0].test(msg)) return false;
+      var other = document.querySelector('#contentForm [data-path="' + m[1] + '"], #notifyForm [data-path="' + m[1] + '"], #settingsForm [data-path="' + m[1] + '"]');
+      if (!other) return false;
+      var sec = other.closest(".tab"); if (!sec || sec === tabEl) return false;
+      var t = sec.id.slice(4), name = PAGES[t] ? PAGES[t][0] : t;
+      flash(msg + " — это поле во вкладке «" + name + "»", true);
+      document.querySelectorAll(".tab").forEach(function (x) { x.hidden = x !== sec; }); tab = t;
+      $("pageTitle").textContent = PAGES[t][0]; $("pageSub").textContent = PAGES[t][1];
+      document.querySelectorAll("#tabs button").forEach(function (b) { b.setAttribute("aria-current", b.dataset.tab === t ? "true" : "false"); });
+      el = other; tabEl = sec; return true;
+    });
     if (!el && /Нет цены/.test(msg)) el = [].filter.call(tabEl.querySelectorAll(".matrix input"), function (i) { return i.value.trim() === ""; })[0];
     if (!el) el = [].filter.call(tabEl.querySelectorAll("input[required], input:invalid"), function (i) { return !i.validity.valid || i.value.trim() === ""; })[0];
     if (!el) return;
@@ -586,10 +601,14 @@
 
   /* ---------- настройки ---------- */
   var SETTINGS = [
-    ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"], ["colors.accent", "Основной цвет", "color"], ["colors.gold", "Акцентный цвет", "color"]]],
+    ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"]]],
     ["Сезон", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["timezone", "Часовой пояс", "tz"]]],
-    ["Баннер внизу страницы записи", [["banner.title", "Заголовок (пусто — баннера не будет)"], ["banner.button", "Текст кнопки"], ["banner.text", "Текст", "area"], ["banner.link", "Куда ведёт кнопка: https://… или tel:+7…; пусто — к началу записи"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
+  ];
+  // оформление: цвета и баннер внизу страницы
+  var CONTENT_GROUPS = [
+    ["Цвета", [["colors.accent", "Основной цвет: кнопки и выбор", "color"], ["colors.gold", "Акцентный цвет: цветная строка заголовка и плашки", "color"]]],
+    ["Баннер внизу страницы записи", [["banner.title", "Заголовок (пусто — баннера не будет)"], ["banner.button", "Текст кнопки"], ["banner.text", "Текст", "area"], ["banner.link", "Куда ведёт кнопка: https://… или tel:+7…; пусто — к началу записи"]]]
   ];
   var BANNER_DEFAULT = { title: "Подарите детям настоящий Новый год!", text: "Забронируйте визит Деда Мороза и создайте волшебство в каждом доме.", button: "Забронировать праздник", link: "" };
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
@@ -627,7 +646,8 @@
   }
   function renderSettings() {
     var root = $("settingsForm"), D = cfg.design || {};
-    var logoCard = '<div class="card"><h2>Оформление страницы записи</h2><div class="design-grid">' +
+    var group = function (g) { return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(adapt).map(fieldHtml).join("") + "</div></div>"; };
+    var logoCard = '<div class="card"><h2>Логотип и картинки</h2><div class="design-grid">' +
       '<div><h3>Логотип</h3><p class="muted">Рядом с названием на странице записи и в кабинете. PNG, JPG или WebP. Фото покажется круглой аватаркой, знак на прозрачном фоне — как есть.</p>' + imgBox("logo", "", cfg.logo) +
         '<label class="logo-link-f">Ссылка с логотипа, например ваш сайт или соцсеть<input data-path="logoLink" type="text" placeholder="https://" value="' + esc(cfg.logoLink || "") + '"></label></div>' +
       '<div><h3>Фон первого экрана</h3><p class="muted">Своя фотография вместо общей зимней картинки. Лучше горизонтальная, от 1600 px в ширину.</p>' + imgBox("hero", "", cfg.heroImage) + "</div>" +
@@ -636,7 +656,7 @@
       '<div><h3>Картинка в баннере</h3><p class="muted">Справа в баннере внизу страницы. Лучше PNG без фона.</p>' + imgBox("bimg", "", cfg.bannerImage) +
       '<label class="row"><input type="checkbox" data-path="design.bannerImgOff"' + (D.bannerImgOff ? " checked" : "") + "> Не показывать картинку в баннере</label></div>" +
       "</div>" +
-      '<div class="fields"><label class="row wide"><input type="checkbox" id="snowOn"' + ((D.snow || "on") !== "off" ? " checked" : "") + '> Снег на странице записи (если снять галочку, снега не будет совсем)' +"</label></div><p class=\"muted\">Картинки сохраняются сразу, галочки — кнопкой «Сохранить настройки» внизу.</p></div>";
+      '<div class="fields"><label class="row wide"><input type="checkbox" id="snowOn"' + ((D.snow || "on") !== "off" ? " checked" : "") + '> Снег на странице записи (если снять галочку, снега не будет совсем)' +"</label></div><p class=\"muted\">Картинки сохраняются сразу, галочки и поля — кнопкой «Сохранить оформление» внизу.</p></div>";
     var pfCard = '<div class="card" id="pfCard"><h2>Портфолио</h2><p class="muted">Фото и видео ваших праздников внизу страницы записи, листаются слайдером. До 20 фото и 5 видео. Видео — файлом MP4 до 50 МБ или ссылкой на ролик VK Видео и Rutube. Если указать категории (например «На дому», «Утренники»), клиент сможет переключать их кнопками.</p>' +
       '<div class="fields"><label class="row wide"><input type="checkbox" data-path="portfolio.enabled"' + (getPath(cfg, "portfolio.enabled") ? " checked" : "") + "> Показывать портфолио на странице записи</label>" +
       '<label class="wide">Заголовок блока<input data-path="portfolio.title" maxlength="80" placeholder="Наши праздники" value="' + esc(getPath(cfg, "portfolio.title") || "") + '"></label></div>' +
@@ -671,20 +691,23 @@
     // у частного аниматора — свои подписи: имя вместо названия агентства, тексты от первого лица
     var SOLO = { name: "Ваше имя на странице записи", "texts.contSub": "ph:Я перезвоню, чтобы подтвердить визит" };
     var adapt = function (f) { if (!isSolo() || !SOLO[f[0]]) return f; var g = f.slice(); if (/^ph:/.test(SOLO[f[0]])) g[2] = SOLO[f[0]]; else g[1] = SOLO[f[0]]; return g; };
-    root.innerHTML = logoCard + pfCard + SETTINGS.map(function (g) {
-      return '<div class="card"><h2>' + esc(g[0]) + '</h2><div class="fields">' + g[1].map(adapt).map(fieldHtml).join("") + "</div></div>";
-    }).join("") + textsCard() +
+    // «Оформление»: картинки, цвета, портфолио, тексты, баннер
+    $("contentForm").innerHTML = logoCard + CONTENT_GROUPS.map(group).join("") + pfCard + textsCard();
+    // «Уведомления»: Telegram, почта, ночные копии
+    $("notifyForm").innerHTML =
       '<div class="card"><h2>Уведомления о новых заявках</h2>' +
-      '<p class="muted">В уведомлении будут дата, время, программа и сумма. Имя, телефон и адрес клиента видны только здесь, во вкладке «Заявки».</p>' +
+      '<p class="muted">В уведомлении будут дата, время, программа и сумма. Имя, телефон и адрес клиента видны только в кабинете, во вкладке «Заявки».</p>' +
       '<div class="notify-row"><b>Telegram</b><span id="tgStatus">Проверяю…</span></div><div class="notify-acts" id="tgActs"></div>' +
       '<div class="fields"><label>Почта, можно несколько через запятую<input data-path="notify.email" type="text" placeholder="zayavki@agency.ru" value="' + esc(getPath(cfg, "notify.email") || "") + '"></label></div>' +
-      '<p class="muted">Новую почту сначала сохраните кнопкой внизу, потом проверьте.</p>' +
-      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' + payCard + bkCard +
+      '<p class="muted">Новую почту сначала сохраните кнопкой «Сохранить уведомления» внизу, потом проверьте.</p>' +
+      '<button class="btn ghost small" id="notifyTest" type="button">Отправить проверочное уведомление</button></div>' + bkCard;
+    // «Настройки»: всё остальное
+    root.innerHTML = SETTINGS.map(group).join("") + payCard +
       (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
     loadNotify();
     loadYk();
     renderPfList();
-    autosize(root);
+    autosize(root); autosize($("contentForm"));
     api("backup_info").then(function (r) {
       var el = $("bkInfo"); if (!el) return;
       el.textContent = !r.zip ? "Сервер пока не умеет делать архивы с паролем, поэтому копии не отправляются. Напишите владельцу сервиса." : "Сейчас подключено: Telegram-чатов — " + r.tgChats + ", адресов почты — " + r.emails + ".";
@@ -857,7 +880,9 @@
         (r.tgChats ? '<button class="btn danger small" type="button" id="tgOff">Отключить</button>' : "");
     }).catch(function (e) { flash(e.message, true); });
   }
-  $("settingsForm").addEventListener("click", function (e) {
+  var CFG_FORMS = ["settingsForm", "contentForm", "notifyForm"];
+  function onCfgForms(ev, fn) { CFG_FORMS.forEach(function (id) { $(id).addEventListener(ev, fn); }); }
+  onCfgForms("click", function (e) {
     var id = e.target.id;
     if (id === "tgConnect") {
       e.target.disabled = true;
@@ -884,10 +909,10 @@
     $("ykSave").textContent = r.connected ? "Сохранить изменения" : "Проверить и подключить";
   }
   function loadYk() { if ($("ykStatus")) api("pay_settings_get").then(ykShow).catch(function () { $("ykStatus").textContent = "Не удалось загрузить"; }); }
-  $("settingsForm").addEventListener("change", function (e) {
+  onCfgForms("change", function (e) {
     if (e.target.id === "payMode") { $("payYk").hidden = e.target.value !== "yookassa"; $("payLink").hidden = e.target.value === "yookassa"; }
   });
-  $("settingsForm").addEventListener("click", function (e) {
+  onCfgForms("click", function (e) {
     if (e.target.id === "ykSave") {
       e.target.disabled = true;
       api("pay_settings_save", { shop: $("ykShop").value, secret: $("ykSecret").value, receipt: $("ykReceipt").checked })
@@ -899,9 +924,10 @@
     }
     if (e.target.id === "ykHook") { e.target.select(); }
   });
-  $("saveSettings").addEventListener("click", function () {
+  // одна функция сохранения для «Оформления», «Уведомлений» и «Настроек»: собирает поля со всех трёх вкладок
+  function saveCfgForms() {
     var c = clone(cfg);
-    document.querySelectorAll("#settingsForm [data-path]").forEach(function (i) {
+    document.querySelectorAll("#settingsForm [data-path], #contentForm [data-path], #notifyForm [data-path]").forEach(function (i) {
       var v = i.type === "checkbox" ? i.checked : i.type === "number" ? (i.value === "" ? 0 : +i.value) : i.value.trim();
       if (i.dataset.path === "colors.accent" && v.toUpperCase() === "#B3203A") v = "";   // цвета по умолчанию не сохраняем
       if (i.dataset.path === "colors.gold" && v.toUpperCase() === "#D9B26A") v = "";
@@ -911,6 +937,13 @@
     if ($("demoFlag")) c.demo = $("demoFlag").checked;
     if ($("snowOn")) { c.design = c.design && !Array.isArray(c.design) ? c.design : {}; c.design.snow = $("snowOn").checked ? "on" : "off"; }
     save(c);
+  }
+  ["saveSettings", "saveContent", "saveNotify"].forEach(function (id) {
+    $(id).addEventListener("click", function () {
+      saveCfgForms();
+      // сохраняются все три вкладки сразу, поэтому и отметку «есть несохранённые» снимаем со всех
+      setTimeout(function () { if (!document.querySelector("#flash.bad:not([hidden])")) ["settings", "content", "notify"].forEach(function (t) { markDirty(t, false); }); }, 900);
+    });
   });
   var pwTries = 0;
   $("pwForm").addEventListener("submit", function (e) {
@@ -1065,7 +1098,7 @@
     var bar = document.querySelector("#tab-" + t + " .save-bar");
     if (bar) bar.classList.toggle("is-dirty", on);
   }
-  ["prices", "settings", "site"].forEach(function (t) {
+  ["prices", "settings", "content", "notify", "site"].forEach(function (t) {
     var sec = $("tab-" + t);
     ["input", "change", "changed"].forEach(function (ev) {
       sec.addEventListener(ev, function (e) {

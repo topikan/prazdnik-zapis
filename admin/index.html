@@ -37,6 +37,8 @@
         <button data-tab="orders"><svg aria-hidden="true"><use href="#n-orders"/></svg><span>Заявки</span></button>
         <button data-tab="schedule"><svg aria-hidden="true"><use href="#n-cal"/></svg><span>Расписание</span></button>
         <button data-tab="prices"><svg aria-hidden="true"><use href="#n-tag"/></svg><span>Цены и услуги</span></button>
+        <button data-tab="content"><svg aria-hidden="true"><use href="#n-brush"/></svg><span>Оформление</span></button>
+        <button data-tab="notify"><svg aria-hidden="true"><use href="#n-bell"/></svg><span>Уведомления</span></button>
         <button data-tab="settings"><svg aria-hidden="true"><use href="#n-gear"/></svg><span>Настройки</span></button>
         <button data-tab="agencies" class="super-only" hidden><svg aria-hidden="true"><use href="#n-agencies"/></svg><span>Агентства</span></button>
         <button data-tab="site" class="super-only" hidden><svg aria-hidden="true"><use href="#n-home"/></svg><span>Главная</span></button>
@@ -137,6 +139,16 @@
         <div class="save-bar"><button class="btn" id="savePrices"><svg aria-hidden="true"><use href="#i-check"/></svg>Сохранить изменения</button><span class="dirty-note">Есть несохранённые изменения</span></div>
       </section>
 
+      <section id="tab-content" class="tab" hidden>
+        <div id="contentForm"></div>
+        <div class="save-bar"><button class="btn" id="saveContent"><svg aria-hidden="true"><use href="#i-check"/></svg>Сохранить оформление</button><span class="dirty-note">Есть несохранённые изменения</span></div>
+      </section>
+
+      <section id="tab-notify" class="tab" hidden>
+        <div id="notifyForm"></div>
+        <div class="save-bar"><button class="btn" id="saveNotify"><svg aria-hidden="true"><use href="#i-check"/></svg>Сохранить уведомления</button><span class="dirty-note">Есть несохранённые изменения</span></div>
+      </section>
+
       <section id="tab-settings" class="tab" hidden>
         <div id="settingsForm"></div>
         <div class="save-bar"><button class="btn" id="saveSettings"><svg aria-hidden="true"><use href="#i-check"/></svg>Сохранить настройки</button><span class="dirty-note">Есть несохранённые изменения</span></div>
@@ -186,7 +198,7 @@
     <symbol id="n-agencies" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3.5 20.5V9l8.5-5.5L20.5 9v11.5z"/><path d="M9.5 20.5v-6h5v6"/></g></symbol>
     <symbol id="n-home" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></g></symbol>
     <symbol id="n-open" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></g></symbol>
-    <symbol id="n-help" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4.2-7.6L21 3l-1 4.3A9 9 0 0 1 21 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.7V14M12 17h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="n-out" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H5a1 1 0 00-1 1v14a1 1 0 001 1h5"/><path d="M15 8l4 4-4 4M19 12H9"/></g></symbol>
+    <symbol id="n-brush" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="14" rx="2.5"/><circle cx="9" cy="9.5" r="1.8"/><path d="M20 15l-4.5-4.5L7 18"/></g></symbol><symbol id="n-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 004 0"/></g></symbol><symbol id="n-help" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4.2-7.6L21 3l-1 4.3A9 9 0 0 1 21 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.7V14M12 17h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="n-out" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H5a1 1 0 00-1 1v14a1 1 0 001 1h5"/><path d="M15 8l4 4-4 4M19 12H9"/></g></symbol>
     <symbol id="e-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" fill="currentColor"/></symbol>
     <symbol id="e-prog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></g></symbol>
     <symbol id="e-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5a1 1 0 011-1h8l8 8-9 9z" fill="currentColor"/><circle cx="8.5" cy="8.5" r="1.6" fill="#fff"/></symbol>

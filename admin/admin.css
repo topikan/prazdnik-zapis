@@ -472,8 +472,8 @@ input, select, textarea { color: var(--text); border-radius: 10px; }
 
 /* планшет и телефон: меню сверху строкой */
 @media (max-width: 960px) {
-  .shell { grid-template-columns: 1fr; }
-  .side { position: sticky; top: 0; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 14px; gap: 8px 12px; }
+  .shell { grid-template-columns: minmax(0, 1fr); }   /* меню не раздвигает страницу шире экрана */
+  .side { position: sticky; top: 0; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 14px; gap: 8px 12px; min-width: 0; }
   .side-head { padding: 0; flex: 1; min-width: 0; }
   .side-logo { width: 36px; height: 36px; border-radius: 10px; }
   .side-logo img { width: 24px; height: 24px; }

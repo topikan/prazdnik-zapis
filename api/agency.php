@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/lib/bootstrap.php';
 require dirname(__DIR__) . '/lib/booking.php';
 require dirname(__DIR__) . '/lib/billing.php';
 require dirname(__DIR__) . '/lib/payments.php';
+require dirname(__DIR__) . '/lib/notify.php';
 
 ensure_billing_cols();
 $a = agency_by_slug((string)($_GET['a'] ?? ''));
@@ -34,4 +35,5 @@ $cfg['payment'] = !empty($p['enabled']) && ($online || (($p['mode'] ?? 'link') =
     ? ($online ? ['enabled' => true, 'mode' => 'yookassa', 'ykType' => $p['ykType'] ?? 'fixed', 'ykValue' => (int)($p['ykValue'] ?? 0)]
                : ['enabled' => true, 'mode' => 'link', 'link' => $p['link'], 'amount' => $p['amount'] ?? ''])
     : ['enabled' => false];
+try { tg_poll_later(30); } catch (Throwable $e) {} // заодно ответить тем, кто написал боту
 json_out($cfg);

@@ -108,6 +108,17 @@ function tg_poll(): void {
         if ($lf) { flock($lf, LOCK_UN); fclose($lf); }
     }
 }
+// Ответы боту без ожидания заявки: сообщения забираются после ответа посетителю (страница не ждёт Telegram).
+// $every > 0 — не чаще раза в столько секунд (для страниц записи, которые открывают часто)
+function tg_poll_later(int $every = 0): void {
+    if (!tg_ready() || !tg_relay()) return;
+    if ($every > 0) {
+        $t = (int)((setting_get('tgpollat') ?: [])['t'] ?? 0);
+        if (time() - $t < $every) return;
+        setting_set('tgpollat', ['t' => time()]);
+    }
+    after_response(function () { try { tg_poll(); } catch (Throwable $e) { error_log('tg_poll: ' . $e->getMessage()); } });
+}
 // Сообщение боту: /start <код> подключает чат к агентству, /stop отключает
 function tg_handle(array $msg): void {
     $chat = (int)$msg['chat']['id'];

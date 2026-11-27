@@ -38,6 +38,7 @@ function db(): PDO {
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
     if (is_mysql()) $pdo->exec("SET NAMES utf8mb4");
+    else $pdo->exec('PRAGMA busy_timeout = 5000'); // SQLite (тесты): одновременные заявки ждут друг друга, а не падают
     return $pdo;
 }
 function is_mysql(): bool { global $APP; return str_starts_with($APP['db_dsn'], 'mysql:'); }

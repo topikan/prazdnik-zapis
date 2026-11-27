@@ -557,6 +557,7 @@ switch ($action) {
         $a = current_agency();
         // спрашиваем Telegram только когда ждём подключения по свежей ссылке — иначе вкладка открывается мгновенно
         if (tg_ready() && tg_link_pending()) { try { tg_poll(); } catch (Throwable $e) { error_log('tg_poll: ' . $e->getMessage()); } }
+        else tg_poll_later();   // остальные сообщения боту — после ответа, вкладка открывается без задержки
         json_out(['tgReady' => tg_ready(), 'tgChats' => count(tg_chats((int)$a['id']))]);
 
     case 'tg_link':

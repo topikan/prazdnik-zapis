@@ -97,6 +97,14 @@ function ensure_orders_paid(): void {
     catch (Throwable $e) { db()->exec('ALTER TABLE orders ADD COLUMN paid TINYINT NOT NULL DEFAULT 0'); }
     $done = true;
 }
+// Откуда заявка: site — с сайта, phone / messenger / repeat / other — внесена вручную в кабинете
+const ORDER_SOURCES = ['phone' => 'Телефон', 'messenger' => 'Мессенджер', 'repeat' => 'Постоянный клиент', 'other' => 'Другое'];
+function ensure_orders_source(): void {
+    static $done = false; if ($done) return;
+    try { db()->query('SELECT source FROM orders LIMIT 1'); }
+    catch (Throwable $e) { try { db()->exec("ALTER TABLE orders ADD COLUMN source VARCHAR(12) NOT NULL DEFAULT 'site'"); } catch (Throwable $e2) {} }
+    $done = true;
+}
 // Колонка-метка, объединяющая часы одного заказа по телефону; в старых базах добавляется при первом обращении
 function ensure_blocks_grp(): void {
     static $done = false; if ($done) return;
@@ -130,7 +138,8 @@ switch ($action) {
         $to = valid_date(in_str($in, 'to', (string)($a['cfg']['season']['end'])));
         ensure_orders_paid();
         ensure_pay_tables();
-        $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, paid, prepaid, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
+        ensure_orders_source();
+        $st = db()->prepare('SELECT id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, paid, prepaid, source, created_at FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? ORDER BY visit_date, visit_time, id');
         $st->execute([$a['id'], $from, $to]);
         $rows = [];
         foreach ($st as $r) { $r['data'] = json_decode($r['data'], true); $r['price_lines'] = json_decode($r['price_lines'], true); $rows[] = $r; }
@@ -163,17 +172,73 @@ switch ($action) {
     case 'schedule':
         $a = current_agency(); $cfg = $a['cfg'];
         $date = valid_date(in_str($in, 'date', date('Y-m-d', strtotime('+1 day'))));
-        $occ = occupancy((int)$a['id'], $date, $date);
+        $occ = occupancy((int)$a['id'], $date, $date, $cfg);
         ensure_blocks_grp();
         $st = db()->prepare('SELECT id, visit_time, teams, note, grp FROM blocks WHERE agency_id = ? AND visit_date = ? ORDER BY visit_time, id');
         $st->execute([$a['id'], $date]);
         $blocks = $st->fetchAll();
-        $st = db()->prepare("SELECT id, visit_time, span, name, address, status FROM orders WHERE agency_id = ? AND visit_date = ? AND status IN ('new','confirmed') ORDER BY visit_time");
+        ensure_orders_source();
+        $st = db()->prepare("SELECT id, visit_time, span, name, address, status, source FROM orders WHERE agency_id = ? AND visit_date = ? AND status IN ('new','confirmed') ORDER BY visit_time");
         $st->execute([$a['id'], $date]);
         $orders = $st->fetchAll();
         $slots = [];
-        foreach (slot_times($cfg, $date) as $t) $slots[] = ['time' => $t, 'busy' => (int)($occ[$date][$t] ?? 0), 'total' => (int)$cfg['pairs']];
-        json_out(['date' => $date, 'slots' => $slots, 'blocks' => $blocks, 'orders' => $orders]);
+        foreach (slot_times($cfg, $date) as $t) $slots[] = ['time' => $t, 'busy' => (int)($occ[$date][$t] ?? 0), 'total' => cap_at($cfg, $date, $t)];
+        json_out(['date' => $date, 'slots' => $slots, 'blocks' => $blocks, 'orders' => $orders, 'capDay' => $cfg['capDays'][$date] ?? []]);
+
+    case 'cap_day_save': // другое число выездов на один день: на весь день и/или с определённого часа
+        $a = current_agency(); $cfg = $a['cfg'];
+        if (is_solo($a)) fail('У частного исполнителя всегда один выезд');
+        $date = valid_date(in_str($in, 'date'));
+        $rules = is_array($in['rules'] ?? null) ? $in['rules'] : [];
+        $caps = $cfg['capDays'] ?? [];
+        $caps[$date] = $rules;
+        $c = $cfg; $c['capDays'] = $caps;
+        $err = []; $clean = normalize_config($c, $err);
+        if ($err) fail(implode('. ', array_slice(array_values(array_unique($err)), 0, 3)));
+        $cfg['capDays'] = $clean['capDays'] ?? [];
+        // правило, совпадающее с обычным числом на весь день, ничего не меняет — не храним
+        if (isset($cfg['capDays'][$date]) && count($cfg['capDays'][$date]) === 1 && $cfg['capDays'][$date][0]['from'] <= ($cfg['hours']['from'] ?? '00:00') && (int)$cfg['capDays'][$date][0]['pairs'] === (int)$cfg['pairs']) unset($cfg['capDays'][$date]);
+        if (!$cfg['capDays']) unset($cfg['capDays']);
+        save_cfg((int)$a['id'], $cfg);
+        json_out(['ok' => true, 'config' => $cfg]);
+
+    case 'order_add': // заявка, внесённая вручную: заказ по телефону, из мессенджера, постоянный клиент
+        $a = current_agency(); $cfg = $a['cfg'];
+        ensure_orders_paid(); ensure_pay_tables(); ensure_orders_source();
+        $date = valid_date(in_str($in, 'date'));
+        $time = in_str($in, 'time');
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time)) fail('Укажите время');
+        $ch = find_item($cfg['characters'], in_str($in, 'character'));
+        $pr = find_item($cfg['programs'], in_str($in, 'program'));
+        if (!$ch || !$pr) fail('Выберите, кто приедет, и программу');
+        $clip = function (string $k, int $max) use ($in): string { return mb_substr(trim(preg_replace('/\s+/u', ' ', in_str($in, $k))), 0, $max); };
+        $name = $clip('name', 60); $address = $clip('address', 200); $comment = $clip('comment', 500);
+        if ($name === '') fail('Укажите, кто заказал');
+        $pd = preg_replace('/\D/', '', in_str($in, 'phone'));
+        if (strlen($pd) === 11 && $pd[0] === '8') $pd = '7' . substr($pd, 1);
+        if (strlen($pd) === 10) $pd = '7' . $pd;
+        if ($pd !== '' && strlen($pd) !== 11) fail('Проверьте номер телефона или оставьте его пустым');
+        $source = in_str($in, 'source', 'phone'); if (!isset(ORDER_SOURCES[$source])) $source = 'other';
+        $status = in_str($in, 'status', 'confirmed'); if (!in_array($status, ['new', 'confirmed', 'done'], true)) $status = 'confirmed';
+        $kids = max(1, min(50, (int)($in['kids'] ?? 1)));
+        $span = order_span($cfg, $pr['id']);
+        $start = minutes_of($time);
+        // хватает ли выездов на всё время заказа; если нет — спрашиваем, точно ли записать сверх
+        $iv = busy_intervals((int)$a['id'], $date, $date)[$date] ?? [];
+        $over = '';
+        for ($i = 0; $i < $span && $start + $i * 60 < 1440; $i++) {
+            $t = hhmm($start + $i * 60);
+            if (busy_peak($iv, $start + $i * 60, $start + $i * 60 + 60) >= cap_at($cfg, $date, $t)) { $over = $t; break; }
+        }
+        if ($over !== '' && empty($in['force'])) json_out(['error' => "В $over все выезды уже заняты. Всё равно записать?", 'busy' => true], 409);
+        $o = ['character' => $ch['id'], 'program' => $pr['id'], 'date' => $date, 'time' => $time, 'kids' => $kids, 'addons' => [], 'zone' => ''];
+        $lines = [];
+        if (is_numeric($in['total'] ?? null) && (string)$in['total'] !== '') $total = max(0, min(10000000, (int)$in['total']));
+        else { $p = calc_price($cfg, $o, 999); $total = (int)$p['total']; $lines = $p['lines']; }
+        $data = ['character' => $ch['id'], 'program' => $pr['id'], 'kids' => $kids, 'addons' => [], 'zone' => '', 'children' => [], 'comment' => $comment];
+        db()->prepare('INSERT INTO orders (agency_id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at, source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+            ->execute([$a['id'], $date, $time, $span, json_encode($data, JSON_UNESCAPED_UNICODE), $name, $pd === '' ? '' : '+' . $pd, $address, $total, json_encode($lines, JSON_UNESCAPED_UNICODE), $status, date('Y-m-d H:i:s'), $source]);
+        json_out(['ok' => true, 'id' => (int)db()->lastInsertId(), 'total' => $total]);
 
     case 'block_add':
         $a = current_agency();
@@ -181,7 +246,7 @@ switch ($action) {
         $time = is_scalar($in['time'] ?? null) ? (string)$in['time'] : '';
         $times = slot_times($a['cfg'], $date);
         if (!in_array($time, $times, true)) fail('Неверное время');
-        $teams = max(1, min((int)$a['cfg']['pairs'], (int)($in['teams'] ?? 1)));
+        $teams = max(1, min(cap_max($a['cfg']), (int)($in['teams'] ?? 1)));
         // Заказ по телефону занимает столько часов, сколько длится программа вместе с дорогой — как заказ с сайта
         $hours = 1;
         if (is_scalar($in['program'] ?? null) && $in['program'] !== '') {
@@ -237,6 +302,11 @@ switch ($action) {
             if (!empty($ch['photo'])) $used[] = $ch['photo'];
         }
         unset($ch);
+        foreach ($clean['programs'] as &$pg) {   // свои картинки программ лежат там же, их тоже не удаляем
+            if (!empty($pg['img']) && (!preg_match('~^uploads/chars/a' . $aid . '-~', $pg['img']) || !is_file(APP_ROOT . '/' . $pg['img']))) { unset($pg['img']); if ($pg['icon'] === 'own') $pg['icon'] = 'gift'; }
+            if (!empty($pg['img'])) $used[] = $pg['img'];
+        }
+        unset($pg);
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($clean, JSON_UNESCAPED_UNICODE), $aid]);
         foreach (glob(APP_ROOT . '/uploads/chars/a' . $aid . '-*') ?: [] as $f) if (!in_array('uploads/chars/' . basename($f), $used, true)) @unlink($f);
         $oldLink = (string)($a['cfg']['banner']['link'] ?? ''); $newLink = (string)($clean['banner']['link'] ?? '');
@@ -249,8 +319,8 @@ switch ($action) {
         $a = current_agency(); $aid = (int)$a['id'];
         if (!empty($GLOBALS['BODY_TOO_BIG'])) fail('Картинка слишком большая, нужна до 1,5 МБ. Уменьшите её или сохраните в JPG.');
         $kind = in_str($in, 'kind');
-        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'person' => 'heroes', 'bimg' => 'heroes', 'char' => 'chars', 'port' => 'portfolio', 'poster' => 'portfolio'];
-        $maxSide = ['logo' => 2000, 'hero' => 4000, 'person' => 3000, 'bimg' => 3000, 'char' => 3000, 'port' => 3000, 'poster' => 3000];
+        $dirs = ['logo' => 'logos', 'hero' => 'heroes', 'person' => 'heroes', 'bimg' => 'heroes', 'char' => 'chars', 'prog' => 'chars', 'port' => 'portfolio', 'poster' => 'portfolio'];
+        $maxSide = ['logo' => 2000, 'hero' => 4000, 'person' => 3000, 'bimg' => 3000, 'char' => 3000, 'prog' => 3000, 'port' => 3000, 'poster' => 3000];
         // обложка — только для видео, которое уже есть в портфолио
         $posterOf = in_str($in, 'src'); $posterIdx = null;
         if ($kind === 'poster') {
@@ -260,7 +330,7 @@ switch ($action) {
         if ($kind === 'port' && portfolio_counts($a['cfg'])[0] >= PORTFOLIO_MAX_PHOTOS) fail('В портфолио уже ' . PORTFOLIO_MAX_PHOTOS . ' фото. Удалите какое-нибудь, чтобы добавить новое.');
         if (!isset($dirs[$kind])) fail('Неизвестный вид картинки');
         $charId = in_str($in, 'char');
-        if ($kind === 'char' && !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $charId)) fail('Не выбран состав');
+        if (($kind === 'char' || $kind === 'prog') && !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $charId)) fail($kind === 'prog' ? 'Не выбрана программа' : 'Не выбран состав');
         if (!preg_match('~^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$~', in_str($in, 'data'), $m)) fail('Загрузите картинку PNG, JPG или WebP');
         $bin = base64_decode($m[2], true);
         if ($bin === false || strlen($bin) > 1500000) fail('Картинка слишком большая, нужна до 1,5 МБ');
@@ -298,13 +368,17 @@ switch ($action) {
             // если состав уже сохранён, сразу ставим фото; новый состав получит его при сохранении цен
             foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); $ch['photo'] = $path; }
             unset($ch);
+        } elseif ($kind === 'prog') {
+            // своя картинка программы вместо стандартной иконки
+            foreach ($cfg['programs'] as &$pg) if (($pg['id'] ?? '') === $charId) { remove_upload($aid, (string)($pg['img'] ?? '')); $pg['img'] = $path; $pg['icon'] = 'own'; }
+            unset($pg);
         } else {
             $field = IMG_FIELDS[$kind];
             remove_upload($aid, (string)($cfg[$field] ?? ''));
             $cfg[$field] = $path;
         }
         db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $aid]);
-        tell_owner($a, ['logo' => 'загрузило логотип', 'hero' => 'загрузило фон страницы', 'person' => 'загрузило картинку персонажа на первый экран', 'bimg' => 'загрузило картинку баннера'][$kind] ?? 'загрузило фото состава');
+        tell_owner($a, ['logo' => 'загрузило логотип', 'hero' => 'загрузило фон страницы', 'person' => 'загрузило картинку персонажа на первый экран', 'bimg' => 'загрузило картинку баннера', 'prog' => 'загрузило картинку программы'][$kind] ?? 'загрузило фото состава');
         json_out(['path' => $path, 'logo' => $path]);
 
     // ----- портфолио: видео файлом, ролик с VK или Rutube, удаление -----
@@ -466,6 +540,10 @@ switch ($action) {
             $charId = in_str($in, 'char');
             foreach ($cfg['characters'] as &$ch) if (($ch['id'] ?? '') === $charId) { remove_upload($aid, (string)($ch['photo'] ?? '')); unset($ch['photo']); }
             unset($ch);
+        } elseif ($kind === 'prog') {
+            $charId = in_str($in, 'char');
+            foreach ($cfg['programs'] as &$pg) if (($pg['id'] ?? '') === $charId) { remove_upload($aid, (string)($pg['img'] ?? '')); unset($pg['img']); if (($pg['icon'] ?? '') === 'own') $pg['icon'] = 'gift'; }
+            unset($pg);
         } elseif (isset(IMG_FIELDS[$kind])) {
             $field = IMG_FIELDS[$kind];
             remove_upload($aid, (string)($cfg[$field] ?? ''));

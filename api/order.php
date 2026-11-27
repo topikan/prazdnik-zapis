@@ -78,7 +78,7 @@ try {
     if (is_mysql()) { $pdo->beginTransaction(); $pdo->prepare('SELECT id FROM agencies WHERE id = ? FOR UPDATE')->execute([$a['id']]); }
     else { $pdo->exec('BEGIN IMMEDIATE'); }
 
-    $occ = occupancy((int)$a['id'], $o['date'], $o['date']);
+    $occ = occupancy((int)$a['id'], $o['date'], $o['date'], $cfg);
     $times = slot_times($cfg, $o['date']);
     $startIdx = array_search($o['time'], $times, true);
     $free = free_teams($cfg, $occ, $o['date'], $o['time']);

@@ -10,9 +10,13 @@
     var KEY = "bp-no-anim", btn = document.getElementById("animToggle"), off = false;
     try { off = localStorage.getItem(KEY) === "1"; } catch (e) {}
     // агентство может решить само: снег всегда (кнопку убираем) или без снега
+    // Снег включает или выключает агентство галочкой в кабинете; кнопки для клиента больше нет
+    if (btn) btn.hidden = true;
+    off = false;
     window.bpSnowMode = function (mode) {
-      if (mode !== "on" && mode !== "off") return;
-      off = mode === "off"; apply(); if (btn) btn.hidden = true;
+      off = mode === "off";
+      document.documentElement.classList.toggle("no-snow", off);
+      apply(); if (btn) btn.hidden = true;
     };
     function apply() {
       document.documentElement.classList.toggle("no-anim", off);
@@ -81,8 +85,14 @@
   function promoActive() { return cfg.promo && cfg.promo.percent && iso(today()) <= cfg.promo.until; }
 
   // Наценка за спрос: чем меньше свободных составов (пар, трио) на это время, тем дороже
-  function surgeFor(free) {
-    var share = free / cfg.pairs, best = { plus: 0, label: "" };
+  // сколько выездов работает в этот день и час: обычное число или исключение на день (как cap_at на сервере)
+  function capAt(date, time) {
+    var n = +cfg.pairs || 1, m = minutes(time);
+    ((cfg.capDays || {})[date] || []).forEach(function (r) { if (minutes(r.from) <= m) n = +r.pairs; });
+    return n;
+  }
+  function surgeFor(free, cap) {
+    var share = free / Math.max(1, cap || cfg.pairs), best = { plus: 0, label: "" };
     (cfg.demandPricing || []).forEach(function (r) { if (share <= r.freeShareAtMost && r.plus > best.plus) best = r; });
     return best;
   }
@@ -90,8 +100,9 @@
   // Загрузка дня: доля занятых составов по всем часам
   function dayLoad(date) {
     var l = slotsFor(date), busy = 0;
-    l.forEach(function (s) { busy += cfg.pairs - s.free; });
-    return busy / (l.length * cfg.pairs);
+    var total = 0;
+    l.forEach(function (s) { busy += s.cap - s.free; total += s.cap; });
+    return total ? busy / total : 1;
   }
   function loadLevel(load) { return load < 0.4 ? 1 : load < 0.7 ? 2 : 3; }
 
@@ -104,9 +115,9 @@
     var program = round100(base * m.mult);
     lines.push([find(cfg.characters, state.character).title + ", " + prog.minutes + " мин" + (m.mult !== 1 ? " (" + m.label.toLowerCase() + ")" : ""), program]);
     var surge = { plus: 0, label: "" };
-    if (date && time) { var sl = slotOf(date, time); if (sl) surge = surgeFor(sl.free); }
+    if (date && time) { var sl = slotOf(date, time); if (sl) surge = surgeFor(sl.free, sl.cap); }
     else if (date) { // без выбранного времени показываем цену самого дешёвого свободного часа
-      var min = null; slotsFor(date).forEach(function (sl) { if (sl.free > 0) { var g = surgeFor(sl.free); if (!min || g.plus < min.plus) min = g; } });
+      var min = null; slotsFor(date).forEach(function (sl) { if (sl.free > 0) { var g = surgeFor(sl.free, sl.cap); if (!min || g.plus < min.plus) min = g; } });
       if (min) surge = min;
     }
     if (surge.plus) lines.push(["Наценка за спрос +" + Math.round(surge.plus * 100) + "%", round100(program * surge.plus)]);
@@ -121,9 +132,10 @@
 
   /* ---------- слоты (в демо занятость условная) ---------- */
   function freeAt(date, time) {
-    if (cfg.occupancy) return Math.max(0, cfg.pairs - ((cfg.occupancy[date] || {})[time] || 0));
+    var cap = capAt(date, time);
+    if (cfg.occupancy) return Math.max(0, cap - ((cfg.occupancy[date] || {})[time] || 0));
     var m = multFor(date, time).mult, p = Math.min(0.92, 0.1 + 0.32 * (m - 1)), free = 0; // демо: условная занятость
-    for (var k = 0; k < cfg.pairs; k++) if (hash(slug + date + time + k) > p) free++;
+    for (var k = 0; k < cap; k++) if (hash(slug + date + time + k) > p) free++;
     return free;
   }
   function span() {
@@ -144,11 +156,28 @@
       var free = freeAt(date, hhmm(t));
       // визит вместе с дорогой может занять несколько часов: все они должны быть свободны
       for (var i = 1; i < sp && free > 0; i++) if (t + i * 60 <= to && freeAt(date, hhmm(t + i * 60)) < 1) free = 0;
-      list.push({ time: hhmm(t), end: hhmm(t + 60), free: free });
+      list.push({ time: hhmm(t), end: hhmm(t + 60), free: free, cap: capAt(date, hhmm(t)) });
     }
     return list;
   }
   function dayFree(date) { return slotsFor(date).some(function (s) { return s.free > 0; }); }
+
+  // Логотип смотрится аккуратно, что бы ни загрузили: фото — круглой аватаркой без белой рамки,
+  // прозрачный тёмный знак — на светлой подложке (иначе пропадёт на тёмном фоне), светлый или непрозрачный — как есть
+  function fitLogo(img) {
+    var w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) return;
+    var kind = "plain";
+    try {
+      var c = document.createElement("canvas"), n = 32; c.width = n; c.height = n;
+      var x = c.getContext("2d"); x.drawImage(img, 0, 0, n, n);
+      var d = x.getImageData(0, 0, n, n).data, clear = 0, lumSum = 0, solid = 0;
+      for (var i = 0; i < d.length; i += 4) { if (d[i + 3] < 200) clear++; else { solid++; lumSum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; } }
+      var transparent = clear > n * n * 0.08, lum = solid ? lumSum / solid / 255 : 1;
+      if (!transparent) kind = w / h > 0.75 && w / h < 1.34 ? "avatar" : "tile";
+      else kind = lum < 0.45 ? "plate" : "plain";
+    } catch (e) { kind = "plate"; }
+    img.classList.add("logo-" + kind);
+  }
 
   /* ---------- отрисовка ---------- */
   function renderStatic() {
@@ -158,7 +187,12 @@
     if (cfg.phone) document.querySelectorAll(".js-phone").forEach(function (a) { a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; });
     // свой логотип агентства вместо снежинки
     if (/^uploads\/logos\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.logo || "")) document.querySelectorAll(".logo-mark").forEach(function (svg) {
-      var img = document.createElement("img"); img.className = "logo-img"; img.src = cfg.logo; img.alt = ""; svg.replaceWith(img);
+      var img = document.createElement("img"); img.className = "logo-img"; img.alt = ""; img.onload = function () { fitLogo(img); }; img.src = cfg.logo; svg.replaceWith(img);
+    });
+    // логотип — ссылка на сайт или соцсеть агентства, если оно её указало
+    if (/^https:\/\/[^\s<>"]+$/.test(cfg.logoLink || "")) document.querySelectorAll(".logo").forEach(function (l) {
+      var a = document.createElement("a"); a.className = l.className + " logo-link"; a.href = cfg.logoLink; a.target = "_blank"; a.rel = "noopener noreferrer";
+      while (l.firstChild) a.appendChild(l.firstChild); l.replaceWith(a);
     });
     // своя картинка первого экрана; наш Дед Мороз тогда не нужен
     var IMG_RE = /^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/, dz = cfg.design || {};
@@ -412,8 +446,16 @@
   function photoOf(c) { return PHOTO_RE.test(c.photo || "") ? c.photo : (cfg.demo && DEMO_PHOTOS[c.icon]) || ""; }
   function whoArt(c) {
     var ph = photoOf(c), badge = c.badge ? '<span class="badge">' + esc(c.badge) + "</span>" : "";
-    if (ph) return '<span class="who-art photo"><img src="' + esc(ph) + '" alt="" loading="lazy">' + badge + "</span>";
+    if (ph) return '<span class="who-art photo"><img class="pos-' + (c.pos == null ? 50 : +c.pos) + '" src="' + esc(ph) + '" alt="" loading="lazy">' + badge + "</span>";
+    // «без иконки»: логотип агентства (или наш), пока нет фото
+    if (c.icon === "logo") return '<span class="who-art logo-art"><img src="' + esc(logoSrc()) + '" alt="" loading="lazy">' + badge + "</span>";
     return '<span class="who-art">' + (WHO_ART[c.icon] || WHO_ART.santa).map(icon).join("") + badge + "</span>";
+  }
+  function logoSrc() { return /^uploads\/logos\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(cfg.logo || "") ? cfg.logo : "assets/img/favicon.svg"; }
+  function progHead(p) {
+    if (p.icon === "none") return "";
+    if (p.icon === "own" && /^uploads\/chars\/[a-z0-9-]+\.(webp|png|jpe?g)$/.test(p.img || "")) return '<span class="prog-head"><img class="prog-img" src="' + esc(p.img) + '" alt="" loading="lazy"></span>';
+    return '<span class="prog-head"><svg class="prog-icon" viewBox="0 0 48 48" aria-hidden="true"><use href="#' + (PROG_ICON[p.icon] || "i-giftbig") + '"/></svg></span>';
   }
   var CHECK = '<span class="check" aria-hidden="true"><svg><use href="#i-check"/></svg></span>';
 
@@ -428,7 +470,7 @@
   function renderPrograms() {
     $("programs").innerHTML = cfg.programs.map(function (p) {
       return '<label class="card"><input type="radio" name="program" value="' + esc(p.id) + '"' + (state.program === p.id ? " checked" : "") + ">" +
-        '<span class="card-body">' + CHECK + '<span class="prog-head"><svg class="prog-icon" viewBox="0 0 48 48" aria-hidden="true"><use href="#' + (PROG_ICON[p.icon] || "i-giftbig") + '"/></svg></span>' +
+        '<span class="card-body">' + CHECK + progHead(p) +
         '<span class="card-text"><span class="card-title">' + esc(p.title) + '</span><span class="card-note">' + esc(p.note) + "</span>" +
         '<span class="prog-min"><svg aria-hidden="true"><use href="#i-clock"/></svg>' + esc(p.minutes) + ' мин</span><span class="card-price">' + rub(cfg.prices[state.character][p.id]) + "</span></span></span></label>";
     }).join("");
@@ -554,7 +596,7 @@
     var lines = pr ? pr.lines.map(line).join("") : "";
     $("breakdown").innerHTML = lines; $("sumLines").innerHTML = lines;
     var c = find(cfg.characters, state.character) || {}, p = find(cfg.programs, state.program) || {}, z = find(cfg.zones, state.zone) || {};
-    $("sumWho").innerHTML = '<span class="sum-ava">' + (photoOf(c) ? '<img src="' + esc(photoOf(c)) + '" alt="">' : icon((WHO_ART[c.icon] || WHO_ART.santa)[0])) + "</span>" +
+    $("sumWho").innerHTML = '<span class="sum-ava">' + (photoOf(c) ? '<img class="pos-' + (c.pos == null ? 50 : +c.pos) + '" src="' + esc(photoOf(c)) + '" alt="">' : c.icon === "logo" ? '<img class="sum-logo" src="' + esc(logoSrc()) + '" alt="">' : icon((WHO_ART[c.icon] || WHO_ART.santa)[0])) + "</span>" +
       "<span><b>" + esc(c.title) + "</b><small>" + esc(p.title) + (p.minutes ? ", " + esc(p.minutes) + " мин" : "") + "</small></span>";
     var when = state.date ? short(state.date) + (state.time ? ", " + state.time : ", время не выбрано") : "Дата не выбрана";
     $("sumFacts").innerHTML = '<li class="' + (state.date && state.time ? "" : "muted") + '"><svg aria-hidden="true"><use href="#i-cal"/></svg>' + esc(when) + "</li>" +
@@ -863,7 +905,13 @@
         root.setProperty("--accent-soft", "rgba(20,33,61,.12)");
       }
     }
-    if (hex.test(col.gold || "") && col.gold.toUpperCase() !== "#C9A24A") root.setProperty("--gold", col.gold);
+    if (hex.test(col.gold || "") && col.gold.toUpperCase() !== "#C9A24A") {
+      root.setProperty("--gold", col.gold);
+      // текст на плашках — тёмный или белый, смотря что читается; на тёмном первом экране слишком тёмный цвет осветляем
+      var gn = parseInt(col.gold.slice(1), 16), gr = gn >> 16, gg = gn >> 8 & 255, gb = gn & 255, gl = (0.2126 * gr + 0.7152 * gg + 0.0722 * gb) / 255;
+      root.setProperty("--on-gold", gl > 0.55 ? "#2B2210" : "#FFFFFF");
+      if (gl < 0.35) { var mix = function (c) { return Math.round(c + (255 - c) * 0.72); }; root.setProperty("--gold-hero", "rgb(" + mix(gr) + "," + mix(gg) + "," + mix(gb) + ")"); }
+    }
     buildMonths();
     var t = today();
     months.forEach(function (m, i) { if (m.getFullYear() === t.getFullYear() && m.getMonth() === t.getMonth()) state.month = i; });

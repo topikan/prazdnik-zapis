@@ -87,13 +87,26 @@ function tg_poll(): void {
     if (!tg_relay()) return;
     $bot = setting_get('tgbot');
     if (($bot['mode'] ?? '') !== 'poll') return;
-    $offset = (int)(setting_get('tgoffset')['v'] ?? 0);
-    $r = tg_api('getUpdates', ['offset' => $offset, 'timeout' => 0, 'allowed_updates' => ['message']]);
-    foreach ($r['result'] ?? [] as $u) {
-        $offset = max($offset, (int)$u['update_id'] + 1);
-        if (isset($u['message']['chat']['id'])) tg_handle($u['message']);
+    // Одновременно читает сообщения только один запрос: иначе два запроса получат одно и то же /start и ответят дважды
+    $lf = @fopen(APP_ROOT . '/data/tgpoll.lock', 'c');
+    if ($lf && !flock($lf, LOCK_EX | LOCK_NB)) { fclose($lf); return; }
+    try {
+        ignore_user_abort(true);
+        $offset = (int)(setting_get('tgoffset')['v'] ?? 0);
+        $r = tg_api('getUpdates', ['offset' => $offset, 'timeout' => 0, 'allowed_updates' => ['message']]);
+        $list = [];
+        foreach ($r['result'] ?? [] as $u) {
+            if ((int)$u['update_id'] < $offset) continue;
+            $offset = max($offset, (int)$u['update_id'] + 1);
+            if (isset($u['message']['chat']['id'])) $list[] = $u['message'];
+        }
+        // Сначала запоминаем, что прочитали, и только потом отвечаем: если запрос оборвётся на ответе,
+        // старые сообщения не обработаются второй раз (раньше из-за этого «Ссылка устарела» приходила снова и снова)
+        setting_set('tgoffset', ['v' => $offset]);
+        foreach ($list as $m) { try { tg_handle($m); } catch (Throwable $e) { error_log('tg_handle: ' . $e->getMessage()); } }
+    } finally {
+        if ($lf) { flock($lf, LOCK_UN); fclose($lf); }
     }
-    setting_set('tgoffset', ['v' => $offset]);
 }
 // Сообщение боту: /start <код> подключает чат к агентству, /stop отключает
 function tg_handle(array $msg): void {
@@ -111,7 +124,10 @@ function tg_handle(array $msg): void {
             return;
         }
         $a = $link && ($link['exp'] ?? 0) >= time() ? agency_by_id((int)$link['aid']) : null;
-        if (!$a) { tg_send($chat, "Ссылка устарела. Откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram» ещё раз."); return; }
+        if (!$a) {
+            // чат уже подключён — не пугаем «устаревшей ссылкой» (повторное нажатие той же ссылки)
+            if ($names = tg_chat_names($chat)) { tg_send($chat, "Этот Telegram уже подключён: " . implode(', ', $names) . ". Новые заявки придут сюда."); return; }
+            tg_send($chat, "Ссылка устарела. Откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram» ещё раз."); return; }
         $chats = tg_chats((int)$a['id']);
         if (!in_array($chat, $chats, true)) $chats[] = $chat;
         tg_set_chats((int)$a['id'], array_slice($chats, -10));
@@ -122,9 +138,22 @@ function tg_handle(array $msg): void {
             if (in_array($chat, $chats, true)) tg_set_chats((int)substr($row['name'], 8), array_values(array_diff($chats, [$chat])));
         }
         tg_send($chat, 'Уведомления отключены. Подключить снова можно в личном кабинете.');
+    } elseif ($names = tg_chat_names($chat)) {
+        tg_send($chat, "Уведомления подключены: " . implode(', ', $names) . ". Новые заявки придут сюда.\n\nОтключить: /stop");
     } else {
         tg_send($chat, "Это бот уведомлений о заявках Аниматорская Система.\n\nЧтобы получать заявки, откройте личный кабинет → «Настройки» → «Уведомления» и нажмите «Подключить Telegram».");
     }
+}
+// Куда уже подключён этот чат (названия агентств; владелец — «уведомления владельца»)
+function tg_chat_names(int $chat): array {
+    $out = [];
+    foreach (db()->query("SELECT name, value FROM settings WHERE name LIKE 'tgchats:%'")->fetchAll() as $row) {
+        if (!in_array($chat, array_map('intval', json_decode($row['value'], true)['chats'] ?? []), true)) continue;
+        $aid = (int)substr($row['name'], 8);
+        if ($aid === 0) { $out[] = 'уведомления владельца'; continue; }
+        $a = agency_by_id($aid); if ($a) $out[] = '«' . ($a['cfg']['name'] ?? $a['slug']) . '»';
+    }
+    return $out;
 }
 function tg_send(int $chat, string $text): bool {
     $r = tg_api('sendMessage', ['chat_id' => $chat, 'text' => $text, 'disable_web_page_preview' => true]);
@@ -164,10 +193,12 @@ function send_mail_file(string $to, string $subject, string $text, string $filen
 // Уведомление владельцу сервиса: в его Telegram (подключается во вкладке «Агентства») и на почту из настроек
 function owner_email(): string { global $APP; $m = (string)((setting_get('owner') ?: [])['email'] ?? ($APP['owner_email'] ?? '')); return filter_var($m, FILTER_VALIDATE_EMAIL) ? $m : ''; }
 function notify_owner(string $subject, string $text): void {
-    try {
-        foreach (tg_chats(0) as $chat) tg_send($chat, $text);
-        if (owner_email() !== '') send_mail(owner_email(), $subject, $text);
-    } catch (Throwable $e) { error_log('notify_owner: ' . $e->getMessage()); }
+    after_response(function () use ($subject, $text) {
+        try {
+            foreach (tg_chats(0) as $chat) tg_send($chat, $text);
+            if (owner_email() !== '') send_mail(owner_email(), $subject, $text);
+        } catch (Throwable $e) { error_log('notify_owner: ' . $e->getMessage()); }
+    });
 }
 // Не чаще раза в 15 минут на одно агентство: чтобы 20 загруженных фото не стали 20 сообщениями
 function notify_owner_throttled(string $key, string $subject, string $text): void {

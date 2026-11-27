@@ -39,5 +39,5 @@ Options -Indexes
   RewriteRule ^([a-z0-9-]{2,40})/$ /$1 [R=301,L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^([a-z0-9-]{2,40})$ zapis.html [L]
+  RewriteRule ^([a-z0-9-]{2,40})$ page.php?a=$1 [L,QSA]
 </IfModule>

@@ -339,7 +339,8 @@ html.no-anim { scroll-behavior: auto; }
 #slugHint.bad { color: var(--red); }
 .auth-card .check { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; font-size: 14px; }
 .auth-card .check input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--red); flex: none; }
-.auth-card a { color: var(--red); }
+.auth-card a:not(.btn) { color: var(--red); }
+.auth-card a.btn { color: #fff; width: 100%; }
 .auth-card .btn { width: 100%; margin-top: 4px; }
 .auth-card .btn:disabled { opacity: .6; cursor: default; }
 .btn.is-busy { opacity: .7; cursor: progress; }

@@ -25,7 +25,7 @@ $season = $cfg['season'];
 $cfg['live'] = true;
 $cfg['kind'] = ($a['kind'] ?? 'agency') === 'solo' ? 'solo' : 'agency';
 if ($preview) $cfg['preview'] = !$a['active'] ? 'off' : 'closed';
-$cfg['occupancy'] = occupancy((int)$a['id'], $season['start'], $season['end']);
+$cfg['occupancy'] = occupancy((int)$a['id'], $season['start'], $season['end'], $cfg);
 $cfg['legal']['processor'] = $APP['processor'] ?? '';
 // Предоплата: посетителю — только включена ли и как считается сумма; ключи магазина остаются на сервере
 $p = $cfg['payment'] ?? [];

@@ -42,7 +42,20 @@ function db(): PDO {
 }
 function is_mysql(): bool { global $APP; return str_starts_with($APP['db_dsn'], 'mysql:'); }
 
+// Дела «после ответа» (уведомления владельцу и т.п.): пользователь не ждёт, пока сообщение дойдёт через Google
+function after_response(callable $f): void {
+    static $reg = false;
+    $GLOBALS['AFTER_RESPONSE'][] = $f;
+    if (!$reg) { $reg = true; register_shutdown_function('run_after_response'); }
+}
+function run_after_response(): void {
+    while (!empty($GLOBALS['AFTER_RESPONSE'])) {
+        $f = array_shift($GLOBALS['AFTER_RESPONSE']);
+        try { $f(); } catch (Throwable $e) { error_log('after_response: ' . $e->getMessage()); }
+    }
+}
 function json_out($data, int $code = 200): void {
+    if (!empty($GLOBALS['AFTER_RESPONSE']) && $code < 400 && PHP_SAPI !== 'cli') { http_response_code($code); respond_early($data); run_after_response(); exit; }
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -290,7 +303,7 @@ function mail_html(string $innerHtml, string $preheader = ''): string {
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE7;"><tr><td align="center" style="padding:28px 12px;">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">'
         . '<tr><td style="background:#0E1A33;padding:20px 28px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
-        . '<td style="padding-right:12px;"><img src="' . $site . '/assets/img/mail-logo.png" width="40" height="40" alt="" style="display:block;border-radius:10px;"></td>'
+        . '<td style="padding-right:12px;"><img src="' . $site . '/assets/img/mail-logo-anisis.png" width="40" height="40" alt="" style="display:block;border-radius:10px;"></td>'
         . '<td style="' . $f . 'font-size:19px;font-weight:bold;color:#FFFFFF;">Аниматорская Система</td></tr></table></td></tr>'
         . '<tr><td style="' . $f . 'padding:30px 28px 26px;font-size:16px;line-height:1.55;color:#14213D;">' . $innerHtml . '</td></tr>'
         . '<tr><td style="' . $f . 'padding:18px 28px;border-top:1px solid #EFE8DD;font-size:12px;line-height:1.5;color:#7A8293;">Письмо отправлено автоматически, отвечать на него не нужно.<br>'

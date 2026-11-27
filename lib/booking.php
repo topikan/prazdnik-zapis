@@ -25,29 +25,56 @@ function order_span(array $cfg, string $programId): int {
     return max(1, (int)ceil($mins / 60));
 }
 
-// Занятость: [дата][время] => сколько составов занято (заказы + ручные блокировки)
-function occupancy(int $agencyId, string $from, string $to): array {
+// Сколько выездов работает в этот день и час: обычное число из настроек или исключение на этот день
+// (capDays: {"2026-12-31": [{"from":"00:00","pairs":4},{"from":"17:00","pairs":2}]}; действует последнее правило, начавшееся не позже часа)
+function cap_at(array $cfg, string $date, string $time): int {
+    $n = (int)($cfg['pairs'] ?? 1);
+    foreach ($cfg['capDays'][$date] ?? [] as $r) if (minutes_of($r['from']) <= minutes_of($time)) $n = (int)$r['pairs'];
+    return $n;
+}
+function cap_max(array $cfg): int {
+    $n = (int)($cfg['pairs'] ?? 1);
+    foreach ($cfg['capDays'] ?? [] as $day) foreach ($day as $r) $n = max($n, (int)$r['pairs']);
+    return $n;
+}
+
+// Занятые отрезки времени: заказы (программа + дорога) и закрытые вручную часы. [дата] => [[начало, конец, выездов], ...]
+function busy_intervals(int $agencyId, string $from, string $to): array {
     $pdo = db();
-    $occ = [];
+    $out = [];
     $in = implode(',', array_fill(0, count(ACTIVE_STATUSES), '?'));
     $st = $pdo->prepare("SELECT visit_date, visit_time, span FROM orders WHERE agency_id = ? AND visit_date BETWEEN ? AND ? AND status IN ($in)");
     $st->execute(array_merge([$agencyId, $from, $to], ACTIVE_STATUSES));
-    foreach ($st as $r) {
-        $start = minutes_of($r['visit_time']);
-        for ($i = 0; $i < max(1, (int)$r['span']); $i++) {
-            if ($start + $i * 60 >= 1440) break; // после полуночи — это уже другой день, его не трогаем
-            $t = hhmm($start + $i * 60);
-            $occ[$r['visit_date']][$t] = ($occ[$r['visit_date']][$t] ?? 0) + 1;
-        }
-    }
+    foreach ($st as $r) { $s = minutes_of($r['visit_time']); $out[$r['visit_date']][] = [$s, min(1440, $s + max(1, (int)$r['span']) * 60), 1]; }
     $st = $pdo->prepare('SELECT visit_date, visit_time, teams FROM blocks WHERE agency_id = ? AND visit_date BETWEEN ? AND ?');
     $st->execute([$agencyId, $from, $to]);
-    foreach ($st as $r) $occ[$r['visit_date']][$r['visit_time']] = ($occ[$r['visit_date']][$r['visit_time']] ?? 0) + (int)$r['teams'];
+    foreach ($st as $r) { $s = minutes_of($r['visit_time']); $out[$r['visit_date']][] = [$s, $s + 60, (int)$r['teams']]; }
+    return $out;
+}
+// Сколько выездов одновременно занято в самый загруженный момент отрезка [s, e)
+function busy_peak(array $list, int $s, int $e): int {
+    $points = [$s];
+    foreach ($list as $iv) if ($iv[0] > $s && $iv[0] < $e) $points[] = $iv[0];
+    $peak = 0;
+    foreach ($points as $p) { $n = 0; foreach ($list as $iv) if ($iv[0] <= $p && $iv[1] > $p) $n += $iv[2]; $peak = max($peak, $n); }
+    return $peak;
+}
+// Занятость по кнопкам времени: [дата][время] => сколько выездов занято в этот час.
+// Считается по пересечению отрезков, поэтому закрытые часы и заказы не «теряются», если поменять первый визит (10:00 → 03:30).
+function occupancy(int $agencyId, string $from, string $to, array $cfg): array {
+    $occ = [];
+    foreach (busy_intervals($agencyId, $from, $to) as $date => $list) {
+        foreach (slot_times($cfg, $date) as $t) {
+            $m = minutes_of($t);
+            $n = busy_peak($list, $m, $m + 60);
+            if ($n > 0) $occ[$date][$t] = $n;
+        }
+    }
     return $occ;
 }
 
 function free_teams(array $cfg, array $occ, string $date, string $time): int {
-    return max(0, (int)$cfg['pairs'] - (int)($occ[$date][$time] ?? 0));
+    return max(0, cap_at($cfg, $date, $time) - (int)($occ[$date][$time] ?? 0));
 }
 
 function date_rule(array $cfg, string $date): array {
@@ -61,8 +88,8 @@ function mult_for(array $cfg, string $date, string $time): array {
     }
     return [$m, $label];
 }
-function surge_for(array $cfg, int $free): array {
-    $share = $free / max(1, (int)$cfg['pairs']); $best = ['plus' => 0, 'label' => ''];
+function surge_for(array $cfg, int $free, int $cap = 0): array {
+    $share = $free / max(1, $cap ?: (int)$cfg['pairs']); $best = ['plus' => 0, 'label' => ''];
     foreach ($cfg['demandPricing'] ?? [] as $r) if ($share <= $r['freeShareAtMost'] && $r['plus'] > $best['plus']) $best = $r;
     return $best;
 }
@@ -83,7 +110,7 @@ function calc_price(array $cfg, array $o, int $free): array {
     $lines = [];
     $program = round100($base * $mult);
     $lines[] = [$char['title'] . ', ' . $prog['minutes'] . ' мин' . ($mult != 1 ? ' (' . mb_strtolower($label) . ')' : ''), $program];
-    $surge = surge_for($cfg, $free);
+    $surge = surge_for($cfg, $free, cap_at($cfg, $o['date'], $o['time']));
     if ($surge['plus'] > 0) $lines[] = ['Наценка за спрос +' . round($surge['plus'] * 100) . '%', round100($program * $surge['plus'])];
     $extra = max(0, $o['kids'] - (int)$cfg['kids']['included']);
     if ($extra) $lines[] = ['Ещё ' . $extra . ' ' . plural_ru($extra, 'ребёнок', 'ребёнка', 'детей') . ' сверх ' . $cfg['kids']['included'], $extra * (int)$cfg['kids']['extraPrice']];
@@ -128,6 +155,9 @@ function normalize_config(array $c, array &$err): array {
     if ($o['name'] === '') $err[] = 'Укажите название агентства';
     $o['city'] = $str($c['city'] ?? '', 60);
     $o['phone'] = $str($c['phone'] ?? '', 30);
+    $o['logoLink'] = $str($c['logoLink'] ?? '', 300);
+    if ($o['logoLink'] !== '' && !preg_match('~^https://[^\s<>"]+$~', $o['logoLink'])) $err[] = 'Ссылка с логотипа должна начинаться с https://';
+    if ($o['logoLink'] === '') unset($o['logoLink']);
     $o['demo'] = !empty($c['demo']);
     $L = is_array($c['legal'] ?? null) ? $c['legal'] : [];
     $o['legal'] = ['operator' => $str($L['operator'] ?? '', 200), 'inn' => $str($L['inn'] ?? '', 20), 'ogrn' => $str($L['ogrn'] ?? '', 40),
@@ -151,20 +181,37 @@ function normalize_config(array $c, array &$err): array {
     $ld = $c['hours']['lastDay'] ?? null;
     if (is_array($ld) && $date($ld['date'] ?? '') && $time($ld['to'] ?? '')) $o['hours']['lastDay'] = ['date' => $ld['date'], 'to' => $ld['to']];
     $o['pairs'] = $int($c['pairs'] ?? 1, 1, 50, 1);
+    // исключения по дням: другое число выездов на весь день или с определённого часа (0 — в это время не работаем)
+    $o['capDays'] = [];
+    if (is_array($c['capDays'] ?? null)) foreach (array_slice($c['capDays'], 0, 400, true) as $d => $rules) {
+        if (!$date((string)$d) || !is_array($rules)) continue;
+        $day = [];
+        foreach (array_slice(array_values(array_filter($rules, 'is_array')), 0, 12) as $r) {
+            $f = $time($r['from'] ?? ''); if ($f === '') continue;
+            $day[$f] = ['from' => $f, 'pairs' => $int($r['pairs'] ?? 0, 0, 50, 0)];
+        }
+        if ($day) { ksort($day); $o['capDays'][(string)$d] = array_values($day); }
+    }
+    if (!$o['capDays']) unset($o['capDays']);
     $o['travelMinutes'] = $int($c['travelMinutes'] ?? 30, 0, 240, 30);
 
     $o['characters'] = [];
     foreach ($list($c['characters'] ?? [], 20) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $row = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
+        $row = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio', 'logo'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
         if (is_string($x['photo'] ?? null) && preg_match('~^uploads/chars/[a-z0-9-]+\.(webp|png|jpe?g)$~', $x['photo'])) $row['photo'] = $x['photo'];
+        // какую часть фото показывать в карточке: 0 — верх, 50 — середина, 100 — низ
+        if (isset($x['pos']) && is_numeric($x['pos']) && in_array((int)$x['pos'], [0, 25, 75, 100], true)) $row['pos'] = (int)$x['pos'];
         if (!empty($x['off'])) $row['off'] = true; // скрыт со страницы записи, но остаётся в кабинете
         $o['characters'][] = $row;
     }
     $o['programs'] = [];
     foreach ($list($c['programs'] ?? [], 20) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $o['programs'][] = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'minutes' => $int($x['minutes'] ?? 30, 5, 600, 30), 'note' => $str($x['note'] ?? '', 160), 'icon' => $icons($x['icon'] ?? '', ['gift', 'tree', 'ball'], 'tree')] + (!empty($x['off']) ? ['off' => true] : []);
+        $pg = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'minutes' => $int($x['minutes'] ?? 30, 5, 600, 30), 'note' => $str($x['note'] ?? '', 160), 'icon' => $icons($x['icon'] ?? '', ['gift', 'tree', 'ball', 'own', 'none'], 'tree')];
+        if (is_string($x['img'] ?? null) && preg_match('~^uploads/chars/[a-z0-9-]+\.(webp|png|jpe?g)$~', $x['img'])) $pg['img'] = $x['img'];
+        if ($pg['icon'] === 'own' && empty($pg['img'])) $pg['icon'] = 'gift';   // «своя картинка», но её не загрузили
+        $o['programs'][] = $pg + (!empty($x['off']) ? ['off' => true] : []);
     }
     if (!$o['characters'] || !$o['programs']) $err[] = 'Нужен хотя бы один вариант «Кто приедет» и одна программа';
     elseif (!array_filter($o['characters'], function ($x) { return empty($x['off']); }) || !array_filter($o['programs'], function ($x) { return empty($x['off']); })) $err[] = 'Хотя бы один состав и одна программа должны быть показаны на странице';

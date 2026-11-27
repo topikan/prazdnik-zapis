@@ -62,12 +62,17 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; }
 .logo { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 19px; line-height: 1.15; }
 .logo-mark { width: 34px; height: 34px; flex: none; }
-.logo-img { display: block; height: 48px; width: auto; max-width: 160px; object-fit: contain; flex: none; background: rgba(255, 255, 255, .92); border-radius: 10px; padding: 4px 8px; }
+.logo-img { display: block; height: 48px; width: auto; max-width: 160px; object-fit: contain; flex: none; border-radius: 10px; }
+.logo-img.logo-plate { background: rgba(255, 255, 255, .94); padding: 5px 9px; }
+.logo-img.logo-avatar { width: 48px; height: 48px; object-fit: cover; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 4px 14px rgba(0, 0, 0, .3); }
+.logo-img.logo-tile { border-radius: 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+a.logo-link { color: inherit; text-decoration: none; }
+a.logo-link:hover .logo-name { text-decoration: underline; text-underline-offset: 3px; }
 .phone-pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .45); font-weight: 700; font-size: 14px; text-decoration: none; white-space: nowrap; }
 .phone-pill svg { width: 18px; height: 18px; }
 .phone-pill:hover { background: rgba(255, 255, 255, .1); }
 .hero h1 { margin: 54px 0 16px; font-weight: 800; font-size: clamp(40px, 6vw, 68px); line-height: 1.02; max-width: 640px; }
-.hero h1 em { display: block; font-style: normal; color: var(--gold); }
+.hero h1 em { display: block; font-style: normal; color: var(--gold-hero, var(--gold)); }
 .lead { margin: 0; max-width: 470px; font-size: 18px; color: rgba(255, 255, 255, .88); }
 /* Снег: настоящие снежинки двух размеров падают с лёгким покачиванием; можно выключить кнопкой */
 /* Слой снега неподвижен и прозрачен сверху, чтобы снежинки не путались с логотипом; падают его два внутренних слоя */
@@ -78,6 +83,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 @keyframes snow-near { from { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(18px, 260px, 0); } to { transform: translate3d(0, 520px, 0); } }
 @keyframes snow-far { from { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(-12px, 180px, 0); } to { transform: translate3d(0, 360px, 0); } }
 .no-anim .snow::before, .no-anim .snow::after { animation: none; }
+.no-snow .snow { display: none; }
 @media (prefers-reduced-motion: reduce) { .snow::before, .snow::after { animation: none; } }
 
 /* Кнопка «Отключить анимацию» */
@@ -122,7 +128,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .check svg { width: 15px; height: 15px; opacity: 0; }
 .card input:checked + .card-body .check { background: var(--accent); border-color: var(--accent-strong); color: var(--on-accent); }
 .card input:checked + .card-body .check svg { opacity: 1; }
-.badge { position: absolute; top: 10px; left: 10px; z-index: 2; background: var(--gold); color: #2B2210; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.badge { position: absolute; top: 10px; left: 10px; z-index: 2; background: var(--gold); color: var(--on-gold, #2B2210); font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
 .who-art { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 150px; background: linear-gradient(180deg, #FBF3E6, #F3E6D2); color: var(--accent-strong); padding: 14px 10px 8px; }
 .who-art svg { width: 72px; height: 72px; }
 .who-art.photo { padding: 0; background: #F3E6D2; }
@@ -182,7 +188,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .slot em.up { color: var(--d3); font-weight: 700; }
 .slot:hover span { border-color: #CFC4B4; }
 .slot input:checked + span { background: var(--accent); border-color: var(--accent-strong); color: var(--on-accent); }
-.slot input:checked + span em { color: rgba(255, 255, 255, .85); }
+.slot input:checked + span em { color: var(--on-accent); opacity: .85; }   /* при белом основном цвете цена не пропадает */
 .slot input:disabled + span { opacity: .45; cursor: default; text-decoration: line-through; }
 .slot input:focus-visible + span { outline: 3px solid var(--gold); outline-offset: 2px; }
 .price-card { display: flex; gap: 12px; margin-top: 16px; padding: 14px; border-radius: 14px; background: var(--beige); }
@@ -327,6 +333,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
   .logo { font-size: 16px; gap: 9px; }
   .logo-mark { width: 28px; height: 28px; }
   .logo-img { height: 40px; max-width: 120px; }
+  .logo-img.logo-avatar { width: 40px; height: 40px; }
   .phone-pill { padding: 0; width: 42px; height: 42px; justify-content: center; }
   .phone-pill span { display: none; }
   .main { margin-top: -72px; padding-bottom: 28px; }
@@ -644,3 +651,20 @@ body { overflow-wrap: break-word; }
 .hero h1.is-xlong { font-size: clamp(24px, 3vw, 36px); }
 .lead.is-long { font-size: 16px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
 .who-art .badge, .badge { max-width: calc(100% - 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+/* просмотр на весь экран: высокое фото или вертикальное видео целиком помещается в окно */
+.lb { grid-template-rows: minmax(0, 1fr); }
+.lb-stage { height: 100%; overflow: hidden; }
+.lb-stage img, .lb-stage video { max-height: calc(100vh - 110px); max-height: calc(100dvh - 110px); }
+.lb-stage iframe { max-height: calc(100vh - 110px); max-height: calc(100dvh - 110px); }
+/* какую часть фото состава показывать: агентство выбирает в кабинете */
+.who-art.photo img.pos-0, .sum-ava img.pos-0 { object-position: 50% 0%; }
+.who-art.photo img.pos-25, .sum-ava img.pos-25 { object-position: 50% 25%; }
+.who-art.photo img.pos-50, .sum-ava img.pos-50 { object-position: 50% 50%; }
+.who-art.photo img.pos-75, .sum-ava img.pos-75 { object-position: 50% 75%; }
+.who-art.photo img.pos-100, .sum-ava img.pos-100 { object-position: 50% 100%; }
+/* «без иконки» — логотип агентства по центру карточки */
+.who-art.logo-art { align-items: center; padding: 18px; }
+.who-art.logo-art img { max-width: 70%; max-height: 100%; object-fit: contain; display: block; }
+.sum-ava .sum-logo { width: 70%; height: 70%; object-fit: contain; }
+/* своя картинка программы */
+.prog-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; display: block; flex: none; background: var(--beige); }

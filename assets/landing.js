@@ -78,9 +78,12 @@
     text("rateAgency", rub(s.priceEarly)); text("rateAgencyFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.priceFull));
     text("rateSolo", rub(s.soloEarly)); text("rateSoloFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.soloFull));
   }).catch(function () {});
+  // Прелоадер — только если тексты грузятся дольше полсекунды
+  var slowTimer = setTimeout(function () { document.body.classList.add("is-slow"); }, 500);
+  function loaded() { clearTimeout(slowTimer); document.body.classList.remove("is-loading", "is-slow"); }
   // Сначала тексты из админки (сервер), недостающие — из текстов по умолчанию
   getJson("assets/landing.json").then(function (defaults) {
     return getJson("api/site.php").then(function (d) { if (!d || !d.heroTitle) throw new Error("empty"); render(d, defaults); })
       .catch(function () { render(JSON.parse(JSON.stringify(defaults)), null); });
-  });
+  }).catch(function (e) { if (window.console) console.error(e); }).then(loaded);
 })();

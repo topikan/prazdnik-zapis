@@ -644,3 +644,27 @@ html.no-anim { scroll-behavior: auto; }
   .plan .btn { margin-top: 18px; align-self: start; justify-self: start; }
   @media (max-width: 760px) { .plans { row-gap: 18px; } .plan { grid-row: auto; grid-template-rows: none; } .plan .btn { justify-self: stretch; } }
 }
+
+/* Прелоадер: ваш логотип в круге, вокруг бежит золотая дуга. Показывается, только если загрузка дольше 0,5 с */
+.page-loader { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; pointer-events: none; }
+.is-slow .page-loader { display: flex; animation: plIn .35s ease both; }
+.pl-badge { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+.pl-track, .pl-arc { position: absolute; inset: 0; border-radius: 50%; }
+.pl-track { border: 3px solid rgba(255, 255, 255, .14); }
+.pl-arc { background: conic-gradient(from 0deg, transparent 0 55%, rgba(217, 178, 106, .9) 80%, #fff 96%, transparent 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); animation: plSpin 1.1s linear infinite; }
+.pl-core { width: 72px; height: 72px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #2A5A48, #173B2F 70%); display: grid; place-items: center; box-shadow: 0 0 0 8px rgba(255, 255, 255, .04), 0 12px 40px rgba(0, 0, 0, .45); animation: plBreath 1.6s ease-in-out infinite; }
+.pl-core img { width: 40px; height: auto; display: block; }
+.pl-text { color: rgba(255, 255, 255, .82); font-size: 14px; font-weight: 600; letter-spacing: .01em; }
+.pl-text::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: plDots 1.2s steps(4) infinite; }
+@keyframes plSpin { to { transform: rotate(360deg); } }
+@keyframes plBreath { 50% { transform: scale(.94); } }
+@keyframes plDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+@keyframes plIn { from { opacity: 0; transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .pl-arc { animation-duration: 3s; } .pl-core, .pl-text::after { animation: none; } }
+.landing .page-loader { position: absolute; inset: 0; z-index: 5; padding-top: 70px; }
+/* пока тексты главной не пришли с сервера — не показываем пустые заголовки и списки */
+.is-loading .hero-in, .is-loading section.cream, .is-loading .final, .is-loading .foot { visibility: hidden; }
+.landing:not(.is-loading) .hero-in { animation: plIn .35s ease both; }
+.is-loading .hero-in, .is-loading section.cream, .is-loading .final, .is-loading .foot { animation: plReveal 0s 8s forwards; }
+@keyframes plReveal { to { visibility: visible; } }
+@media (prefers-reduced-motion: reduce) { .landing:not(.is-loading) .hero-in { animation: none; } }

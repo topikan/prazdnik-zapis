@@ -672,15 +672,29 @@ body { overflow-wrap: break-word; }
 /* Загрузка страницы: пока нет данных агентства, стандартный текст не показываем (иначе он мелькает и резко меняется).
    Индикатор появляется, только если ждать дольше полсекунды (класс is-slow ставит скрипт) */
 .is-loading .hero .wrap, .is-loading .hero-santa, .is-loading #app, .is-loading #banner, .is-loading #foot, .is-loading .portfolio { visibility: hidden; }
-.page-loader { position: absolute; left: 0; right: 0; top: 0; height: 340px; z-index: 90; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: rgba(255, 255, 255, .85); font-size: 15px; pointer-events: none; }
-.is-slow .page-loader { display: flex; animation: plIn .3s ease both; }
-.pl-ring { width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .2); border-top-color: #fff; animation: plSpin .8s linear infinite; }
-@keyframes plSpin { to { transform: rotate(360deg); } }
-@keyframes plIn { from { opacity: 0; } }
 /* когда данные пришли — плавно проявляем */
 .booking:not(.is-loading) .hero .wrap, .booking:not(.is-loading) #app { animation: plIn .35s ease both; }
 /* запасной выход: если скрипт не загрузился совсем, через 8 секунд страница всё равно видна */
 .is-loading .hero .wrap, .is-loading #app { animation: plReveal 0s 8s forwards; }
 @keyframes plReveal { to { visibility: visible; } }
-@media (prefers-reduced-motion: reduce) { .pl-ring { animation-duration: 2s; } .booking:not(.is-loading) .hero .wrap, .booking:not(.is-loading) #app, .is-slow .page-loader { animation: none; } }
-@media (min-width: 900px) { .page-loader { height: 470px; } }
+@media (prefers-reduced-motion: reduce) { .booking:not(.is-loading) .hero .wrap, .booking:not(.is-loading) #app { animation: none; } }
+
+
+/* Прелоадер: ваш логотип в круге, вокруг бежит золотая дуга. Показывается, только если загрузка дольше 0,5 с */
+.page-loader { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; pointer-events: none; }
+.is-slow .page-loader { display: flex; animation: plIn .35s ease both; }
+.pl-badge { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+.pl-track, .pl-arc { position: absolute; inset: 0; border-radius: 50%; }
+.pl-track { border: 3px solid rgba(255, 255, 255, .14); }
+.pl-arc { background: conic-gradient(from 0deg, transparent 0 55%, rgba(217, 178, 106, .9) 80%, #fff 96%, transparent 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); animation: plSpin 1.1s linear infinite; }
+.pl-core { width: 72px; height: 72px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #2A5A48, #173B2F 70%); display: grid; place-items: center; box-shadow: 0 0 0 8px rgba(255, 255, 255, .04), 0 12px 40px rgba(0, 0, 0, .45); animation: plBreath 1.6s ease-in-out infinite; }
+.pl-core img { width: 40px; height: auto; display: block; }
+.pl-text { color: rgba(255, 255, 255, .82); font-size: 14px; font-weight: 600; letter-spacing: .01em; }
+.pl-text::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: plDots 1.2s steps(4) infinite; }
+@keyframes plSpin { to { transform: rotate(360deg); } }
+@keyframes plBreath { 50% { transform: scale(.94); } }
+@keyframes plDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+@keyframes plIn { from { opacity: 0; transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .pl-arc { animation-duration: 3s; } .pl-core, .pl-text::after { animation: none; } }
+.booking .page-loader { position: absolute; left: 0; right: 0; top: 0; height: 340px; z-index: 90; }
+@media (min-width: 900px) { .booking .page-loader { height: 470px; } }

@@ -45,7 +45,10 @@
   }
 
   /* ---------- вход ---------- */
-  function showLogin() { $("app").hidden = true; $("login").hidden = false; }
+  // прелоадер кабинета: только если сервер отвечает дольше полсекунды
+  var slowTimer = setTimeout(function () { document.body.classList.add("is-slow"); }, 500);
+  function loaded() { clearTimeout(slowTimer); document.body.classList.remove("is-slow"); }
+  function showLogin() { loaded(); $("app").hidden = true; $("login").hidden = false; }
   $("loginForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var f = e.target;
@@ -55,6 +58,7 @@
   $("logout").addEventListener("click", function () { api("logout").finally(function () { me = null; showLogin(); }); });
 
   function start(m) {
+    loaded();
     me = m; billLoaded = Date.now();
     $("login").hidden = true; $("app").hidden = false;
     document.querySelectorAll(".super-only").forEach(function (x) { x.hidden = me.role !== "super"; });

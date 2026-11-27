@@ -925,10 +925,14 @@
   if (q) slug = q.toLowerCase().replace(/[^a-z0-9-]/g, "") || "demo";
   else if (/^[a-z0-9-]{2,40}$/.test(pathSlug) && pathSlug !== "prazdnik-zapis") slug = pathSlug;
   function getJson(url) { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  // Прелоадер — только если загрузка затянулась: при быстром ответе его не видно, страница просто проявляется
+  var slowTimer = setTimeout(function () { document.body.classList.add("is-slow"); }, 500);
+  function loaded() { clearTimeout(slowTimer); document.body.classList.remove("is-loading", "is-slow"); }
   getJson("api/agency.php?a=" + encodeURIComponent(slug))
     .catch(function () { return getJson("agencies/" + slug + ".json"); })
-    .then(function (d) { init(d); var m = location.search.match(/[?&]pay=([a-f0-9]{48})(?:&|$)/); if (m && !d.closed) payReturn(m[1]); })
+    .then(function (d) { init(d); loaded(); var m = location.search.match(/[?&]pay=([a-f0-9]{48})(?:&|$)/); if (m && !d.closed) payReturn(m[1]); })
     .catch(function () {
+      loaded();
       ["app", "banner", "foot", "hero"].forEach(function (id) { $(id).hidden = true; });
       $("fail").hidden = false;
     });

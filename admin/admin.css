@@ -587,3 +587,11 @@ button.fn { cursor: pointer; } button.fn:hover { border-color: rgba(0, 0, 0, .25
 .tx-fields { display: grid; gap: 10px; }
 .tx-fields label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 @media (max-width: 760px) { .tx-group { grid-template-columns: 1fr; gap: 10px; } }
+
+/* прелоадер кабинета: только при долгом ответе сервера */
+.page-loader { position: fixed; inset: 0; z-index: 90; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); font-size: 14px; }
+.is-slow .page-loader { display: flex; animation: plIn .3s ease both; }
+.pl-ring { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--ink); animation: plSpin .8s linear infinite; }
+@keyframes plSpin { to { transform: rotate(360deg); } }
+@keyframes plIn { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pl-ring { animation-duration: 2s; } }

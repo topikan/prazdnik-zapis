@@ -668,3 +668,19 @@ body { overflow-wrap: break-word; }
 .sum-ava .sum-logo { width: 70%; height: 70%; object-fit: contain; }
 /* своя картинка программы */
 .prog-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; display: block; flex: none; background: var(--beige); }
+
+/* Загрузка страницы: пока нет данных агентства, стандартный текст не показываем (иначе он мелькает и резко меняется).
+   Индикатор появляется, только если ждать дольше полсекунды (класс is-slow ставит скрипт) */
+.is-loading .hero .wrap, .is-loading .hero-santa, .is-loading #app, .is-loading #banner, .is-loading #foot, .is-loading .portfolio { visibility: hidden; }
+.page-loader { position: absolute; left: 0; right: 0; top: 0; height: 340px; z-index: 90; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: rgba(255, 255, 255, .85); font-size: 15px; pointer-events: none; }
+.is-slow .page-loader { display: flex; animation: plIn .3s ease both; }
+.pl-ring { width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .2); border-top-color: #fff; animation: plSpin .8s linear infinite; }
+@keyframes plSpin { to { transform: rotate(360deg); } }
+@keyframes plIn { from { opacity: 0; } }
+/* когда данные пришли — плавно проявляем */
+.booking:not(.is-loading) .hero .wrap, .booking:not(.is-loading) #app { animation: plIn .35s ease both; }
+/* запасной выход: если скрипт не загрузился совсем, через 8 секунд страница всё равно видна */
+.is-loading .hero .wrap, .is-loading #app { animation: plReveal 0s 8s forwards; }
+@keyframes plReveal { to { visibility: visible; } }
+@media (prefers-reduced-motion: reduce) { .pl-ring { animation-duration: 2s; } .booking:not(.is-loading) .hero .wrap, .booking:not(.is-loading) #app, .is-slow .page-loader { animation: none; } }
+@media (min-width: 900px) { .page-loader { height: 470px; } }

@@ -15,6 +15,21 @@ $viewer = (!$a['active'] || billing_closed($a)) ? session_peek() : [];
 $preview = $viewer && ($viewer['role'] === 'super' || $viewer['agency'] === (int)$a['id']);
 if (!$a['active'] && !$preview) fail('Агентство не найдено', 404);
 
+// Демо один раз получает поводы «Новый год» и «День рождения» из шаблона; свои фото и тексты демо не трогаем
+if ($a['slug'] === 'demo' && !setting_get('demo_occasions')) {
+    $tpl = json_decode((string)file_get_contents(APP_ROOT . '/agencies/demo.json'), true) ?: [];
+    $c = $a['cfg'];
+    foreach (['characters', 'programs', 'addons'] as $k) {
+        $have = array_column($c[$k] ?? [], 'id');
+        foreach ($tpl[$k] ?? [] as $x) if (!in_array($x['id'], $have, true)) $c[$k][] = $x;
+    }
+    foreach ($tpl['prices'] ?? [] as $ci => $row) foreach ($row as $pi => $v) if (!isset($c['prices'][$ci][$pi])) $c['prices'][$ci][$pi] = $v;
+    $c['occasions'] = $tpl['occasions'] ?? [];
+    $c['season'] = $tpl['season'] ?? $c['season'];
+    db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($c, JSON_UNESCAPED_UNICODE), (int)$a['id']]);
+    $a['cfg'] = $c;
+    setting_set('demo_occasions', ['at' => date('c')]);
+}
 $cfg = $a['cfg'];
 unset($cfg['telegram'], $cfg['notify'], $cfg['backup']); // служебное: почта и пароль копий посетителям не показываются
 if (billing_closed($a) && !$preview) {
@@ -22,7 +37,7 @@ if (billing_closed($a) && !$preview) {
     $keep = array_intersect_key($cfg, array_flip(['name', 'city', 'phone', 'logo', 'heroImage', 'colors', 'legal']));
     json_out($keep + ['closed' => true, 'live' => true]);
 }
-$season = $cfg['season'];
+$season = $cfg['season'] = season_window($cfg); // «круглый год» — окно от сегодняшнего дня
 $cfg['live'] = true;
 $cfg['kind'] = ($a['kind'] ?? 'agency') === 'solo' ? 'solo' : 'agency';
 if ($preview) $cfg['preview'] = !$a['active'] ? 'off' : 'closed';

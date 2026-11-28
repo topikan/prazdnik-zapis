@@ -87,11 +87,12 @@
     if (!a || !a.billing || a.billing.status === "demo") { bar.hidden = true; return; }
     var b = a.billing, pr = a.price || {}, cls = "bill", html = "", season = ruDate(b.seasonEnd);
     var left = Math.max(0, (pr.earlyLeft || 0) - Math.floor((Date.now() - billLoaded) / 1000));
-    var early = pr.early && left > 0, amount = early ? pr.priceEarly : pr.priceFull;
+    var early = pr.early && left > 0, amount = pr.season ? (early ? pr.priceEarly : pr.priceFull) : (pr.priceMonth || pr.amount);
     // онлайн-оплата, если владелец подключил ЮKassa; иначе — написать владельцу
     var pay = a.payOnline ? ' <button class="btn small" type="button" id="subPay">Оплатить ' + rubs(amount) + "</button>"
       : ' <a class="btn small" href="' + esc(me.contact) + '" target="_blank" rel="noopener noreferrer">Написать об оплате</a>';
-    var offer = early ? " <b>Оплатите сейчас за " + rubs(pr.priceEarly) + "</b> — цена действует ещё " + leftText(left) + ", потом " + rubs(pr.priceFull) + "." : " Доступ до конца сезона (" + season + ") — " + rubs(amount) + ".";
+    var offer = early ? " <b>Оплатите новогодний сезон сейчас за " + rubs(pr.priceEarly) + "</b> — цена действует ещё " + leftText(left) + ", потом " + rubs(pr.priceFull) + "."
+      : pr.season ? " Новогодний сезон, доступ по " + ruDate(pr.until || b.seasonEnd) + " — " + rubs(amount) + "." : " Месяц доступа, по " + ruDate(pr.until) + " — " + rubs(amount) + ".";
     if (!a.active) { cls += " info"; html = "<span><b>Страница на проверке.</b> Скоро откроем её для клиентов. Пока настройте цены и оформление — по ссылке «Страница записи» видно, как она выглядит." + (early ? offer : "") + "</span>" + (early ? pay : ""); }
     else if (b.status === "free") { cls += early ? " warn" : b.daysLeft <= 3 ? " warn" : " info"; html = "<span><b>Бесплатно ещё " + days(b.daysLeft) + "</b>, по " + ruDate(b.lastDay) + " включительно." + offer + "</span>" + pay; }
     else if (b.status === "paid") { if (b.daysLeft > 3) { bar.hidden = true; return; } cls += " warn"; html = "<span><b>Оплачено по " + ruDate(b.paidUntil) + "</b>, осталось " + days(b.daysLeft) + ".</span>" + pay; }
@@ -195,7 +196,7 @@
         var extra = (addons ? "<dt>Допы</dt><dd>" + addons + "</dd>" : "") + (kids ? "<dt>Дети</dt><dd>" + kids + "</dd>" : "") + (d.comment ? "<dt>Пожелания</dt><dd>" + esc(d.comment) + "</dd>" : "");
         return '<article class="card order' + (o.status === "cancelled" ? " is-cancelled" : "") + '">' +
           '<div class="o-when"><b>' + human(o.visit_date) + "</b><span>" + esc(o.visit_time) + "</span><small>" + DAYS[new Date(o.visit_date + "T12:00").getDay()] + " · № " + o.id + "</small></div>" +
-          '<div class="o-what"><b>' + esc(ch ? ch.title : d.character) + "</b><p>" + esc(pr ? pr.title + ", " + pr.minutes + " мин" : d.program) + " · " + esc(d.kids) + " " + plural(+d.kids || 0, "ребёнок", "ребёнка", "детей") + "</p>" + (extra ? "<dl>" + extra + "</dl>" : "") + "</div>" +
+          '<div class="o-what">' + (d.occasion && find(cfg.occasions, d.occasion) ? '<span class="o-occ">' + esc(find(cfg.occasions, d.occasion).title) + "</span>" : "") + "<b>" + esc(ch ? ch.title : d.character) + "</b><p>" + esc(pr ? pr.title + ", " + pr.minutes + " мин" : d.program) + " · " + esc(d.kids) + " " + plural(+d.kids || 0, "ребёнок", "ребёнка", "детей") + "</p>" + (extra ? "<dl>" + extra + "</dl>" : "") + "</div>" +
           '<div class="o-who"><b>' + esc(o.name) + "</b>" + (o.phone ? '<a href="tel:+' + esc(String(o.phone).replace(/\D/g, "")) + '">' + esc(fmtPhone(o.phone)) + "</a>" : "") + "<p>" + esc(o.address) + "</p>" +
           '<span class="src src-' + esc(o.source || "site") + '">' + esc(SOURCE[o.source] || SOURCE.site) + "</span></div>" +
           '<div class="o-side"><div class="sum">' + rub(o.total) + '</div><label class="st-label">Статус заявки' + statusSelect(o) + "</label>" +
@@ -381,11 +382,13 @@
     if (f.type === "mult") return "×" + String(v).replace(".", ",");
     if (f.type === "date") return isoToRu(v);
     if (f.type === "number") return /₽/.test(f.label) ? rub(+v) : f.k === "minutes" ? v + " мин" : String(v);
+    if (f.type === "checks") { if (!v.length) return f.none || "не выбраны"; var names = (f.options() || []).filter(function (o) { return v.indexOf(o[0]) > -1; }).map(function (o) { return o[1] || "без названия"; }); return names.length > 2 ? names.slice(0, 2).join(", ") + " и ещё " + (names.length - 2) : names.join(", "); }
+    if (f.type === "check") return v ? (f.on || "да") : "";
     return String(v);
   }
   function isTextField(f) { return !f.type || f.type === "text"; }
   // opts: {icon, add: «Добавить персонажа», grid: карточки в ряд, toggle: статус «Активен / Скрыт», thumb: "photo" | "icon"}
-  var ICON_THUMB = { gift: "p-gift", tree: "p-tree", ball: "p-ball" };
+  var ICON_THUMB = { gift: "p-gift", tree: "p-tree", ball: "p-ball", cake: "p-cake", balloon: "p-balloon", star: "p-star", music: "p-music" };
   function rowsEditor(title, hint, rows, fields, newRow, max, opts) {
     opts = opts || {};
     var box = document.createElement("div"); box.className = "card ed" + (opts.grid ? " ed-grid" : "");
@@ -393,16 +396,23 @@
     function input(f, r, i) {
       var v = r[f.k];
       if (f.type === "photo") return imgBox(f.kind || "char", r.id, r[f.k]);
+      if (f.type === "checks") {
+        var opts = f.options();
+        return '<span class="re-checks">' + (opts.length ? opts.map(function (o) { return '<label class="row"><input type="checkbox" data-i="' + i + '" data-k="' + f.k + '" value="' + esc(o[0]) + '"' + ((v || []).indexOf(o[0]) > -1 ? " checked" : "") + "> " + esc(o[1] || "Без названия") + "</label>"; }).join("") : '<i class="muted">Сначала добавьте ниже</i>') + "</span>";
+      }
+      if (f.type === "check") return '<input type="checkbox" data-i="' + i + '" data-k="' + f.k + '"' + (v ? " checked" : "") + ">";
       if (f.type === "select") return "<select data-i=\"" + i + "\" data-k=\"" + f.k + "\">" + f.options.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === (v == null ? "" : String(v)) ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select>";
       if (f.long) return '<textarea class="auto" rows="2" data-i="' + i + '" data-k="' + f.k + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : "") + ">" + esc(v == null ? "" : v) + "</textarea>";
       if (f.type === "percent") v = v == null ? "" : Math.round(v * 100);
-      var type = f.type === "percent" || f.type === "number" || f.type === "mult" ? "number" : (f.type || "text");
+      var type = f.type === "percent" || f.type === "number" || f.type === "mult" ? "number" : f.type === "md" ? "text" : (f.type || "text");
       var step = f.type === "mult" ? ' step="0.05" min="0.1"' : f.type === "percent" ? ' step="1" min="0" max="100"' : f.type === "number" ? ' step="1" min="0"' : "";
       return '<input type="' + type + '"' + step + ' data-i="' + i + '" data-k="' + f.k + '" value="' + esc(v == null ? "" : v) + '"' + (f.ph ? ' placeholder="' + esc(f.ph) + '"' : "") + ">";
     }
     function form(r, i) {
       return '<div class="re-form">' + fields.map(function (f) {
         if (f.type === "photo") return '<div class="re-photo"><span class="re-label">' + esc(f.label) + "</span>" + input(f, r, i) + "</div>";
+        if (f.type === "checks") return '<div class="wide re-checkbox"><span class="re-label">' + esc(f.label) + "</span>" + input(f, r, i) + "</div>";
+        if (f.type === "check") return '<label class="row wide">' + input(f, r, i) + " " + esc(f.label) + "</label>";
         return '<label class="' + (f.long || (isTextField(f) && fields.filter(isTextField).length === 1) ? "wide" : "") + '">' + esc(f.label) + input(f, r, i) + "</label>";
       }).join("") + "</div>";
     }
@@ -419,6 +429,7 @@
       var sub = texts.slice(1).map(function (f) { return r[f.k]; }).filter(Boolean).join(" · ");
       var range = fields.some(function (f) { return f.k === "from"; }) && fields.some(function (f) { return f.k === "to"; });
       var chips = fields.filter(function (f) { return !isTextField(f) && f.type !== "photo" && !f.noChip && !(range && f.k === "to"); }).map(function (f) {
+        if (range && f.k === "from" && f.type === "md") return '<span class="re-chip">Даты: <b>' + (r.from && r.to ? esc(r.from) + " — " + esc(r.to) + ", каждый год" : "круглый год") + "</b></span>";
         if (range && f.k === "from") return '<span class="re-chip">Даты: <b>' + esc(isoToRu(r.from)) + (r.to && r.to !== r.from ? " — " + esc(isoToRu(r.to)) : "") + "</b></span>";
         var t = fieldText(f, r[f.k]); return t ? '<span class="re-chip">' + esc(f.short || f.label) + ": <b>" + esc(t) + "</b></span>" : "";
       }).join("");
@@ -452,14 +463,18 @@
       if (to < 0 || to >= data.length || from === to) return;
       var r = data.splice(from, 1)[0]; data.splice(to, 0, r); open = {}; menu = -1; draw(); changed();
     }
-    box.addEventListener("input", function (e) {
+    function onField(e) {
       var i = e.target.dataset.i, k = e.target.dataset.k; if (i == null) return;
       var f = fields.filter(function (x) { return x.k === k; })[0], v = e.target.value;
       if (f.type === "number" || f.type === "mult") v = v === "" ? 0 : +v;
       if (f.type === "percent") v = v === "" ? 0 : +v / 100;
+      if (f.type === "checks") v = [].map.call(box.querySelectorAll('input[data-i="' + i + '"][data-k="' + k + '"]:checked'), function (x) { return x.value; });
+      if (f.type === "check") v = e.target.checked;
       data[i][k] = v;
       changed();
-    });
+    }
+    box.addEventListener("input", onField);
+    box.addEventListener("change", function (e) { if (e.target.type === "checkbox") onField(e); });
     box.addEventListener("click", function (e) {
       var t = e.target.closest ? e.target.closest("button") : null; if (!t || !box.contains(t)) return;
       if (t.dataset.menu != null) { menu = menu === +t.dataset.menu ? -1 : +t.dataset.menu; draw(); return; }
@@ -493,6 +508,7 @@
     });
     draw();
     box.get = function () { return data; };
+    box.redraw = draw;
     return box;
   }
   // Поля для длинного текста растут по содержимому, без полос прокрутки
@@ -510,22 +526,44 @@
   function renderPrices() {
     var root = $("pricesForm"); root.innerHTML = "";
     ed.characters = rowsEditor("Кто приедет", "Составы, которые выбирает клиент. Фото лучше квадратное, персонажи крупно. «Бейдж» — плашка на карточке, например «Чаще всего выбирают».", cfg.characters,
-      [{ k: "photo", label: "Фото", type: "photo" }, { k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Если нет фото", type: "select", noChip: 1, options: [["santa", "Иконка: Дед Мороз"], ["duo", "Иконка: Дед Мороз и Снегурочка"], ["trio", "Иконка: трио со Снеговиком"], ["logo", "Без иконки — ваш логотип"]] },
+      [{ k: "photo", label: "Фото", type: "photo" }, { k: "title", label: "Название" }, { k: "note", label: "Подпись" }, { k: "icon", label: "Если нет фото", type: "select", noChip: 1, options: [["santa", "Иконка: Дед Мороз"], ["duo", "Иконка: Дед Мороз и Снегурочка"], ["trio", "Иконка: трио со Снеговиком"], ["party", "Иконка: аниматор в колпаке"], ["hero", "Иконка: супергерой"], ["pair", "Иконка: два аниматора"], ["logo", "Без иконки — ваш логотип"]] },
        { k: "pos", label: "Какую часть фото показывать", type: "select", noChip: 1, options: [["0", "Верх (лицо сверху)"], ["25", "Выше середины"], ["", "Середину"], ["75", "Ниже середины"], ["100", "Низ"]] }, { k: "badge", label: "Бейдж" }],
       function () { return { id: uid("c"), title: "", note: "", icon: "santa", badge: "" }; }, null, { icon: "e-star", add: "Добавить персонажа", toggle: 1, thumb: "photo" });
     ed.programs = rowsEditor("Программы", "Длительность в минутах влияет на то, сколько часов займёт визит вместе с дорогой.", cfg.programs,
-      [{ k: "title", label: "Название" }, { k: "note", label: "Что входит" }, { k: "minutes", label: "Длительность, минут", short: "Длительность", type: "number", num: 1 }, { k: "icon", label: "Картинка", type: "select", noChip: 1, options: [["gift", "Подарок"], ["tree", "Ёлка"], ["ball", "Диско-шар"], ["own", "Своя картинка (загрузите ниже)"], ["none", "Без картинки"]] }, { k: "img", label: "Своя картинка", type: "photo", kind: "prog" }],
+      [{ k: "title", label: "Название" }, { k: "note", label: "Что входит" }, { k: "minutes", label: "Длительность, минут", short: "Длительность", type: "number", num: 1 }, { k: "icon", label: "Картинка", type: "select", noChip: 1, options: [["gift", "Подарок"], ["tree", "Ёлка"], ["ball", "Диско-шар"], ["cake", "Торт"], ["balloon", "Шарик"], ["star", "Звезда"], ["music", "Музыка"], ["own", "Своя картинка (загрузите ниже)"], ["none", "Без картинки"]] }, { k: "img", label: "Своя картинка", type: "photo", kind: "prog" }],
       function () { return { id: uid("p"), title: "", minutes: 30, note: "", icon: "tree" }; }, null, { icon: "e-prog", add: "Добавить программу", toggle: 1, thumb: "icon", grid: 1 });
+    var named = function (list) { return function () { return list.get().map(function (x) { return [x.id, x.title + (x.off ? " (скрыт)" : "")]; }); }; };
+    ed.occasions = rowsEditor("Поводы", "Например, «Новый год» и «День рождения». Клиент сначала выбирает повод и видит только его персонажей и программы. Если повод один или их нет, выбора повода на странице не будет. Даты показа — каждый год, например 01.12 — 15.01; пусто — круглый год.", cfg.occasions,
+      [{ k: "title", label: "Название", ph: "Например, «День рождения»" }, { k: "from", label: "Показывать с (ДД.ММ)", type: "md", ph: "01.12", short: "С" }, { k: "to", label: "по (ДД.ММ)", type: "md", ph: "15.01", short: "По" },
+       { k: "winter", label: "Зимнее оформление: снег, зимний фон и Дед Мороз на первом экране", short: "Оформление", on: "зимнее", type: "check" },
+       { k: "chars", label: "Кто приезжает на этот повод", short: "Кто", type: "checks", options: named(ed.characters) }, { k: "progs", label: "Программы этого повода", short: "Программы", type: "checks", options: named(ed.programs) },
+       { k: "addons", label: "Дополнительные услуги этого повода (ничего не отмечено — все)", short: "Допы", none: "все", type: "checks", options: function () { return (ed.addons ? ed.addons.get() : cfg.addons || []).map(function (x) { return [x.id, x.title]; }); } }],
+      function () { return { id: uid("o"), title: "", chars: [], progs: [], from: "", to: "" }; }, 12, { icon: "e-star", add: "Добавить повод", toggle: 1 });
+    var occLinks = document.createElement("p"); occLinks.className = "muted occ-links";
+    function drawOccLinks() {
+      var l = ed.occasions.get().filter(function (o) { return !o.off && o.title; });
+      var base = location.origin + "/" + (me.agency && me.agency.slug || "");
+      occLinks.innerHTML = l.length > 1 ? "Ссылки сразу на повод, например для рекламы: " + l.map(function (o) { return "<b>" + esc(o.title) + "</b> — " + esc(base + "?o=" + o.id); }).join("; ") + ". Основная ссылка открывает первый повод со свободными днями." : "";
+    }
+    ed.occasions.appendChild(occLinks); drawOccLinks();
+    ed.occasions.addEventListener("changed", function () { drawOccLinks(); drawMatrix(); });
+    [ed.characters, ed.programs].forEach(function (x) { x.addEventListener("changed", function () { ed.occasions.redraw(); ed.occasions.appendChild(occLinks); }); });
     var matrix = document.createElement("div"); matrix.className = "card ed matrix";
+    // с поводами цена нужна только на сочетания, которые клиент может выбрать
+    function needed(cid, pid) {
+      var oc = ed.occasions.get().filter(function (o) { return !o.off; });
+      if (!oc.length) return true;
+      return oc.some(function (o) { return (o.chars || []).indexOf(cid) > -1 && (o.progs || []).indexOf(pid) > -1; });
+    }
     var prices = clone(cfg.prices || {});
     function drawMatrix() {
       var chs = ed.characters.get(), prs = ed.programs.get();
-      matrix.innerHTML = '<div class="ed-head"><span class="ed-ico"><svg aria-hidden="true"><use href="#e-tag"/></svg></span><div class="ed-title"><h2>Базовые цены</h2><p class="muted">Цена в обычный день, без наценок. Наценки по датам и спросу добавятся сверху.</p></div><a class="btn ghost small" href="#ed-rules"><svg aria-hidden="true"><use href="#e-up"/></svg>Наценки</a></div>' +
+      matrix.innerHTML = '<div class="ed-head"><span class="ed-ico"><svg aria-hidden="true"><use href="#e-tag"/></svg></span><div class="ed-title"><h2>Базовые цены</h2><p class="muted">Цена в обычный день, без наценок. Наценки по датам и спросу добавятся сверху.' + (ed.occasions.get().some(function (o) { return !o.off; }) ? " Серые клетки — сочетания, которых нет ни в одном поводе: цену там можно не указывать." : "") + '</p></div><a class="btn ghost small" href="#ed-rules"><svg aria-hidden="true"><use href="#e-up"/></svg>Наценки</a></div>' +
         '<div class="mx">' + chs.map(function (c) {
           var ph = /^uploads\//.test(c.photo || "") ? '<img src="../' + esc(c.photo) + '" alt="">' : '<svg aria-hidden="true"><use href="#e-kids"/></svg>';
           return '<div class="mx-line' + (c.off ? " is-off" : "") + '"><div class="mx-who"><span class="mx-ava">' + ph + "</span><b>" + esc(c.title || "Состав") + "</b></div><div class=\"mx-cells\">" + prs.map(function (p) {
-            var v = (prices[c.id] || {})[p.id];
-            return '<label class="mx-cell"><span>' + esc(p.title || "Программа") + '</span><span class="mx-in"><input type="number" inputmode="numeric" min="0" step="100" data-c="' + esc(c.id) + '" data-p="' + esc(p.id) + '" value="' + esc(v == null ? "" : v) + '"><i>₽</i></span></label>';
+            var v = (prices[c.id] || {})[p.id], need = needed(c.id, p.id);
+            return '<label class="mx-cell' + (need ? "" : " mx-na") + '"><span>' + esc(p.title || "Программа") + '</span><span class="mx-in"><input type="number" inputmode="numeric" min="0" step="100" data-c="' + esc(c.id) + '" data-p="' + esc(p.id) + '"' + (need ? "" : ' placeholder="не нужно"') + ' value="' + esc(v == null ? "" : v) + '"><i>₽</i></span></label>';
           }).join("") + "</div></div>";
         }).join("") + "</div>";
     }
@@ -558,11 +596,13 @@
     ed.zones = rowsEditor("Куда ехать", "Первая строка выбрана по умолчанию.", cfg.zones,
       [{ k: "title", label: "Название" }, { k: "price", label: "Доплата, ₽", short: "Доплата", type: "number", num: 1 }], function () { return { id: uid("z"), title: "", price: 0 }; }, null, { icon: "e-car", add: "Добавить район" });
 
-    [ed.characters, ed.programs, matrix, ed.kids, ed.dateRules, ed.timeRules, ed.demand, ed.promo, ed.addons, ed.zones].forEach(function (x) { root.appendChild(x); });
+    ed.addons.addEventListener("changed", function () { ed.occasions.redraw(); ed.occasions.appendChild(occLinks); });
+    [ed.occasions, ed.characters, ed.programs, matrix, ed.kids, ed.dateRules, ed.timeRules, ed.demand, ed.promo, ed.addons, ed.zones].forEach(function (x) { root.appendChild(x); });
   }
   $("savePrices").addEventListener("click", function () {
     var c = clone(cfg);
     c.characters = ed.characters.get(); c.programs = ed.programs.get(); c.prices = ed.matrix.get();
+    c.occasions = ed.occasions.get();
     c.kids = ed.kids.get()[0] || c.kids; c.dateRules = ed.dateRules.get(); c.timeRules = ed.timeRules.get();
     c.demandPricing = ed.demand.get(); c.addons = ed.addons.get(); c.zones = ed.zones.get();
     var p = ed.promo.get()[0]; if (p && p.percent) c.promo = p; else delete c.promo;
@@ -606,7 +646,7 @@
   /* ---------- настройки ---------- */
   var SETTINGS = [
     ["Основное", [["name", "Название агентства"], ["city", "Город"], ["phone", "Телефон на странице"]]],
-    ["Сезон", [["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["timezone", "Часовой пояс", "tz"]]],
+    ["Когда принимаете заказы", [["season.ahead", "Запись открыта", "ahead"], ["season.start", "Сезон с", "date"], ["season.end", "Сезон по", "date"], ["timezone", "Часовой пояс", "tz"]]],
     ["Реквизиты для согласия и политики", [["legal.operator", "Оператор (ИП или ООО, ФИО)"], ["legal.inn", "ИНН"], ["legal.ogrn", "ОГРН / ОГРНИП"], ["legal.address", "Адрес"], ["legal.email", "Почта для обращений"], ["legal.keepMonths", "Хранить данные после визита, мес.", "number"], ["legal.updated", "Дата редакции политики"], ["legal.policyUrl", "Своя политика: ссылка (если есть)"]]]
   ];
   // оформление: цвета и баннер внизу страницы
@@ -614,7 +654,7 @@
     ["Цвета", [["colors.accent", "Основной цвет: кнопки и выбор", "color"], ["colors.gold", "Акцентный цвет: цветная строка заголовка и плашки", "color"]]],
     ["Баннер внизу страницы записи", [["banner.title", "Заголовок (пусто — баннера не будет)"], ["banner.button", "Текст кнопки"], ["banner.text", "Текст", "area"], ["banner.link", "Куда ведёт кнопка: https://… или tel:+7…; пусто — к началу записи"]]]
   ];
-  var BANNER_DEFAULT = { title: "Подарите детям настоящий Новый год!", text: "Забронируйте визит Деда Мороза и создайте волшебство в каждом доме.", button: "Забронировать праздник", link: "" };
+  var BANNER_DEFAULT = { title: "Подарите ребёнку настоящий праздник!", text: "Забронируйте праздник — мы приедем к вам домой.", button: "Забронировать праздник", link: "" };
   function getPath(o, p) { return p.split(".").reduce(function (a, k) { return a == null ? undefined : a[k]; }, o); }
   // пустой объект с сервера может прийти как [] — в массив поля по имени не записать (они пропадут при отправке)
   function setPath(o, p, v) { var ks = p.split("."), last = ks.pop(); ks.forEach(function (k) { if (o[k] == null || typeof o[k] !== "object" || (Array.isArray(o[k]) && !o[k].length)) o[k] = {}; o = o[k]; }); o[last] = v; }
@@ -625,14 +665,15 @@
         if (f[2] === "check") return '<label class="row wide"><input type="checkbox" data-path="' + f[0] + '"' + (v ? " checked" : "") + "> " + esc(f[1]) + "</label>";
         if (f[2] === "wide") return '<label class="wide">' + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" value="' + esc(v == null ? "" : v) + '"></label>';
         if (f[2] === "area") return '<label class="wide">' + esc(f[1]) + '<textarea data-path="' + f[0] + '" rows="2">' + esc(v || "") + "</textarea></label>";
+        if (f[2] === "ahead") return '<label class="wide">' + esc(f[1]) + '<select data-path="' + f[0] + '" data-num="1" id="aheadSel">' + [[0, "Только в даты сезона ниже"], [90, "Круглый год: на 3 месяца вперёд"], [180, "Круглый год: на полгода вперёд"], [365, "Круглый год: на год вперёд"]].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === (+v || 0) ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></label>";
         if (f[2] === "tz") return "<label>" + esc(f[1]) + '<select data-path="' + f[0] + '">' + TIMEZONES.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === (v || "Europe/Moscow") ? " selected" : "") + ">" + z[1] + "</option>"; }).join("") + "</select></label>";
         if (/^ph:/.test(f[2] || "")) return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="text" placeholder="' + esc(f[2].slice(3)) + '" value="' + esc(v == null ? "" : v) + '"></label>';
         return "<label>" + esc(f[1]) + '<input data-path="' + f[0] + '" type="' + (f[2] || "text") + '" value="' + esc(v == null ? "" : v) + '"></label>';
   }
   // Тексты страницы записи — в том порядке, в каком их видит клиент: первый экран, затем шаги 1–4
   var TEXT_GROUPS = [
-    ["Первый экран", "Большой заголовок на фоне и подпись под ним", [["heroTitle", "Заголовок, белая строка", "Дед Мороз"], ["heroAccent", "Заголовок, цветная строка", "к вам домой"], ["heroLead", "Подпись под заголовком", "Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков."]]],
-    ["Шаг 1. Кто и программа", "Выбор персонажа, потом программы", [["whoTitle", "Заголовок над персонажами", "Кто приедет?"], ["whoSub", "Подпись", "Выберите, кто поздравит вашего ребёнка"], ["progTitle", "Заголовок над программами", "Программа"], ["progSub", "Подпись", "Выберите программу праздника"]]],
+    ["Первый экран", "Большой заголовок на фоне и подпись под ним", [["heroTitle", "Заголовок, белая строка", "Дед Мороз (зимой) или «Праздник»"], ["heroAccent", "Заголовок, цветная строка", "к вам домой"], ["heroLead", "Подпись под заголовком", "Выберите, кто приедет, программу и время. Цена посчитается сразу, без звонков."]]],
+    ["Шаг 1. Кто и программа", "Выбор повода (если их несколько), персонажа, потом программы", [["occTitle", "Заголовок над поводами", "Какой праздник?"], ["whoTitle", "Заголовок над персонажами", "Кто приедет?"], ["whoSub", "Подпись", "Выберите, кто поздравит вашего ребёнка"], ["progTitle", "Заголовок над программами", "Программа"], ["progSub", "Подпись", "Выберите программу праздника"]]],
     ["Шаг 2. Дата и время", "Календарь и кнопки времени", [["dateTitle", "Заголовок", "Дата и время"], ["dateSub", "Подпись", "Цвет дня показывает, сколько времени уже разобрано"]]],
     ["Шаг 3. Дополнительно", "Допуслуги и район выезда", [["extraTitle", "Заголовок над допуслугами", "Дополнительно"], ["extraSub", "Подпись", "Сделайте праздник ещё ярче. Можно ничего не выбирать"], ["zoneTitle", "Заголовок над районами", "Куда ехать"]]],
     ["Шаг 4. Контакты", "Форма с именем, телефоном и адресом", [["contTitle", "Заголовок", "Контакты"], ["contSub", "Подпись", "Агентство перезвонит, чтобы подтвердить визит"]]]
@@ -708,6 +749,9 @@
     // «Настройки»: всё остальное
     root.innerHTML = SETTINGS.map(group).join("") + payCard +
       (me.role === "super" ? '<div class="card"><h2>Только для владельца сервиса</h2><label class="row"><span><input type="checkbox" id="demoFlag"' + (cfg.demo ? " checked" : "") + "> Демо-режим (заявки не принимаются)</span></label></div>" : "");
+    // «круглый год»: даты сезона не нужны — прячем их
+    var syncAhead = function () { var on = +($("aheadSel") || {}).value > 0; ["season.start", "season.end"].forEach(function (pth) { var i = root.querySelector('[data-path="' + pth + '"]'); if (i && i.closest("label")) i.closest("label").hidden = on; }); };
+    if ($("aheadSel")) { $("aheadSel").addEventListener("change", syncAhead); syncAhead(); }
     loadNotify();
     loadYk();
     renderPfList();
@@ -983,6 +1027,7 @@
         if ((+saved.v || 0) < 4) ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"].forEach(function (k) { delete saved[k]; });
         if ((+saved.v || 0) < 5) ["heroBadge", "points", "pricePaidText", "faq", "finalText", "steps"].forEach(function (k) { delete saved[k]; });
         if ((+saved.v || 0) < 6) ["priceFreeText", "pricePaidText", "buyButton"].forEach(function (k) { delete saved[k]; });
+        if ((+saved.v || 0) < 7) ["heroTitle", "heroAccent", "points", "ctaNote", "priceFreeTitle", "priceFreeText", "pricePaidTitle", "pricePaidText", "faq", "finalTitle", "finalText"].forEach(function (k) { delete saved[k]; });
         Object.keys(def).forEach(function (k) { if (saved[k] == null || (Array.isArray(saved[k]) && !saved[k].length)) saved[k] = def[k]; });
         return saved;
       });
@@ -990,7 +1035,7 @@
       siteData = d;
       var root = $("siteForm");
       // Каждая группа свёрнута и показывает, что сейчас на сайте; поля — по нажатию
-      root.innerHTML = '<div class="card site-hint"><p><b>Даты подставляются сами.</b> Пишите в текстах <code>[бесплатно до]</code> и <code>[конец сезона]</code> — на главной там будут даты из «Агентства» → «Настройки сервиса» (первый платный день и конец сезона). Поменяете дату там — она поменяется во всех текстах.</p></div>' + SITE_FIELDS.map(function (g) {
+      root.innerHTML = '<div class="card site-hint"><p><b>Даты и цены подставляются сами.</b> Пишите в текстах метки — на главной там будут значения из «Агентства» → «Настройки сервиса». Поменяете там — поменяется во всех текстах.</p><p class="muted"><code>[бесплатно до]</code> первый платный день сезона · <code>[конец сезона]</code> · <code>[бесплатно по]</code> до какого дня бесплатно тому, кто регистрируется сегодня · <code>[дней бесплатно]</code> · <code>[цена месяц]</code> · <code>[цена месяц частник]</code> · <code>[цена сезон]</code> · <code>[цена сезон частник]</code> · <code>[цена сезон скидка]</code> · <code>[цена сезон скидка частник]</code></p></div>' + SITE_FIELDS.map(function (g) {
         var prev = g[1].map(function (f) { return d[f[0]]; }).filter(Boolean).slice(0, 2).join(" · ");
         return '<details class="card fold"><summary><span class="fold-t">' + esc(g[0]) + '</span><span class="fold-p">' + esc(prev) + '</span><span class="fold-btn">Изменить</span></summary><div class="fields">' + g[1].map(function (f) {
           var v = esc(d[f[0]] || "");
@@ -1010,7 +1055,7 @@
   $("saveSite").addEventListener("click", function () {
     var d = clone(siteData || {});
     document.querySelectorAll("#siteForm [data-site]").forEach(function (i) { d[i.dataset.site] = i.value.trim(); });
-    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 6;
+    d.points = siteEd.points.get(); d.steps = siteEd.steps.get(); d.faq = siteEd.faq.get(); d.v = 7;
     api("site_save", { landing: d }).then(function () { siteData = d; flash("Главная сохранена"); }).catch(function (e) { flash(e.message, true); });
   });
 
@@ -1024,12 +1069,15 @@
         '<div><h3>Регистрация агентств</h3><label class="row"><input type="checkbox" id="ownRegOpen"' + (o.reg.open !== false ? " checked" : "") + "> Регистрация на сайте открыта</label>" +
         '<label class="row"><input type="checkbox" id="ownRegManual"' + (o.reg.manual ? " checked" : "") + "> Новые страницы включаю вручную</label>" +
         '<p class="muted">Если включить вторую галочку, страница нового агентства не видна клиентам, пока вы не нажмёте «Включить».</p></div>' +
-        '<div><h3>Оплата</h3><label>Первый платный день<input type="date" id="ownFree" value="' + esc(o.billing.freeEnd) + '"></label><label>Конец сезона<input type="date" id="ownSeason" value="' + esc(o.billing.seasonEnd) + '"></label>' +
+        '<div><h3>Оплата</h3><p class="muted">Новогодний сезон — с первого платного дня по конец сезона, он стоит дороже. В остальное время агентства платят помесячно.</p><label>Первый платный день сезона<input type="date" id="ownFree" value="' + esc(o.billing.freeEnd) + '"></label><label>Конец сезона<input type="date" id="ownSeason" value="' + esc(o.billing.seasonEnd) + '"></label>' +
         '<label>Цена в первые часы после регистрации, ₽<input type="number" id="ownPriceEarly" min="100" value="' + esc(o.billing.priceEarly) + '"></label>' +
         '<label>Сколько часов действует эта цена<input type="number" id="ownEarlyHours" min="1" max="720" value="' + esc(o.billing.earlyHours) + '"></label>' +
         '<label>Обычная цена сезона, ₽<input type="number" id="ownPriceFull" min="100" value="' + esc(o.billing.priceFull) + '"></label>' +
         '<label>Частник: цена в первые часы, ₽<input type="number" id="ownSoloEarly" min="100" value="' + esc(o.billing.soloEarly) + '"></label>' +
         '<label>Частник: обычная цена, ₽<input type="number" id="ownSoloFull" min="100" value="' + esc(o.billing.soloFull) + '"></label>' +
+        '<label>Месяц вне сезона: агентство, ₽<input type="number" id="ownPriceMonth" min="100" value="' + esc(o.billing.priceMonth) + '"></label>' +
+        '<label>Месяц вне сезона: частник, ₽<input type="number" id="ownSoloMonth" min="100" value="' + esc(o.billing.soloMonth) + '"></label>' +
+        '<label>Бесплатных дней после регистрации<input type="number" id="ownTrialDays" min="1" max="60" value="' + esc(o.billing.trialDays) + '"></label>' +
         '<p class="muted">После окончания срока 3 дня отсрочки, потом страница записи закрывается. Онлайн-оплата: ' + (o.payOnline ? "подключена" : "не подключена — впишите yk_shop_id и yk_secret в config.local.php") + '.</p></div>' +
         '<div><h3>Копия всех заявок</h3><label class="row"><input type="checkbox" id="ownBkTg"' + (o.backup.tg ? " checked" : "") + "> В мой Telegram</label>" +
         '<label class="row"><input type="checkbox" id="ownBkMail"' + (o.backup.email ? " checked" : "") + '> На мою почту</label>' +
@@ -1062,7 +1110,7 @@
     if (id === "ownSave") api("owner_save", {
       email: $("ownEmail").value.trim(), reg: { open: $("ownRegOpen").checked, manual: $("ownRegManual").checked },
       backup: { tg: $("ownBkTg").checked, email: $("ownBkMail").checked, password: $("ownBkPass").value },
-      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value, priceEarly: +$("ownPriceEarly").value, priceFull: +$("ownPriceFull").value, earlyHours: +$("ownEarlyHours").value, soloEarly: +$("ownSoloEarly").value, soloFull: +$("ownSoloFull").value }
+      billing: { freeEnd: $("ownFree").value, seasonEnd: $("ownSeason").value, priceEarly: +$("ownPriceEarly").value, priceFull: +$("ownPriceFull").value, earlyHours: +$("ownEarlyHours").value, soloEarly: +$("ownSoloEarly").value, soloFull: +$("ownSoloFull").value, priceMonth: +$("ownPriceMonth").value, soloMonth: +$("ownSoloMonth").value, trialDays: +$("ownTrialDays").value }
     }).then(function () { flash("Настройки сервиса сохранены"); loadAgencies(); }).catch(function (err) { flash(err.message, true); });
     if (id === "mailTest") {
       e.target.disabled = true; $("mailRes").textContent = "Отправляю…";
@@ -1088,7 +1136,7 @@
           "<div class=\"ag-count\"><b>" + a.orders + "</b> " + plural(a.orders, "заявка", "заявки", "заявок") + "</div>" +
           '<div class="acts"><button class="btn small" data-open="' + a.id + '">Открыть</button>' +
           '<button class="btn ghost small" data-user="' + a.id + '" data-login="' + esc(a.login || a.slug) + '" data-slug="' + esc(a.slug) + '">Вход для агентства</button>' +
-          (a.demo ? "" : '<button class="btn ghost small" data-paid="' + a.id + '" data-until="' + esc((a.billing && a.billing.paidUntil) || "") + '" data-season="' + esc((a.billing && a.billing.seasonEnd) || "") + '">Оплата</button>') +
+          (a.demo ? "" : '<button class="btn ghost small" data-paid="' + a.id + '" data-until="' + esc((a.billing && a.billing.paidUntil) || "") + '" data-season="' + esc((a.billing && a.billing.seasonEnd) || "") + '" data-next="' + esc((a.next && a.next.until) || "") + '" data-next-text="' + esc(a.next ? (a.next.season ? "новогодний сезон" : "месяц") + " по " + isoToRu(a.next.until) + " — " + rubs(a.next.amount) : "") + '">Оплата</button>') +
           (a.demo ? "" : '<button class="btn ghost small" data-kind="' + a.id + '" data-to="' + (a.kind === "solo" ? "agency" : "solo") + '">' + (a.kind === "solo" ? "Сделать агентством" : "Сделать частником") + "</button>") +
           '<button class="btn ' + (a.active ? "danger" : "ghost") + ' small" data-toggle="' + a.id + '" data-active="' + (a.active ? 0 : 1) + '">' + (a.active ? "Выключить" : "Включить") + "</button>" +
           (a.slug === "demo" ? "" : '<button class="btn danger small" data-del="' + a.id + '" data-slug="' + esc(a.slug) + '">Удалить</button>') + "</div></div>";
@@ -1230,8 +1278,8 @@
   $("agencies").addEventListener("click", function (e) {
     var t = e.target;
     if (t.dataset.paid) {
-      var cur = t.dataset.until || t.dataset.season;
-      var v = prompt("Оплачено по какую дату включительно? ДД.ММ.ГГГГ\n\nЧтобы снять отметку об оплате, сотрите дату. Без оплаты навсегда: 31.12.2099", isoToRu(cur));
+      var cur = t.dataset.next || t.dataset.until || t.dataset.season;
+      var v = prompt("Оплачено по какую дату включительно? ДД.ММ.ГГГГ\n\n" + (t.dataset.nextText ? "Следующая оплата: " + t.dataset.nextText + ". Дата уже подставлена.\n" : "") + "Чтобы снять отметку об оплате, сотрите дату. Без оплаты навсегда: 31.12.2099", isoToRu(cur));
       if (v === null) return;
       v = v.trim();
       var until = v === "" ? "" : ruToIso(v);

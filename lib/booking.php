@@ -138,6 +138,27 @@ function agency_tz(array $cfg): DateTimeZone {
 function agency_today(array $cfg): string { return (new DateTime('now', agency_tz($cfg)))->format('Y-m-d'); }
 function agency_ts(array $cfg, string $date, string $time): int { return (new DateTime("$date $time", agency_tz($cfg)))->getTimestamp(); }
 
+// Когда принимаются заказы. «Круглый год» (season.ahead = N дней): с сегодняшнего дня на N дней вперёд, каждый день сдвигается сам.
+// Иначе — заданные даты сезона.
+function season_window(array $cfg): array {
+    $ahead = (int)($cfg['season']['ahead'] ?? 0);
+    if ($ahead > 0) { $t = agency_today($cfg); return ['start' => $t, 'end' => (new DateTime($t))->modify("+$ahead day")->format('Y-m-d'), 'ahead' => $ahead]; }
+    return ['start' => (string)($cfg['season']['start'] ?? ''), 'end' => (string)($cfg['season']['end'] ?? '')];
+}
+
+// Поводы («Новый год», «День рождения»…): у каждого свои персонажи и программы и, по желанию, даты показа ДД.ММ, каждый год.
+// Даты через Новый год (01.12 — 15.01) тоже работают.
+function md_num(string $md): int { return preg_match('/^(\d{2})\.(\d{2})$/', $md, $m) ? (int)$m[2] * 100 + (int)$m[1] : 0; }
+function occasion_has_date(array $oc, string $date): bool {
+    $f = md_num((string)($oc['from'] ?? '')); $t = md_num((string)($oc['to'] ?? ''));
+    if (!$f || !$t) return true;
+    $x = (int)substr($date, 5, 2) * 100 + (int)substr($date, 8, 2);
+    return $f <= $t ? ($x >= $f && $x <= $t) : ($x >= $f || $x <= $t);
+}
+function visible_occasions(array $cfg): array {
+    return array_values(array_filter($cfg['occasions'] ?? [], function ($x) { return empty($x['off']); }));
+}
+
 // Проверка и очистка настроек агентства перед сохранением из админки.
 // Сохраняются только известные поля нужных типов и в разумных пределах: всё остальное отбрасывается.
 function normalize_config(array $c, array &$err): array {
@@ -172,7 +193,14 @@ function normalize_config(array $c, array &$err): array {
     $o['timezone'] = isset(RU_TIMEZONES[$c['timezone'] ?? '']) ? $c['timezone'] : 'Europe/Moscow';
 
     $o['season'] = ['start' => $date($c['season']['start'] ?? ''), 'end' => $date($c['season']['end'] ?? '')];
-    if (!$o['season']['start'] || !$o['season']['end']) $err[] = 'Укажите даты сезона';
+    $ahead = $int($c['season']['ahead'] ?? 0, 0, 400, 0);
+    if ($ahead > 0) {
+        // круглый год: даты сезона не нужны, но храним текущее окно — по нему кабинет подставляет даты по умолчанию
+        $o['season']['ahead'] = max(14, $ahead);
+        $w = season_window($o + ['timezone' => $c['timezone'] ?? 'Europe/Moscow']);
+        $o['season']['start'] = $w['start']; $o['season']['end'] = $w['end'];
+    }
+    elseif (!$o['season']['start'] || !$o['season']['end']) $err[] = 'Укажите даты сезона';
     elseif ($o['season']['start'] > $o['season']['end']) $err[] = 'Сезон заканчивается раньше, чем начинается';
     elseif ((strtotime($o['season']['end']) - strtotime($o['season']['start'])) > 400 * 86400) $err[] = 'Сезон не длиннее года';
     $o['hours'] = ['from' => $time($c['hours']['from'] ?? ''), 'to' => $time($c['hours']['to'] ?? '')];
@@ -198,7 +226,7 @@ function normalize_config(array $c, array &$err): array {
     $o['characters'] = [];
     foreach ($list($c['characters'] ?? [], 20) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $row = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio', 'logo'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
+        $row = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'note' => $str($x['note'] ?? '', 120), 'icon' => $icons($x['icon'] ?? '', ['santa', 'duo', 'trio', 'party', 'hero', 'pair', 'logo'], 'santa'), 'badge' => $str($x['badge'] ?? '', 40)];
         if (is_string($x['photo'] ?? null) && preg_match('~^uploads/chars/[a-z0-9-]+\.(webp|png|jpe?g)$~', $x['photo'])) $row['photo'] = $x['photo'];
         // какую часть фото показывать в карточке: 0 — верх, 50 — середина, 100 — низ
         if (isset($x['pos']) && is_numeric($x['pos']) && in_array((int)$x['pos'], [0, 25, 75, 100], true)) $row['pos'] = (int)$x['pos'];
@@ -208,7 +236,7 @@ function normalize_config(array $c, array &$err): array {
     $o['programs'] = [];
     foreach ($list($c['programs'] ?? [], 20) as $x) {
         $i = $id($x['id'] ?? ''); if ($i === '') continue;
-        $pg = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'minutes' => $int($x['minutes'] ?? 30, 5, 600, 30), 'note' => $str($x['note'] ?? '', 160), 'icon' => $icons($x['icon'] ?? '', ['gift', 'tree', 'ball', 'own', 'none'], 'tree')];
+        $pg = ['id' => $i, 'title' => $str($x['title'] ?? '', 80), 'minutes' => $int($x['minutes'] ?? 30, 5, 600, 30), 'note' => $str($x['note'] ?? '', 160), 'icon' => $icons($x['icon'] ?? '', ['gift', 'tree', 'ball', 'cake', 'balloon', 'star', 'music', 'own', 'none'], 'tree')];
         if (is_string($x['img'] ?? null) && preg_match('~^uploads/chars/[a-z0-9-]+\.(webp|png|jpe?g)$~', $x['img'])) $pg['img'] = $x['img'];
         if ($pg['icon'] === 'own' && empty($pg['img'])) $pg['icon'] = 'gift';   // «своя картинка», но её не загрузили
         $o['programs'][] = $pg + (!empty($x['off']) ? ['off' => true] : []);
@@ -216,10 +244,44 @@ function normalize_config(array $c, array &$err): array {
     if (!$o['characters'] || !$o['programs']) $err[] = 'Нужен хотя бы один вариант «Кто приедет» и одна программа';
     elseif (!array_filter($o['characters'], function ($x) { return empty($x['off']); }) || !array_filter($o['programs'], function ($x) { return empty($x['off']); })) $err[] = 'Хотя бы один состав и одна программа должны быть показаны на странице';
     if (count(array_unique(array_column($o['characters'], 'id'))) !== count($o['characters']) || count(array_unique(array_column($o['programs'], 'id'))) !== count($o['programs'])) $err[] = 'Повторяются строки в «Кто приедет» или «Программы»';
+    // Поводы: какие персонажи и программы показывать в каждом
+    $o['occasions'] = [];
+    $md = function ($v) {
+        if (!is_string($v) || !preg_match('/^\s*(\d{1,2})[.\/-](\d{1,2})\s*$/', $v, $m)) return '';
+        return checkdate((int)$m[2], (int)$m[1], 2024) ? sprintf('%02d.%02d', (int)$m[1], (int)$m[2]) : '';
+    };
+    $charIds = array_column($o['characters'], 'id'); $progIds = array_column($o['programs'], 'id');
+    $addonIds = array_values(array_filter(array_map(function ($x) use ($id) { return is_array($x) ? $id($x['id'] ?? '') : ''; }, is_array($c['addons'] ?? null) ? $c['addons'] : [])));
+    foreach ($list($c['occasions'] ?? [], 12) as $x) {
+        $i = $id($x['id'] ?? ''); if ($i === '') continue;
+        $oc = ['id' => $i, 'title' => $str($x['title'] ?? '', 40),
+            'chars' => array_values(array_intersect(array_unique(array_filter((array)($x['chars'] ?? []), 'is_string')), $charIds)),
+            'progs' => array_values(array_intersect(array_unique(array_filter((array)($x['progs'] ?? []), 'is_string')), $progIds)),
+            'from' => $md($x['from'] ?? ''), 'to' => $md($x['to'] ?? '')];
+        // доп. услуги повода; ничего не отмечено — показываются все
+        $adds = array_values(array_intersect(array_unique(array_filter((array)($x['addons'] ?? []), 'is_string')), $addonIds));
+        if ($adds) $oc['addons'] = $adds;
+        if ($oc['title'] === '') { $err[] = 'У повода нет названия'; continue; }
+        if (($oc['from'] === '') !== ($oc['to'] === '')) $err[] = "Повод «{$oc['title']}»: укажите обе даты показа или ни одной";
+        if (($x['from'] ?? '') !== '' && $oc['from'] === '' || ($x['to'] ?? '') !== '' && $oc['to'] === '') $err[] = "Повод «{$oc['title']}»: даты показа в виде ДД.ММ, например 01.12";
+        if (!empty($x['winter'])) $oc['winter'] = true; // зимнее оформление: снег, зимний фон, Дед Мороз
+        if (!empty($x['off'])) $oc['off'] = true;
+        elseif (!$oc['chars'] || !$oc['progs']) $err[] = "Повод «{$oc['title']}»: отметьте хотя бы одного персонажа и одну программу";
+        $o['occasions'][] = $oc;
+    }
+    if ($o['occasions'] && !array_filter($o['occasions'], function ($x) { return empty($x['off']); })) $err[] = 'Хотя бы один повод должен быть показан на странице';
+    if (count(array_unique(array_column($o['occasions'], 'id'))) !== count($o['occasions'])) $err[] = 'Повторяются строки в «Поводах»';
+    // Цены: без поводов — на каждое сочетание; с поводами — только на сочетания, которые клиент может выбрать
+    $need = [];
+    $vis = array_filter($o['occasions'], function ($x) { return empty($x['off']); });
+    if ($vis) { foreach ($vis as $oc) foreach ($oc['chars'] as $ci) foreach ($oc['progs'] as $pi) $need[$ci][$pi] = true; }
+    else foreach ($o['characters'] as $ch) foreach ($o['programs'] as $p) $need[$ch['id']][$p['id']] = true;
+    if (!$o['occasions']) unset($o['occasions']);
     $o['prices'] = [];
     foreach ($o['characters'] as $ch) foreach ($o['programs'] as $p) {
         $v = $c['prices'][$ch['id']][$p['id']] ?? null;
-        if (!is_numeric($v) || $v < 0) { $err[] = "Нет цены: {$ch['title']} / {$p['title']}"; continue; }
+        $ok = is_numeric($v) && $v >= 0;
+        if (!$ok) { if (!empty($need[$ch['id']][$p['id']])) $err[] = "Нет цены: {$ch['title']} / {$p['title']}"; continue; }
         $o['prices'][$ch['id']][$p['id']] = min(1000000, (int)round((float)$v));
     }
     $o['dateRules'] = [];

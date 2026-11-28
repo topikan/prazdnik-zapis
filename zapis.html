@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="google" content="notranslate">
   <meta name="theme-color" content="#0E1A33">
-  <title>Заказать Деда Мороза на дом</title>
+  <title>Онлайн-запись на праздник</title>
   <link rel="icon" href="assets/img/favicon.svg?v=dev" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico?v=dev" sizes="48x48">
   <link rel="icon" href="assets/img/icon-120.png?v=dev" sizes="120x120" type="image/png">
@@ -20,6 +20,7 @@
   <div class="guide-bar" id="guideBar" hidden><span id="guideText">Так эту страницу увидит ваш клиент</span><small id="guideSub">Жёлтые пометки — только в демо, у вас их не будет</small><button type="button" class="notes-toggle" id="notesToggle" aria-pressed="false" hidden>Отключить пояснения</button><a class="notes-toggle guide-home" id="guideHome" href="/" hidden>← Вернуться на страницу</a></div>
   <header class="hero" id="hero">
     <div class="snow" aria-hidden="true"></div>
+    <div class="confetti" aria-hidden="true"></div>
     <img class="hero-santa" id="heroSanta" src="assets/img/santa.webp" width="549" height="566" alt="">
     <div class="wrap">
       <div class="topline">
@@ -46,6 +47,10 @@
         </ol>
 
         <section class="step" id="step-1" data-step="1">
+          <div class="occ-block" id="occBlock" hidden>
+            <h2 class="step-title" id="tOccTitle">Какой праздник?</h2>
+            <div class="chips occ-chips" id="occasions" role="radiogroup" aria-label="Какой праздник"></div>
+          </div>
           <h2 class="step-title" tabindex="-1" id="tWhoTitle">Кто приедет?</h2>
           <p class="step-sub" id="tWhoSub">Выберите, кто поздравит вашего ребёнка</p>
           <div class="cards cards-who" id="characters" role="radiogroup" aria-label="Кто приедет"></div>
@@ -119,7 +124,7 @@
           </div>
           <div class="children">
             <p class="children-title">Для кого праздник <span class="optional">необязательно</span></p>
-            <p class="children-hint">Дед Мороз обратится к детям по именам</p>
+            <p class="children-hint" id="childHint">Дед Мороз обратится к детям по именам</p>
             <div id="children"></div>
             <button type="button" class="link-btn" id="addChild">+ Добавить ребёнка</button>
           </div>
@@ -247,6 +252,8 @@
       <symbol id="i-santa" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 26c2-11 9-17 18-17 7 0 12 4 14 10l3 7"/><circle cx="52" cy="28" r="3"/><path d="M14 26h36"/><path d="M15 26c-1 3 0 5 2 6M49 26c1 3 0 5-2 6"/><circle cx="26" cy="33" r="1.2" fill="currentColor"/><circle cx="38" cy="33" r="1.2" fill="currentColor"/><path d="M30 37c1 1 3 1 4 0"/><path d="M17 33c-1 9 3 18 15 22 12-4 16-13 15-22"/><path d="M24 41c3 2 5 2 8 0 3 2 5 2 8 0"/><path d="M22 47c3 3 7 5 10 5s7-2 10-5"/></g></symbol>
       <symbol id="i-maiden" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 27C17 17 22 10 32 4c10 6 15 13 15 23"/><path d="M17 27c5-2.5 25-2.5 30 0"/><path d="M21 22c4-7 18-7 22 0"/><circle cx="20" cy="25.5" r=".6" fill="currentColor"/><circle cx="26" cy="24.5" r=".6" fill="currentColor"/><circle cx="38" cy="24.5" r=".6" fill="currentColor"/><circle cx="44" cy="25.5" r=".6" fill="currentColor"/><path d="M32 11v8M28.5 13l7 4M35.5 13l-7 4"/><path d="M19 28c-1 3-1 6 0 9M45 28c1 3 1 6 0 9"/><path d="M20 30c0 9 5 15 12 15s12-6 12-15"/><path d="M23 30c3 2 6 1.5 9-1 3 2.5 6 3 9 1"/><circle cx="27.5" cy="35" r="1.2" fill="currentColor"/><circle cx="36.5" cy="35" r="1.2" fill="currentColor"/><path d="M29.5 40c1.5 1 3.5 1 5 0"/><path d="M44 36c3 2 4 5 2.5 8 2 2 2 5 0 7 1.5 2 1 4.5-1 6"/><path d="M45.5 57l-1.5 4M45.5 57l2 3.5"/><path d="M18 58c1-6 6-10 14-10s13 4 14 7"/><path d="M19 54c3 1 5-1 7 0s4 1 6 0 4-1 6 0 4 1 6 0"/></g></symbol>
       <symbol id="i-snowman" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="20" r="9"/><circle cx="32" cy="44" r="14"/><path d="M24 11h16M27 11V4h10v7"/><circle cx="29" cy="19" r="1" fill="currentColor"/><circle cx="35" cy="19" r="1" fill="currentColor"/><path d="M32 22l6 2-6 1"/><circle cx="32" cy="40" r="1.2" fill="currentColor"/><circle cx="32" cy="47" r="1.2" fill="currentColor"/><path d="M18 36l-8-6M46 36l8-6"/></g></symbol>
+      <symbol id="i-party" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 26L32 5l11 21"/><path d="M24.5 19.5c4 1.5 11 1.5 15 0M27.5 13c2.5 1 6.5 1 9 0"/><circle cx="32" cy="4" r="2.4"/><circle cx="32" cy="40" r="15"/><path d="M19 27c4 1.5 22 1.5 26 0"/><circle cx="26.5" cy="38" r="1.2" fill="currentColor"/><circle cx="37.5" cy="38" r="1.2" fill="currentColor"/><path d="M26 45c3.5 3.5 8.5 3.5 12 0"/><circle cx="22" cy="44" r="2" /><circle cx="42" cy="44" r="2"/><path d="M8 18l3 3M56 18l-3 3M10 34H6M58 34h-4"/></g></symbol>
+      <symbol id="i-hero" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 26c0-10 7-17 15-17s15 7 15 17"/><path d="M17 26c-1 11 5 20 15 22 10-2 16-11 15-22"/><path d="M15 27c6-4 12-4 17 0 5-4 11-4 17 0l-1 6c-5 3-11 2-16-2-5 4-11 5-16 2z"/><path d="M21 29c2-1 5-1 7 1M36 30c2-2 5-2 7-1"/><path d="M27 40c3 2.5 7 2.5 10 0"/><path d="M15 48c-3 3-5 8-5 12M49 48c3 3 5 8 5 12M24 52l8 8 8-8"/></g></symbol>
       <symbol id="i-tree" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M24 4l7 10h-4l8 11h-5l9 12H9l9-12h-5l8-11h-4z"/><path d="M24 37v7M19 44h10"/><circle cx="20" cy="22" r="1.4"/><circle cx="29" cy="30" r="1.4"/><circle cx="18" cy="32" r="1.4"/></g></symbol>
       <symbol id="i-giftbig" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="7" y="17" width="34" height="8" rx="1"/><path d="M10 25v18h28V25M24 17v26M24 17c-6 0-10-2-10-5.5C14 7 20 7 24 17zm0 0c6 0 10-2 10-5.5C34 7 28 7 24 17z"/></g></symbol>
       <symbol id="i-ball" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M24 4v6"/><circle cx="24" cy="27" r="16"/><path d="M8 27h32M24 11v32M12 17c8 4 16 4 24 0M12 37c8-4 16-4 24 0M16 13c-4 9-4 19 0 28M32 13c4 9 4 19 0 28"/></g></symbol>

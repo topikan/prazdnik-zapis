@@ -14,6 +14,10 @@ json_out([
     'freeText' => ru_day_month($b['freeEnd']), 'seasonText' => ru_day_month($b['seasonEnd']),
     'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽'),
     'priceEarly' => $b['priceEarly'], 'priceFull' => $b['priceFull'], 'earlyHours' => $b['earlyHours'], 'soloEarly' => $b['soloEarly'], 'soloFull' => $b['soloFull'],
+    // до какого дня бесплатно тому, кто зарегистрируется сегодня (включительно)
+    'freeUntil' => ru_date(max(trial_for_new(), day_add($b['freeEnd'], -1))),
+    'freeUntilText' => ru_day_month(max(trial_for_new(), day_add($b['freeEnd'], -1))),
+    'priceMonth' => $b['priceMonth'], 'soloMonth' => $b['soloMonth'], 'trialDays' => $b['trialDays'],
     'regOpen' => ($reg['open'] ?? true) !== false,
     'site' => (string)($APP['site_url'] ?? 'https://anisis.ru'),
 ]);

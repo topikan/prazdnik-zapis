@@ -159,11 +159,12 @@ function yk_apply(string $pid): string {
 function pay_effect(array $p, bool $test): void {
     $aid = (int)$p['agency_id'];
     if ($p['kind'] === 'sub') {
-        $s = billing_settings();
-        db()->prepare('UPDATE agencies SET paid_until = ? WHERE id = ? AND paid_until < ?')->execute([$s['seasonEnd'], $aid, $s['seasonEnd']]);
+        // оплаченный период: следующий неоплаченный месяц или новогодний сезон (как считает billing_price)
         $a = agency_by_id($aid);
-        $t = '💳 Оплата сезона: «' . ($a['cfg']['name'] ?? '') . '» (' . ($a['slug'] ?? '') . '), ' . number_format((int)$p['amount'], 0, '', ' ') . ' ₽. Доступ до ' . ru_date($s['seasonEnd']) . '.';
-        try { notify_owner('Оплата сезона: ' . ($a['slug'] ?? ''), $t); } catch (Throwable $e) {}
+        $until = $a ? billing_price($a)['until'] : billing_settings()['seasonEnd'];
+        db()->prepare('UPDATE agencies SET paid_until = ? WHERE id = ? AND paid_until < ?')->execute([$until, $aid, $until]);
+        $t = '💳 Оплата доступа: «' . ($a['cfg']['name'] ?? '') . '» (' . ($a['slug'] ?? '') . '), ' . number_format((int)$p['amount'], 0, '', ' ') . ' ₽. Доступ до ' . ru_date($until) . '.';
+        try { notify_owner('Оплата доступа: ' . ($a['slug'] ?? ''), $t); } catch (Throwable $e) {}
         return;
     }
     db()->prepare('UPDATE orders SET prepaid = prepaid + ?, paid = 1 WHERE id = ? AND agency_id = ?')->execute([(int)$p['amount'], (int)$p['order_id'], $aid]);

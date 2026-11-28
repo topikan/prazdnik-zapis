@@ -177,6 +177,10 @@
     }
     if (!s) return;
     document.querySelectorAll(".js-free").forEach(function (x) { x.textContent = s.freeEnd; });
+    var rb = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
+    if (s.freeUntil) document.querySelectorAll(".js-free-until").forEach(function (x) { x.textContent = s.freeUntil; });
+    if (s.priceMonth) document.querySelectorAll(".js-pm").forEach(function (x) { x.textContent = rb(s.priceMonth); });
+    if (s.soloMonth) document.querySelectorAll(".js-sm").forEach(function (x) { x.textContent = rb(s.soloMonth); });
     document.querySelectorAll(".js-tg").forEach(function (x) { if (/^https:\/\//.test(s.telegram)) x.href = s.telegram; });
     if (!s.regOpen) { $("regClosed").hidden = false; f.querySelector('button[type="submit"]').disabled = true; }
   }).catch(function () {});

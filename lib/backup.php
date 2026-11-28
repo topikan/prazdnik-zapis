@@ -13,7 +13,7 @@ function orders_csv(array $a): string {
     $txt = function ($v): string { $v = (string)$v; return ($v !== '' && strpbrk($v[0], "=+-@\t\r") !== false) ? "'" . $v : $v; };
     // Телефон как текст «8 999 123-45-67»: с «+» в начале Excel принял бы его за формулу или число
     $tel = function ($p): string { $d = preg_replace('/\D/', '', (string)$p); return strlen($d) === 11 ? '8 ' . substr($d, 1, 3) . ' ' . substr($d, 4, 3) . '-' . substr($d, 7, 2) . '-' . substr($d, 9) : $d; };
-    $rows = [['№', 'Дата визита', 'Время', 'Кто приедет', 'Программа', 'Детей', 'Дети', 'Допы', 'Куда ехать', 'Имя', 'Телефон', 'Адрес', 'Пожелания', 'Сумма, ₽', 'Статус', 'Предоплата', 'Откуда', 'Заявка создана']];
+    $rows = [['№', 'Дата визита', 'Время', 'Повод', 'Кто приедет', 'Программа', 'Детей', 'Дети', 'Допы', 'Куда ехать', 'Имя', 'Телефон', 'Адрес', 'Пожелания', 'Сумма, ₽', 'Статус', 'Предоплата', 'Откуда', 'Заявка создана']];
     try { db()->query('SELECT paid FROM orders LIMIT 1'); $paidCol = 'paid'; } catch (Throwable $e) { $paidCol = '0 AS paid'; }
     try { db()->query('SELECT source FROM orders LIMIT 1'); $srcCol = 'source'; } catch (Throwable $e) { $srcCol = "'site' AS source"; }
     $src = ['site' => 'Сайт', 'phone' => 'Телефон', 'messenger' => 'Мессенджер', 'repeat' => 'Постоянный клиент', 'other' => 'Другое'];
@@ -23,7 +23,7 @@ function orders_csv(array $a): string {
         $d = json_decode($r['data'], true) ?: [];
         $kids = implode('; ', array_map(function ($c) { return trim(($c['name'] ?? '') . (($c['age'] ?? '') !== '' ? ', ' . $c['age'] : '')); }, is_array($d['children'] ?? null) ? $d['children'] : []));
         $addons = implode(', ', array_map(function ($id) use ($cfg, $title) { return $title($cfg['addons'] ?? [], $id); }, is_array($d['addons'] ?? null) ? $d['addons'] : []));
-        $rows[] = [$r['id'], ru_date((string)$r['visit_date']), $r['visit_time'], $title($cfg['characters'] ?? [], $d['character'] ?? ''), $title($cfg['programs'] ?? [], $d['program'] ?? ''),
+        $rows[] = [$r['id'], ru_date((string)$r['visit_date']), $r['visit_time'], $title($cfg['occasions'] ?? [], $d['occasion'] ?? ''), $title($cfg['characters'] ?? [], $d['character'] ?? ''), $title($cfg['programs'] ?? [], $d['program'] ?? ''),
             $d['kids'] ?? '', $txt($kids), $addons, $title($cfg['zones'] ?? [], $d['zone'] ?? ''), $txt($r['name']), $tel($r['phone']), $txt($r['address']), $txt($d['comment'] ?? ''),
             $r['total'], BACKUP_STATUS[$r['status']] ?? $r['status'], (int)$r['paid'] ? 'да' : 'нет', $src[$r['source']] ?? 'Сайт', date('d.m.Y H:i', strtotime((string)$r['created_at']))];
     }

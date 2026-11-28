@@ -31,15 +31,15 @@
   var MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
   var MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   var DOW_FULL = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-  var WHO_ART = { santa: ["i-santa"], duo: ["i-santa", "i-maiden"], trio: ["i-santa", "i-maiden", "i-snowman"] };
-  var PROG_ICON = { gift: "i-giftbig", tree: "i-tree", ball: "i-ball" };
+  var WHO_ART = { santa: ["i-santa"], duo: ["i-santa", "i-maiden"], trio: ["i-santa", "i-maiden", "i-snowman"], party: ["i-party"], hero: ["i-hero"], pair: ["i-party", "i-hero"] };
+  var PROG_ICON = { gift: "i-giftbig", tree: "i-tree", ball: "i-ball", cake: "i-add-cake", balloon: "i-add-balloon", star: "i-add-star", music: "i-add-music" };
   // Библиотека иконок для доп. услуг: все в одном линейном стиле
   var ADDON_ICONS = ["sack", "camera", "letter", "bubbles", "candy", "cake", "balloon", "music", "snowflake", "car", "star", "video", "gift"];
 
   var cfg = null;
   var slug = "demo";
   var q = new URLSearchParams(location.search).get("a");
-  var state = { step: 1, character: null, program: null, kids: 1, date: null, time: null, addons: {}, zone: null, month: 0, children: [{ name: "", age: "" }] };
+  var state = { step: 1, occasion: null, character: null, program: null, kids: 1, date: null, time: null, addons: {}, zone: null, month: 0, children: [{ name: "", age: "" }] };
   var PHOTO_RE = /^uploads\/chars\/[a-z0-9-]+\.(webp|png|jpe?g)$/;
   var months = [];
 
@@ -57,6 +57,28 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function icon(id) { return '<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
   function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+  /* ---------- поводы: у каждого свои персонажи, программы и дни ---------- */
+  function occList() { return (cfg && cfg.occasions) || []; }
+  function curOcc() { return find(occList(), state.occasion); }
+  function mdNum(md) { var m = /^(\d{2})\.(\d{2})$/.exec(md || ""); return m ? +m[2] * 100 + +m[1] : 0; }
+  function occHasDate(oc, date) {
+    if (!oc) return true;
+    var f = mdNum(oc.from), t = mdNum(oc.to); if (!f || !t) return true;
+    var x = +date.slice(5, 7) * 100 + +date.slice(8, 10);
+    return f <= t ? x >= f && x <= t : x >= f || x <= t;
+  }
+  function addonsNow() { var oc = curOcc(); return cfg.addons.filter(function (a) { return !oc || !oc.addons || !oc.addons.length || oc.addons.indexOf(a.id) > -1; }); }
+  function hasPrice(c, p) { return !!(cfg.prices[c] && cfg.prices[c][p] != null); }
+  // персонажи и программы, которые можно выбрать сейчас
+  function chars() { var oc = curOcc(); return cfg.characters.filter(function (c) { return !oc || oc.chars.indexOf(c.id) > -1; }); }
+  function progsFor(cid) { var oc = curOcc(); return cfg.programs.filter(function (p) { return (!oc || oc.progs.indexOf(p.id) > -1) && hasPrice(cid, p.id); }); }
+  // есть ли у повода хоть один день, на который ещё можно записаться
+  function occOpen(oc) {
+    var d = parse(cfg.season.start), end = parse(cfg.season.end), t = today();
+    if (d < t) d = t;
+    for (; d <= end; d.setDate(d.getDate() + 1)) if (occHasDate(oc, iso(d))) return true;
+    return false;
+  }
   function plural(n, a, b, c) { var n10 = n % 10, n100 = n % 100; if (n10 === 1 && n100 !== 11) return a; if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return b; return c; }
   function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return (h >>> 0) / 4294967295; }
   // «Сейчас» по часовому поясу агентства, а не по часам телефона клиента
@@ -124,7 +146,7 @@
     var extra = Math.max(0, state.kids - cfg.kids.included);
     if (extra) lines.push(["Ещё " + extra + " " + plural(extra, "ребёнок", "ребёнка", "детей") + " сверх " + cfg.kids.included, extra * cfg.kids.extraPrice]);
     if (promoActive()) lines.push(["Скидка за раннее бронирование −" + cfg.promo.percent + "%", -round100(program * cfg.promo.percent / 100)]);
-    cfg.addons.forEach(function (a) { if (state.addons[a.id]) lines.push([a.title, a.price]); });
+    addonsNow().forEach(function (a) { if (state.addons[a.id]) lines.push([a.title, a.price]); });
     var z = find(cfg.zones, state.zone);
     if (z && z.price) lines.push(["Выезд: " + z.title.toLowerCase(), z.price]);
     return { total: lines.reduce(function (s, l) { return s + l[1]; }, 0), lines: lines, mult: m.mult, label: m.label, surge: surge };
@@ -181,7 +203,7 @@
 
   /* ---------- отрисовка ---------- */
   function renderStatic() {
-    document.title = "Дед Мороз на дом — " + cfg.name;
+    document.title = cfg.name + " — онлайн-запись";
     document.querySelectorAll(".js-name").forEach(function (n) { n.textContent = cfg.name; });
     document.querySelectorAll(".logo-name").forEach(function (n) { n.classList.toggle("is-long", (cfg.name || "").length > 28); n.title = cfg.name; });
     if (cfg.phone) document.querySelectorAll(".js-phone").forEach(function (a) { a.querySelector("span").textContent = cfg.phone; a.href = "tel:" + cfg.phone.replace(/[^\d+]/g, ""); a.hidden = false; });
@@ -206,7 +228,6 @@
     // картинка в баннере
     var bimg = document.querySelector(".banner-img");
     if (bimg) { if (dz.bannerImgOff) bimg.hidden = true; else if (IMG_RE.test(cfg.bannerImage || "")) bimg.src = cfg.bannerImage; }
-    if (window.bpSnowMode) window.bpSnowMode(dz.snow);
     $("demoNote").hidden = !cfg.demo;
     var qs = "?a=" + encodeURIComponent(slug);
     var policy = cfg.legal && /^https:\/\//.test(cfg.legal.policyUrl || "") ? cfg.legal.policyUrl : "privacy" + qs;
@@ -216,23 +237,35 @@
     // заголовки и подписи, которые агентство поменяло в кабинете
     var T = cfg.texts || {};
     Object.keys(TEXT_IDS).forEach(function (k) { if (T[k] && $(TEXT_IDS[k])) $(TEXT_IDS[k]).textContent = T[k]; });
-    var hl = ($("tHeroTitle").textContent + $("tHeroAccent").textContent).length;
-    $("hero").querySelector("h1").classList.toggle("is-long", hl > 32 && hl <= 60);
-    $("hero").querySelector("h1").classList.toggle("is-xlong", hl > 60);
     $("tHeroLead").classList.toggle("is-long", $("tHeroLead").textContent.length > 140);
-    renderBanner();
+    applyTheme();
     renderPortfolio();
     renderGuide();
   }
+  // Оформление под повод: зимнее (снег, зимний фон, Дед Мороз) или праздничное на весь год.
+  // Свои картинки агентства не трогаем; стандартные тексты меняются, только если агентство не задало свои.
+  function isWinter() { var l = occList(); if (!l.length) return true; var oc = curOcc(); return !!(oc && oc.winter); }
+  function applyTheme() {
+    var w = isWinter(), dz = cfg.design || {}, T = cfg.texts || {}, hero = $("hero"), person = $("heroSanta");
+    hero.classList.toggle("theme-plain", !w);
+    if (window.bpSnowMode) window.bpSnowMode(w ? dz.snow : "off");
+    if (!person.classList.contains("own")) { person.src = w ? "assets/img/santa.webp" : "assets/img/girl.webp"; person.classList.toggle("girl", !w); }
+    if (!T.heroTitle) $("tHeroTitle").textContent = w ? "Дед Мороз" : "Праздник";
+    $("childHint").textContent = w ? "Дед Мороз обратится к детям по именам" : "Аниматор обратится к детям по именам";
+    var hl = ($("tHeroTitle").textContent + $("tHeroAccent").textContent).length;
+    hero.querySelector("h1").classList.toggle("is-long", hl > 32 && hl <= 60);
+    hero.querySelector("h1").classList.toggle("is-xlong", hl > 60);
+    renderBanner(w);
+  }
   // Баннер внизу: текст, кнопку и ссылку агентство задаёт в кабинете; без заголовка баннера нет
-  function renderBanner() {
+  function renderBanner(w) {
     // в демо баннер ведёт на главную сервиса; у агентств — их текст и ссылка (или баннера нет)
     var b = cfg.banner || (cfg.demo ? { title: "Посмотрите наше портфолио в Instagram", text: "Реальные праздники, наши Деды Морозы в деле и отзывы родителей.", button: "Смотреть в Instagram", link: "none" } : {});
-    var title = b.title == null ? "Подарите детям настоящий Новый год!" : b.title;
+    var title = b.title == null ? (w === false ? "Подарите ребёнку настоящий праздник!" : "Подарите детям настоящий Новый год!") : b.title;
     $("banner").hidden = !title;
     if (!title) return;
     $("bannerTitle").textContent = title;
-    $("bannerText").textContent = b.text == null ? "Забронируйте визит Деда Мороза и создайте волшебство в каждом доме." : b.text;
+    $("bannerText").textContent = b.text == null ? (w === false ? "Забронируйте аниматора — праздник приедет к вам домой." : "Забронируйте визит Деда Мороза и создайте волшебство в каждом доме.") : b.text;
     $("bannerBtnText").textContent = b.button || "Забронировать праздник";
     var link = b.link || "";
     var btn = $("bannerBtn");
@@ -241,7 +274,7 @@
     else if (/^(https:\/\/|tel:)/.test(link)) { btn.href = link; btn.target = /^https/.test(link) ? "_blank" : ""; btn.rel = "noopener noreferrer"; btn.dataset.top = ""; }
     else { btn.href = "#hero"; btn.dataset.top = "1"; btn.removeAttribute("target"); }
   }
-  var TEXT_IDS = { heroTitle: "tHeroTitle", heroAccent: "tHeroAccent", heroLead: "tHeroLead", whoTitle: "tWhoTitle", whoSub: "tWhoSub", progTitle: "tProgTitle", progSub: "tProgSub",
+  var TEXT_IDS = { occTitle: "tOccTitle", heroTitle: "tHeroTitle", heroAccent: "tHeroAccent", heroLead: "tHeroLead", whoTitle: "tWhoTitle", whoSub: "tWhoSub", progTitle: "tProgTitle", progSub: "tProgSub",
     dateTitle: "tDateTitle", dateSub: "tDateSub", extraTitle: "tExtraTitle", extraSub: "tExtraSub", zoneTitle: "tZoneTitle", contTitle: "tContTitle", contSub: "tContSub" };
   /* ---------- портфолио: фото и видео агентства, просмотр на весь экран ---------- */
   var PF_PHOTO = /^uploads\/portfolio\/[a-z0-9-]+\.(webp|png|jpe?g)$/, PF_VIDEO = /^uploads\/videos\/[a-z0-9-]+\.(mp4|webm)$/;
@@ -460,20 +493,53 @@
   var CHECK = '<span class="check" aria-hidden="true"><svg><use href="#i-check"/></svg></span>';
 
   function renderCharacters() {
-    var cheapest = cfg.programs[0].id;
-    $("characters").innerHTML = cfg.characters.map(function (c) {
+    $("characters").innerHTML = chars().map(function (c) {
+      var min = null; progsFor(c.id).forEach(function (p) { var v = cfg.prices[c.id][p.id]; if (min == null || v < min) min = v; });
       return '<label class="card"><input type="radio" name="character" value="' + esc(c.id) + '"' + (state.character === c.id ? " checked" : "") + ">" +
         '<span class="card-body">' + CHECK + whoArt(c) +
-        '<span class="card-text"><span class="card-title">' + esc(c.title) + '</span><span class="card-note">' + esc(c.note) + '</span><span class="card-price">от ' + rub(cfg.prices[c.id][cheapest]) + "</span></span></span></label>";
+        '<span class="card-text"><span class="card-title">' + esc(c.title) + '</span><span class="card-note">' + esc(c.note) + '</span>' + (min == null ? "" : '<span class="card-price">от ' + rub(min) + "</span>") + "</span></span></label>";
     }).join("");
   }
   function renderPrograms() {
-    $("programs").innerHTML = cfg.programs.map(function (p) {
+    $("programs").innerHTML = progsFor(state.character).map(function (p) {
       return '<label class="card"><input type="radio" name="program" value="' + esc(p.id) + '"' + (state.program === p.id ? " checked" : "") + ">" +
         '<span class="card-body">' + CHECK + progHead(p) +
         '<span class="card-text"><span class="card-title">' + esc(p.title) + '</span><span class="card-note">' + esc(p.note) + "</span>" +
         '<span class="prog-min"><svg aria-hidden="true"><use href="#i-clock"/></svg>' + esc(p.minutes) + ' мин</span><span class="card-price">' + rub(cfg.prices[state.character][p.id]) + "</span></span></span></label>";
     }).join("");
+  }
+  function renderOccasions() {
+    var list = occList().filter(occOpen), box = $("occasions");
+    $("occBlock").hidden = list.length < 2;
+    box.innerHTML = list.map(function (oc) {
+      return '<label class="chip occ-chip"><input type="radio" name="occasion" value="' + esc(oc.id) + '"' + (state.occasion === oc.id ? " checked" : "") + "><span>" + esc(oc.title) + "</span></label>";
+    }).join("");
+  }
+  // выбрать повод: персонаж, программа и дата подстраиваются, если в новом поводе их нет
+  function setOccasion(id) {
+    state.occasion = id;
+    var cl = chars();
+    if (!find(cl, state.character)) state.character = ((cl.filter(function (c) { return c.badge; })[0]) || cl[0] || {}).id || null;
+    fixProgram();
+    if (state.date && !occHasDate(curOcc(), state.date)) { state.date = null; state.time = null; }
+    // календарь — на первый месяц, где у повода есть свободные дни
+    if (!state.date) {
+      var t = iso(today()), best = -1;
+      months.forEach(function (m, i) {
+        if (best > -1) return;
+        for (var d = new Date(m); d.getMonth() === m.getMonth(); d.setDate(d.getDate() + 1)) { var k = iso(d); if (k >= t && k >= cfg.season.start && k <= cfg.season.end && occHasDate(curOcc(), k)) { best = i; return; } }
+      });
+      if (best > -1 && !monthHasDay(state.month)) state.month = best;
+    }
+  }
+  function monthHasDay(i) {
+    var m = months[i], t = iso(today()); if (!m) return false;
+    for (var d = new Date(m); d.getMonth() === m.getMonth(); d.setDate(d.getDate() + 1)) { var k = iso(d); if (k >= t && k >= cfg.season.start && k <= cfg.season.end && occHasDate(curOcc(), k)) return true; }
+    return false;
+  }
+  function fixProgram() {
+    var pl = progsFor(state.character);
+    if (!find(pl, state.program)) state.program = (pl[1] || pl[0] || {}).id || null;
   }
   function renderKids() {
     $("kidsValue").textContent = state.kids;
@@ -505,7 +571,7 @@
     for (var d = 1; d <= last; d++) {
       var date = new Date(m.getFullYear(), m.getMonth(), d), key = iso(date);
       var b = el("button", "day", String(d)); b.type = "button"; b.dataset.date = key;
-      if (date < start || date > end || date < first) { b.disabled = true; }
+      if (date < start || date > end || date < first || !occHasDate(curOcc(), key)) { b.disabled = true; }
       else if (!dayFree(key)) { b.disabled = true; b.classList.add("full"); b.setAttribute("aria-label", human(key) + ", всё занято"); }
       else {
         var lv = loadLevel(dayLoad(key));
@@ -566,7 +632,7 @@
   }
 
   function renderAddons() {
-    $("addons").innerHTML = cfg.addons.map(function (a) {
+    $("addons").innerHTML = addonsNow().map(function (a) {
       return '<label class="tile"><input type="checkbox" name="addon" value="' + esc(a.id) + '"' + (state.addons[a.id] ? " checked" : "") + ">" +
         '<span class="tile-body">' + CHECK + '<svg class="t-ico" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-add-' + (ADDON_ICONS.indexOf(a.icon) > -1 ? a.icon : "star") + '"/></svg><span class="tile-title">' + esc(a.title) + '</span><span class="tile-note">' + esc(a.note) + '</span><span class="tile-price">+' + rub(a.price) + "</span></span></label>";
     }).join("");
@@ -609,6 +675,7 @@
   var STEPS = 4;
   // Можно ли уйти с шага n дальше; если нет — что сказать и куда показать
   function stepError(n) {
+    if (n === 1 && (!state.character || !state.program)) return { msg: "Выберите, кто приедет, и программу.", el: $("characters") };
     if (n === 2 && !state.date) return { msg: "Выберите дату в календаре.", el: $("days") };
     if (n === 2 && !state.time) return { msg: "Выберите время.", el: $("times") };
     return null;
@@ -657,7 +724,8 @@
     var form = $("order");
     form.addEventListener("change", function (e) {
       var t = e.target;
-      if (t.name === "character") { state.character = t.value; renderPrograms(); renderTimes(); renderBar(); }
+      if (t.name === "occasion") { setOccasion(t.value); applyTheme(); renderAddons(); renderCharacters(); renderPrograms(); renderCalendar(); renderTimes(); renderBar(); }
+      else if (t.name === "character") { state.character = t.value; fixProgram(); renderPrograms(); renderCalendar(); renderTimes(); renderBar(); }
       else if (t.name === "program") { state.program = t.value; renderCalendar(); renderTimes(); renderBar(); }
       else if (t.name === "time") { state.time = t.value; showError(null); renderBar(); }
       else if (t.name === "addon") { state.addons[t.value] = t.checked; renderBar(); }
@@ -746,8 +814,8 @@
     var f = $("order");
     setBusy(true);
     var payload = {
-      agency: slug, character: state.character, program: state.program, date: state.date, time: state.time,
-      kids: state.kids, addons: Object.keys(state.addons).filter(function (k) { return state.addons[k]; }), zone: state.zone,
+      agency: slug, occasion: state.occasion || "", character: state.character, program: state.program, date: state.date, time: state.time,
+      kids: state.kids, addons: addonsNow().map(function (a) { return a.id; }).filter(function (k) { return state.addons[k]; }), zone: state.zone,
       name: f.elements.name.value, phone: f.elements.phone.value, address: f.elements.address.value, comment: f.elements.comment.value,
       children: state.children, consent: f.elements.consent.checked, trap: f.elements.bp_trap.value,
       expectedTotal: (calc(state.date, state.time) || {}).total // сервер сверит: если цена успела измениться, спросим ещё раз
@@ -774,14 +842,14 @@
     fetch("api/agency.php?a=" + encodeURIComponent(slug), { cache: "no-store" }).then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d.occupancy || !d.characters) return;
-        cfg = d;
-        if (!find(cfg.characters, state.character)) state.character = cfg.characters[0].id;
-        if (!find(cfg.programs, state.program)) state.program = cfg.programs[0].id;
+        cfg = prepare(d);
+        if (!find(occList(), state.occasion)) state.occasion = occList().length ? occList()[0].id : null;
+        setOccasion(state.occasion);
         if (!find(cfg.zones, state.zone)) state.zone = cfg.zones[0].id;
         Object.keys(state.addons).forEach(function (k) { if (!find(cfg.addons, k)) delete state.addons[k]; });
         if (state.kids > cfg.kids.max) state.kids = cfg.kids.max;
         if (state.time && !(slotOf(state.date, state.time) || {}).free) state.time = null;
-        renderCharacters(); renderPrograms(); renderKids(); renderCalendar(); renderTimes(); renderAddons(); renderBar();
+        renderOccasions(); renderCharacters(); renderPrograms(); renderKids(); renderCalendar(); renderTimes(); renderAddons(); renderBar();
       }).catch(function () {});
   }
 
@@ -808,6 +876,7 @@
       : "Заявка № " + (server ? server.id : "") + (solo() ? " принята. Я перезвоню по номеру " : " у агентства. Мы перезвоним по номеру ") + f.elements.phone.value + ", чтобы подтвердить визит.";
     var kids = state.children.filter(function (c) { return c.name.trim(); }).map(function (c) { return c.name.trim() + (c.age ? ", " + c.age : ""); }).join("; ");
     var rows = [["Когда", human(state.date) + ", " + state.time]];
+    if (curOcc() && occList().length > 1) rows.unshift(["Повод", curOcc().title]);
     if (kids) rows.push(["Дети", kids]);
     rows = rows.concat(pr.lines).concat([["Итого", pr.total]]);
     $("doneSum").hidden = false;
@@ -877,17 +946,25 @@
   }
 
   /* ---------- запуск ---------- */
+  // скрытые агентством составы, программы, допы и поводы на странице не показываем;
+  // в поводах оставляем только тех, кто показан и у кого есть цена
+  function prepare(d) {
+    ["characters", "programs", "addons", "occasions"].forEach(function (k) { if (d[k]) d[k] = d[k].filter(function (x) { return !x.off; }); });
+    d.prices = d.prices || {};
+    var ci = d.characters.map(function (c) { return c.id; }), pi = d.programs.map(function (p) { return p.id; });
+    d.occasions = (d.occasions || []).map(function (oc) {
+      oc.chars = (oc.chars || []).filter(function (id) { return ci.indexOf(id) > -1; });
+      oc.progs = (oc.progs || []).filter(function (id) { return pi.indexOf(id) > -1; });
+      return oc;
+    }).filter(function (oc) { return oc.chars.length && oc.progs.length; });
+    return d;
+  }
   function init(data) {
     if (data && data.closed) { initClosed(data); return; }
-    cfg = data;
-    // скрытые агентством составы, программы и допы на странице не показываем
-    ["characters", "programs", "addons"].forEach(function (k) { if (cfg[k]) cfg[k] = cfg[k].filter(function (x) { return !x.off; }); });
+    cfg = prepare(data);
     if (cfg.demo) cfg.occupancy = demoOccupancy(cfg);
     // Метрика — только в демо: на страницах агентств данные их клиентов
     if (cfg.demo && slug === "demo") { var ms = document.createElement("script"); ms.src = "assets/metrika.js"; ms.defer = true; document.head.appendChild(ms); }
-    var popular = cfg.characters.filter(function (c) { return c.badge; })[0] || cfg.characters[0];
-    state.character = popular.id;
-    state.program = (cfg.programs[1] || cfg.programs[0]).id;
     state.zone = cfg.zones[0].id;
     // цвета агентства: кнопки и выбор — «основной», подсветка заголовка — «акцентный» (старый зелёный по умолчанию не применяем)
     var hex = /^#[0-9a-f]{6}$/i, col = cfg.colors || {}, root = document.documentElement.style;
@@ -915,7 +992,11 @@
     buildMonths();
     var t = today();
     months.forEach(function (m, i) { if (m.getFullYear() === t.getFullYear() && m.getMonth() === t.getMonth()) state.month = i; });
-    renderStatic(); renderCharacters(); renderPrograms(); renderKids(); renderCalendar(); renderTimes(); renderAddons(); renderChildren(); renderBar(); renderPriceCard();
+    // повод: из ссылки (?o=…), иначе первый, у которого есть свободные дни
+    var open = occList().filter(occOpen), want = new URLSearchParams(location.search).get("o");
+    state.occasion = (find(open, want) || open[0] || occList()[0] || {}).id || null;
+    setOccasion(state.occasion);
+    renderStatic(); renderOccasions(); renderCharacters(); renderPrograms(); renderKids(); renderCalendar(); renderTimes(); renderAddons(); renderChildren(); renderBar(); renderPriceCard();
     bind();
     history.replaceState({ step: 1 }, "");
     goStep(1, false);

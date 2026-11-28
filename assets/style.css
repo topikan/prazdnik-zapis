@@ -84,6 +84,17 @@ a.logo-link:hover .logo-name { text-decoration: underline; text-underline-offset
 @keyframes snow-far { from { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(-12px, 180px, 0); } to { transform: translate3d(0, 360px, 0); } }
 .no-anim .snow::before, .no-anim .snow::after { animation: none; }
 .no-snow .snow { display: none; }
+/* Праздник на весь год: вместо зимнего фона и снега — тёплый вечерний фон и неподвижное конфетти */
+.confetti { display: none; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='300'%3E%3Cg stroke-linecap='round' stroke-width='3' fill='none'%3E%3Cpath d='M40 60l10-6' stroke='%23D9B26A'/%3E%3Cpath d='M300 40l6 9' stroke='%23F28AA0'/%3E%3Cpath d='M210 120l11 3' stroke='%23FFFFFF'/%3E%3Cpath d='M90 200l4 10' stroke='%2388C9E8'/%3E%3Cpath d='M330 230l-9 6' stroke='%23D9B26A'/%3E%3Cpath d='M160 260l10 2' stroke='%23F28AA0'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='130' cy='40' r='3' fill='%2388C9E8'/%3E%3Ccircle cx='260' cy='180' r='2.5' fill='%23D9B26A'/%3E%3Ccircle cx='30' cy='150' r='2.5' fill='%23FFFFFF'/%3E%3Ccircle cx='240' cy='270' r='3' fill='%2388C9E8'/%3E%3Ccircle cx='350' cy='120' r='2' fill='%23F28AA0'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 360px 300px; -webkit-mask-image: linear-gradient(90deg, transparent 0, transparent 35%, #000 70%); mask-image: linear-gradient(90deg, transparent 0, transparent 35%, #000 70%); }
+.hero.theme-plain:not(.custom) { background-image: radial-gradient(ellipse at 85% 15%, rgba(217, 178, 106, .32), transparent 45%), radial-gradient(ellipse at 70% 100%, rgba(179, 32, 58, .45), transparent 55%), linear-gradient(135deg, #14213D 0%, #23224A 55%, #3A1F45 100%); }
+.hero.theme-plain .snow { display: none; }
+.hero.theme-plain:not(.custom) .confetti { display: block; }
+.hero-santa.girl { width: 430px; bottom: 6px; -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 98%); mask-image: linear-gradient(180deg, #000 70%, transparent 98%); }
+/* Выбор повода над персонажами */
+.occ-block { margin-bottom: 30px; }
+.occ-chips .chip span { min-height: 48px; padding: 0 22px; font-size: 15px; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .snow::before, .snow::after { animation: none; } }
 
 /* Кнопка «Отключить анимацию» */
@@ -311,6 +322,7 @@ a.logo-link:hover .logo-name { text-decoration: underline; text-underline-offset
   .layout { grid-template-columns: 1fr; }
   .summary { display: none; }
   .hero-santa { width: 260px; opacity: .9; }
+  .hero-santa.girl { width: 330px; }
   .date-grid { grid-template-columns: 1fr; }
   .step-actions { position: sticky; bottom: 0; z-index: 5; margin: 22px -34px -30px; padding: 12px 34px calc(14px + env(safe-area-inset-bottom)); background: var(--paper); border-top: 1px solid var(--line); border-radius: 0 0 26px 26px; box-shadow: 0 -10px 24px rgba(20, 33, 61, .08); }
   .step-actions .breakdown:not([hidden]) { display: grid; padding: 4px 0 12px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
@@ -328,6 +340,7 @@ a.logo-link:hover .logo-name { text-decoration: underline; text-underline-offset
   .wrap { padding: 0 14px; }
   .hero { padding: 12px 0 92px; }
   .hero-santa { width: 170px; right: -12px; bottom: 30px; }
+  .hero-santa.girl { width: 168px; right: -20px; bottom: 44px; }
   .hero h1 { margin: 22px 0 10px; font-size: 34px; max-width: 72%; }
   .lead { font-size: 14px; max-width: 62%; }
   .logo { font-size: 16px; gap: 9px; }

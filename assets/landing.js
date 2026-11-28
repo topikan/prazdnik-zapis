@@ -24,6 +24,7 @@
   function text(id, v) { if ($(id)) $(id).textContent = v || ""; }
 
   // v4: новый первый экран (пункты вместо подзаголовка), цена со скидкой в первые сутки, онлайн-предоплата
+  var V7_KEYS = ["heroTitle", "heroAccent", "points", "ctaNote", "priceFreeTitle", "priceFreeText", "pricePaidTitle", "pricePaidText", "faq", "finalTitle", "finalText"]; // v7: круглый год, помесячная оплата
   var V6_KEYS = ["priceFreeText", "pricePaidText", "buyButton"]; // v6: единый блок тарифов
   var V5_KEYS = ["heroBadge", "points", "pricePaidText", "faq", "finalText", "steps"]; // v5: частные аниматоры
   var V4_KEYS = ["heroBadge", "heroTitle", "heroAccent", "heroLead", "ctaNote", "points", "pricePaidTitle", "pricePaidSum", "pricePaidText", "buyButton", "priceNote", "seatsLeft", "seatsTotal", "faq", "finalText"];
@@ -39,6 +40,7 @@
     if (defaults && (+d.v || 0) < 4) V4_KEYS.forEach(function (k) { delete d[k]; });
     if (defaults && (+d.v || 0) < 5) V5_KEYS.forEach(function (k) { delete d[k]; });
     if (defaults && (+d.v || 0) < 6) V6_KEYS.forEach(function (k) { delete d[k]; });
+    if (defaults && (+d.v || 0) < 7) V7_KEYS.forEach(function (k) { delete d[k]; });
     // поля, которых нет в сохранённой версии, берём из текстов по умолчанию
     Object.keys(defaults || {}).forEach(function (k) { if (d[k] == null || d[k] === "" || (Array.isArray(d[k]) && !d[k].length)) d[k] = defaults[k]; });
     ["heroBadge", "heroTitle", "heroAccent", "ctaNote", "stepsTitle", "priceTitle", "priceFreeTitle", "priceFreeText", "pricePaidTitle", "pricePaidSum", "pricePaidText", "priceNote", "faqTitle", "finalTitle", "finalText", "footer", "footerTagline"].forEach(function (k) { text(k, d[k]); });
@@ -58,9 +60,11 @@
   }
 
   // цены и даты — из настроек сервиса, чтобы на главной всегда были актуальные
-  var dates = { "[бесплатно до]": "15 декабря", "[конец сезона]": "10 января" };
+  // метки в текстах главной: даты и цены из «Настроек сервиса»
+  var dates = { "[бесплатно до]": "15 декабря", "[конец сезона]": "10 января", "[бесплатно по]": "5 декабря", "[дней бесплатно]": "14",
+    "[цена месяц]": "1 500 ₽", "[цена месяц частник]": "700 ₽", "[цена сезон]": "5 000 ₽", "[цена сезон частник]": "2 000 ₽", "[цена сезон скидка]": "3 000 ₽", "[цена сезон скидка частник]": "1 000 ₽" };
   function sub(v) {
-    if (typeof v === "string") return v.replace(/\[(бесплатно до|конец сезона)\]/g, function (m) { return dates[m]; });
+    if (typeof v === "string") return v.replace(/\[[^\]]{3,40}\]/g, function (m) { return dates[m] == null ? m : dates[m]; });
     if (Array.isArray(v)) return v.map(sub);
     if (v && typeof v === "object") { var o = {}; Object.keys(v).forEach(function (k) { o[k] = sub(v[k]); }); return o; }
     return v;
@@ -70,8 +74,13 @@
     if (s.freeText) dates["[бесплатно до]"] = s.freeText;
     if (s.seasonText) { dates["[конец сезона]"] = s.seasonText; document.querySelectorAll(".js-season-end").forEach(function (x) { x.textContent = s.seasonText; }); }
     var rub = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
-    text("rateAgency", rub(s.priceEarly)); text("rateAgencyFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.priceFull));
-    text("rateSolo", rub(s.soloEarly)); text("rateSoloFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.soloFull));
+    if (s.freeUntilText) dates["[бесплатно по]"] = s.freeUntilText;
+    if (s.trialDays) dates["[дней бесплатно]"] = String(s.trialDays);
+    if (s.priceMonth) { dates["[цена месяц]"] = rub(s.priceMonth); dates["[цена месяц частник]"] = rub(s.soloMonth); }
+    dates["[цена сезон]"] = rub(s.priceFull); dates["[цена сезон частник]"] = rub(s.soloFull); dates["[цена сезон скидка]"] = rub(s.priceEarly); dates["[цена сезон скидка частник]"] = rub(s.soloEarly);
+    if (s.priceMonth) { text("rateAgency", rub(s.priceMonth)); text("rateSolo", rub(s.soloMonth)); }
+    text("rateAgencyFull", "Новогодний сезон — " + rub(s.priceFull) + ", или " + rub(s.priceEarly) + ", если оплатить в первые " + s.earlyHours + " ч");
+    text("rateSoloFull", "Новогодний сезон — " + rub(s.soloFull) + ", или " + rub(s.soloEarly) + ", если оплатить в первые " + s.earlyHours + " ч");
   }
   // Прелоадер — только если тексты грузятся дольше полсекунды
   var slowTimer = setTimeout(function () { document.body.classList.add("is-slow"); }, 500);

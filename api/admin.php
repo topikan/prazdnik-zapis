@@ -135,7 +135,7 @@ switch ($action) {
     case 'orders':
         $a = current_agency();
         $from = valid_date(in_str($in, 'from', (string)(date('Y-m-d'))));
-        $to = valid_date(in_str($in, 'to', (string)($a['cfg']['season']['end'])));
+        $to = valid_date(in_str($in, 'to', (string)(season_window($a['cfg'])['end'])));
         ensure_orders_paid();
         ensure_pay_tables();
         ensure_orders_source();
@@ -234,6 +234,7 @@ switch ($action) {
         $o = ['character' => $ch['id'], 'program' => $pr['id'], 'date' => $date, 'time' => $time, 'kids' => $kids, 'addons' => [], 'zone' => ''];
         $lines = [];
         if (is_numeric($in['total'] ?? null) && (string)$in['total'] !== '') $total = max(0, min(10000000, (int)$in['total']));
+        elseif (!isset($cfg['prices'][$ch['id']][$pr['id']])) fail('Для «' . $ch['title'] . '» с программой «' . $pr['title'] . '» нет цены — впишите сумму вручную');
         else { $p = calc_price($cfg, $o, 999); $total = (int)$p['total']; $lines = $p['lines']; }
         $data = ['character' => $ch['id'], 'program' => $pr['id'], 'kids' => $kids, 'addons' => [], 'zone' => '', 'children' => [], 'comment' => $comment];
         db()->prepare('INSERT INTO orders (agency_id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at, source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -469,14 +470,14 @@ switch ($action) {
         $cred = owner_cred();
         if (!$cred) fail('Онлайн-оплата пока не подключена. Напишите владельцу сервиса.');
         $b = billing_state($a);
-        if (in_array($b['status'] ?? '', ['paid', 'demo'], true) || (string)$a['paid_until'] >= billing_settings()['seasonEnd']) fail('Сезон уже оплачен');
+        if (($b['status'] ?? '') === 'demo' || (($b['status'] ?? '') === 'paid' && ($b['daysLeft'] ?? 0) > 3)) fail('Доступ уже оплачен по ' . ru_date((string)$a['paid_until']));
         rate_limit('substart', 10, 3600, 'a' . (int)$a['id']);
         $price = billing_price($a);
         ensure_pay_tables();
         $pp = db()->prepare("SELECT conf_url FROM payments WHERE kind = 'sub' AND agency_id = ? AND status = 'pending' AND amount = ? AND shop = ? AND created_at > ? ORDER BY created_at DESC LIMIT 1");
         $pp->execute([(int)$a['id'], $price['amount'], $cred['shop'], date('Y-m-d H:i:s', time() - 1800)]);
         if ($url = $pp->fetchColumn()) json_out(['url' => $url]);
-        $desc = 'Аниматорская Система: доступ на сезон до ' . ru_date(billing_settings()['seasonEnd']) . ', ' . $a['slug'];
+        $desc = 'Аниматорская Система: доступ ' . ($price['season'] ? 'на новогодний сезон' : 'на месяц') . ' до ' . ru_date($price['until']) . ', ' . $a['slug'];
         $r = yk_create('sub', $cred, (int)$a['id'], 0, $price['amount'], $desc, site_url() . '/admin/?paid=1',
             $cred['receipt'] ? receipt_for($desc, $price['amount'], '', (string)($a['email'] ?? ''), 'full_payment') : null);
         if (isset($r['error'])) fail($r['error'], 502);
@@ -602,7 +603,7 @@ switch ($action) {
         foreach (['telegram', 'heroBadge', 'heroTitle', 'heroAccent', 'regButton', 'ctaNote', 'demoButton', 'contactButton', 'loginLink', 'stepsTitle',
             'priceTitle', 'priceFreeTitle', 'priceFreeText', 'pricePaidTitle', 'pricePaidSum', 'pricePaidText', 'buyButton', 'priceNote',
             'faqTitle', 'finalTitle', 'finalText', 'finalDemoButton', 'finalContactButton', 'footer', 'footerTagline', 'demoSlug'] as $k) $out[$k] = $clean($d[$k] ?? '', 600);
-        $out['v'] = 6;
+        $out['v'] = 7;
         foreach (['points' => ['title'], 'steps' => ['title', 'text'], 'faq' => ['q', 'a']] as $list => $keys) {
             $out[$list] = [];
             foreach (array_slice((array)($d[$list] ?? []), 0, 20) as $row) { $r = []; foreach ($keys as $k) $r[$k] = $clean($row[$k] ?? '', 1000); if (implode('', $r) !== '') $out[$list][] = $r; }
@@ -614,10 +615,11 @@ switch ($action) {
     case 'agencies':
         need_super();
         $rows = [];
-        foreach (db()->query('SELECT a.id, a.slug, a.config, a.active, a.created_at, a.paid_until, a.trial_until, a.email, (SELECT COUNT(*) FROM orders o WHERE o.agency_id = a.id) AS orders_count, (SELECT login FROM users u WHERE u.agency_id = a.id LIMIT 1) AS login FROM agencies a ORDER BY a.id DESC') as $r) {
+        foreach (db()->query('SELECT a.id, a.slug, a.config, a.active, a.created_at, a.paid_until, a.trial_until, a.email, a.kind, (SELECT COUNT(*) FROM orders o WHERE o.agency_id = a.id) AS orders_count, (SELECT login FROM users u WHERE u.agency_id = a.id LIMIT 1) AS login FROM agencies a ORDER BY a.id DESC') as $r) {
             $cfg = json_decode($r['config'], true) ?: [];
             $r['cfg'] = $cfg;
-            $rows[] = ['billing' => billing_state($r), 'phone' => $cfg['phone'] ?? '', 'email' => $r['email'], 'id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'kind' => $r['kind'] ?? 'agency', 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
+            $np = billing_price($r);
+            $rows[] = ['next' => ['until' => $np['until'], 'amount' => $np['amount'], 'season' => $np['season']], 'billing' => billing_state($r), 'phone' => $cfg['phone'] ?? '', 'email' => $r['email'], 'id' => (int)$r['id'], 'slug' => $r['slug'], 'name' => $cfg['name'] ?? $r['slug'], 'city' => $cfg['city'] ?? '', 'demo' => !empty($cfg['demo']), 'kind' => $r['kind'] ?? 'agency', 'legal' => trim((string)($cfg['legal']['operator'] ?? '')) !== '' && trim((string)($cfg['legal']['inn'] ?? '')) !== '', 'active' => (bool)$r['active'], 'orders' => (int)$r['orders_count'], 'login' => $r['login'], 'created' => $r['created_at']];
         }
         json_out(['agencies' => $rows]);
 
@@ -662,7 +664,7 @@ switch ($action) {
         setting_set('reg', ['open' => !empty($in['reg']['open']), 'manual' => !empty($in['reg']['manual'])]);
         setting_set('ownerbackup', ['tg' => !empty($bk['tg']), 'email' => !empty($bk['email']), 'password' => $pw]);
         $nums = [];
-        foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720], 'soloEarly' => [100, 1000000], 'soloFull' => [100, 1000000]] as $k => $r) {
+        foreach (BILLING_NUMS as $k => $r) {
             $v = $bl[$k] ?? billing_settings()[$k];   // не прислали — оставляем как было
             if (!is_numeric($v) || (int)$v < $r[0] || (int)$v > $r[1]) fail('Проверьте цены и срок скидки');
             $nums[$k] = (int)$v;

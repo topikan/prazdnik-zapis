@@ -54,7 +54,19 @@ if (!find_item($cfg['zones'], $o['zone'])) fail('Выберите, куда ех
 if ($o['kids'] < 1 || $o['kids'] > (int)$cfg['kids']['max']) fail('Неверное количество детей');
 $known = array_column(array_filter($cfg['addons'] ?? [], function ($x) { return empty($x['off']); }), 'id'); // скрытые допы не принимаются
 $o['addons'] = array_values(array_unique(array_intersect($o['addons'], $known)));
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || !checkdate((int)substr($o['date'], 5, 2), (int)substr($o['date'], 8, 2), (int)substr($o['date'], 0, 4)) || $o['date'] < $cfg['season']['start'] || $o['date'] > $cfg['season']['end']) fail('Эта дата недоступна');
+$sw = season_window($cfg);
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $o['date']) || !checkdate((int)substr($o['date'], 5, 2), (int)substr($o['date'], 8, 2), (int)substr($o['date'], 0, 4)) || $o['date'] < $sw['start'] || $o['date'] > $sw['end']) fail('Эта дата недоступна');
+// Повод: персонаж и программа должны быть из него, дата — в его днях
+$ocn = null;
+if ($vis = visible_occasions($cfg)) {
+    $ocn = find_item($vis, in_str($in, 'occasion'));
+    if (!$ocn && count($vis) === 1) $ocn = $vis[0];
+    if (!$ocn) fail('Выберите повод праздника');
+    if (!in_array($o['character'], $ocn['chars'], true) || !in_array($o['program'], $ocn['progs'], true)) fail('Этот вариант недоступен для повода «' . $ocn['title'] . '», выберите другой');
+    if (!occasion_has_date($ocn, $o['date'])) fail('На эту дату повод «' . $ocn['title'] . '» недоступен');
+    if (!empty($ocn['addons'])) $o['addons'] = array_values(array_intersect($o['addons'], $ocn['addons']));
+}
+if (!isset($cfg['prices'][$o['character']][$o['program']])) fail('Этот вариант сейчас недоступен, выберите другой');
 if (!in_array($o['time'], slot_times($cfg, $o['date']), true)) fail('Это время недоступно');
 $lead = max(0, min(72, (int)($cfg['leadHours'] ?? 3)));
 if (agency_ts($cfg, $o['date'], $o['time']) < time() + $lead * 3600)
@@ -99,7 +111,7 @@ try {
         if (is_mysql()) $pdo->rollBack(); else $pdo->exec('ROLLBACK');
         json_out(['error' => 'Пока вы заполняли форму, цена на это время изменилась: теперь ' . number_format((int)$price['total'], 0, '', ' ') . ' ₽. Проверьте итог внизу и нажмите «Заказать» ещё раз.', 'priceChanged' => true, 'total' => $price['total']], 409);
     }
-    $data = ['character' => $o['character'], 'program' => $o['program'], 'kids' => $o['kids'], 'addons' => $o['addons'], 'zone' => $o['zone'], 'children' => $children, 'comment' => $comment];
+    $data = ($ocn ? ['occasion' => $ocn['id']] : []) + ['character' => $o['character'], 'program' => $o['program'], 'kids' => $o['kids'], 'addons' => $o['addons'], 'zone' => $o['zone'], 'children' => $children, 'comment' => $comment];
     // токен для онлайн-предоплаты: знает только этот клиент, в базе хранится его хеш
     $payToken = bin2hex(random_bytes(24));
     $pdo->prepare('INSERT INTO orders (agency_id, visit_date, visit_time, span, data, name, phone, address, total, price_lines, status, created_at, pay_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -122,5 +134,5 @@ if (random_int(1, 20) === 1) {
 // Ответ клиенту сразу, уведомления агентству — после, чтобы не задерживать страницу
 $prepay = prepay_online($a) ? prepay_amount($cfg, (int)$price['total']) : 0;
 respond_early(['ok' => true, 'id' => $id, 'total' => $price['total'], 'lines' => $price['lines'], 'payToken' => $prepay > 0 ? $payToken : '', 'prepay' => $prepay]);
-try { notify_order($a, $id, $o, (int)$price['total']); } catch (Throwable $e) { error_log('notify: ' . $e->getMessage()); }
+try { notify_order($a, $id, $o + ['occasion' => $ocn['title'] ?? ''], (int)$price['total']); } catch (Throwable $e) { error_log('notify: ' . $e->getMessage()); }
 exit;

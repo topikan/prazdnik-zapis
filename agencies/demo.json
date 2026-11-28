@@ -20,7 +20,8 @@
   "timezone": "Europe/Moscow",
   "season": {
     "start": "2026-12-01",
-    "end": "2027-01-10"
+    "end": "2027-11-30",
+    "ahead": 365
   },
   "hours": {
     "from": "10:00",
@@ -51,6 +52,19 @@
       "title": "Дед Мороз, Снегурочка и Снеговик",
       "note": "Для компании от 5 детей",
       "icon": "trio"
+    },
+    {
+      "id": "anim",
+      "title": "Аниматор",
+      "note": "Любой персонаж на выбор: пират, фея, супергерой",
+      "icon": "party"
+    },
+    {
+      "id": "hero2",
+      "title": "Два аниматора",
+      "note": "Для компании от 8 детей",
+      "icon": "pair",
+      "badge": "Чаще всего выбирают"
     }
   ],
   "programs": [
@@ -74,6 +88,27 @@
       "minutes": 60,
       "note": "Конкурсы, дискотека, шоу",
       "icon": "ball"
+    },
+    {
+      "id": "bday",
+      "title": "День рождения",
+      "minutes": 60,
+      "note": "Игры, конкурсы, поздравление именинника",
+      "icon": "cake"
+    },
+    {
+      "id": "quest",
+      "title": "Квест с поиском клада",
+      "minutes": 90,
+      "note": "Загадки, карта, сундук с сюрпризом",
+      "icon": "star"
+    },
+    {
+      "id": "show",
+      "title": "Шоу мыльных пузырей",
+      "minutes": 30,
+      "note": "Гигантские пузыри, ребёнок внутри пузыря",
+      "icon": "balloon"
     }
   ],
   "prices": {
@@ -91,6 +126,16 @@
       "express": 4000,
       "classic": 5500,
       "big": 8500
+    },
+    "anim": {
+      "bday": 4000,
+      "quest": 5500,
+      "show": 3500
+    },
+    "hero2": {
+      "bday": 6500,
+      "quest": 8000,
+      "show": 5000
     }
   },
   "dateRules": [
@@ -172,6 +217,20 @@
       "note": "10 минут в конце программы",
       "price": 2000,
       "icon": "bubbles"
+    },
+    {
+      "id": "cakeup",
+      "title": "Вынос торта с фейерверком",
+      "note": "Холодные искры и песня",
+      "price": 1000,
+      "icon": "cake"
+    },
+    {
+      "id": "balloons",
+      "title": "Шары и фотозона",
+      "note": "Гелиевые шары и фон для фото",
+      "price": 3000,
+      "icon": "balloon"
     }
   ],
   "zones": [
@@ -201,6 +260,51 @@
       "freeShareAtMost": 0.25,
       "plus": 0.2,
       "label": "Последнее свободное окно на это время"
+    }
+  ],
+  "occasions": [
+    {
+      "id": "ny",
+      "title": "Новый год",
+      "from": "01.12",
+      "to": "15.01",
+      "winter": true,
+      "chars": [
+        "dm",
+        "dms",
+        "dmsx"
+      ],
+      "progs": [
+        "express",
+        "classic",
+        "big"
+      ],
+      "addons": [
+        "gift",
+        "photo",
+        "letter",
+        "sweet"
+      ]
+    },
+    {
+      "id": "dr",
+      "title": "День рождения",
+      "from": "",
+      "to": "",
+      "chars": [
+        "anim",
+        "hero2"
+      ],
+      "progs": [
+        "bday",
+        "quest",
+        "show"
+      ],
+      "addons": [
+        "sweet",
+        "cakeup",
+        "balloons"
+      ]
     }
   ]
 }

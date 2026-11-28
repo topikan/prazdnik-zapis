@@ -3,7 +3,9 @@
 // Даты храним строками ГГГГ-ММ-ДД: одинаково в MySQL и SQLite.
 declare(strict_types=1);
 
-const BILLING_DEFAULTS = ['freeEnd' => '2026-12-15', 'seasonEnd' => '2027-01-10', 'graceDays' => 3, 'trialDays' => 3, 'priceEarly' => 3000, 'priceFull' => 5000, 'earlyHours' => 24, 'soloEarly' => 1000, 'soloFull' => 2000];
+// Оплата помесячная. Новогодний сезон (freeEnd — seasonEnd) дороже: цена сезона, со скидкой в первые часы после регистрации.
+// Новым агентствам — trialDays бесплатных дней с регистрации, в любой месяц года.
+const BILLING_DEFAULTS = ['freeEnd' => '2026-12-15', 'seasonEnd' => '2027-01-10', 'graceDays' => 3, 'trialDays' => 14, 'priceEarly' => 3000, 'priceFull' => 5000, 'earlyHours' => 24, 'soloEarly' => 1000, 'soloFull' => 2000, 'priceMonth' => 1500, 'soloMonth' => 700];
 
 // Колонки оплаты и регистрации у агентств; в старых базах добавляются при первом обращении
 function ensure_billing_cols(): void {
@@ -23,22 +25,33 @@ function billing_settings(): array {
     $s = setting_get('billing') ?: [];
     $o = BILLING_DEFAULTS;
     foreach (['freeEnd', 'seasonEnd'] as $k) if (!empty($s[$k]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$s[$k])) $o[$k] = $s[$k];
-    foreach (['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720], 'soloEarly' => [100, 1000000], 'soloFull' => [100, 1000000]] as $k => $r) if (isset($s[$k]) && is_numeric($s[$k]) && $s[$k] >= $r[0] && $s[$k] <= $r[1]) $o[$k] = (int)$s[$k];
+    foreach (BILLING_NUMS as $k => $r) if (isset($s[$k]) && is_numeric($s[$k]) && $s[$k] >= $r[0] && $s[$k] <= $r[1]) $o[$k] = (int)$s[$k];
     return $o;
 }
 
-// Цена сезона для агентства: в первые сутки после регистрации — со скидкой, потом полная.
+const BILLING_NUMS = ['priceEarly' => [100, 1000000], 'priceFull' => [100, 1000000], 'earlyHours' => [1, 720], 'soloEarly' => [100, 1000000], 'soloFull' => [100, 1000000],
+    'priceMonth' => [100, 1000000], 'soloMonth' => [100, 1000000], 'trialDays' => [1, 60]];
+
+// Что агентство оплачивает следующим: если следующий неоплаченный день попадает в новогодний сезон — сезон целиком
+// (в первые часы после регистрации — со скидкой), иначе — месяц.
 // Считается только здесь, на сервере: сумму из браузера не принимаем никогда.
 function billing_price(array $a, ?int $now = null): array {
     $now = $now ?? time();
     $s = billing_settings();
     $created = strtotime((string)($a['created_at'] ?? '')) ?: $now;
     $until = $created + $s['earlyHours'] * 3600;
-    $early = $now < $until;
     $solo = is_solo($a);
     $pe = $solo ? $s['soloEarly'] : $s['priceEarly']; $pf = $solo ? $s['soloFull'] : $s['priceFull'];
-    return ['amount' => $early ? $pe : $pf, 'early' => $early, 'priceEarly' => $pe, 'priceFull' => $pf, 'solo' => $solo,
-        'earlyUntil' => date('Y-m-d H:i', $until), 'earlyLeft' => max(0, $until - $now), 'earlyHours' => $s['earlyHours']];
+    $pm = $solo ? $s['soloMonth'] : $s['priceMonth'];
+    // первый день, за который ещё не заплачено
+    $st = billing_state($a, date('Y-m-d', $now));
+    $from = max(date('Y-m-d', $now), day_add((string)($st['lastDay'] ?? date('Y-m-d', $now)), 1));
+    $season = ($from >= $s['freeEnd'] && $from <= $s['seasonEnd']) || ($from < $s['freeEnd'] && day_add($from, 30) >= $s['freeEnd']);
+    $early = $season && $now < $until;
+    $periodEnd = $season ? $s['seasonEnd'] : day_add((new DateTime($from))->modify('+1 month')->format('Y-m-d'), -1);
+    return ['amount' => $season ? ($early ? $pe : $pf) : $pm, 'season' => $season, 'early' => $early, 'priceEarly' => $pe, 'priceFull' => $pf, 'priceMonth' => $pm, 'solo' => $solo,
+        'from' => $from, 'until' => $periodEnd,
+        'earlyUntil' => date('Y-m-d H:i', $until), 'earlyLeft' => $season ? max(0, $until - $now) : 0, 'earlyHours' => $s['earlyHours']];
 }
 // Через DateTime: строку вида «2026-12-15 -1 day» strtotime читает как часовой пояс −1 и ошибается на два дня
 function day_add(string $d, int $n): string { return (new DateTime($d))->modify(($n >= 0 ? '+' : '') . $n . ' day')->format('Y-m-d'); }
@@ -86,11 +99,11 @@ function billing_closed(array $a): bool { return (billing_state($a)['status'] ??
 
 function is_solo(array $a): bool { return ($a['kind'] ?? 'agency') === 'solo'; }
 
-// Пробный период для зарегистрированных после окончания бесплатного: сегодня и ещё 2 дня
+// Пробный период: trialDays дней с регистрации (сегодня — первый). Если общий бесплатный период длиннее — действует он (см. billing_state).
 function trial_for_new(?string $today = null): string {
     $today = $today ?? date('Y-m-d');
     $s = billing_settings();
-    return $today >= $s['freeEnd'] ? day_add($today, $s['trialDays'] - 1) : '';
+    return day_add($today, $s['trialDays'] - 1);
 }
 
 // Адреса, которые нельзя занять агентству: они нужны самому сайту

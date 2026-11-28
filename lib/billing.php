@@ -43,6 +43,18 @@ function billing_price(array $a, ?int $now = null): array {
 // Через DateTime: строку вида «2026-12-15 -1 day» strtotime читает как часовой пояс −1 и ошибается на два дня
 function day_add(string $d, int $n): string { return (new DateTime($d))->modify(($n >= 0 ? '+' : '') . $n . ' day')->format('Y-m-d'); }
 function days_between(string $a, string $b): int { return (int)(new DateTime($a))->diff(new DateTime($b))->format('%r%a'); }
+// Метки дат в текстах главной: на их место главная подставляет даты из «Настроек сервиса».
+// Тексты, сохранённые раньше с датами «15 декабря» и «10 января», переводятся на метки — тогда смена дат в настройках меняет и их.
+const DATE_TOKENS = ['15 декабря' => '[бесплатно до]', '10 января' => '[конец сезона]'];
+function landing_tokens($v) {
+    if (is_string($v)) return strtr($v, DATE_TOKENS);
+    if (is_array($v)) { foreach ($v as $k => $x) $v[$k] = landing_tokens($x); }
+    return $v;
+}
+function ru_day_month(string $d): string {
+    $m = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    return preg_match('/^\d{4}-(\d{2})-(\d{2})$/', $d, $x) ? (int)$x[2] . ' ' . $m[(int)$x[1] - 1] : '';
+}
 function ru_date(string $d): string { return preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? substr($d, 8, 2) . '.' . substr($d, 5, 2) . '.' . substr($d, 0, 4) : ''; }
 
 // Состояние оплаты агентства:

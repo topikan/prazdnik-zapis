@@ -962,9 +962,9 @@
   var siteEd = {}, siteData = null;
   var SITE_FIELDS = [
     ["Первый экран", [["heroBadge", "Плашка над заголовком"], ["heroTitle", "Заголовок, белая часть"], ["heroAccent", "Заголовок, золотая строка"], ["regButton", "Кнопка регистрации"], ["demoButton", "Кнопка демо"], ["ctaNote", "Строка под кнопками"]]],
-    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidTitle", "Платно: когда"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка тарифа «Агентство»"], ["priceNote", "Строка под карточками", "area"]]],
+    ["Сколько стоит", [["priceTitle", "Заголовок"], ["priceFreeTitle", "Бесплатно: когда"], ["priceFreeText", "Бесплатно: текст", "area"], ["pricePaidText", "Платно: текст", "area"], ["buyButton", "Кнопка тарифа «Агентство»"], ["priceNote", "Строка под карточками", "area"]]],
     ["Заголовки блоков", [["stepsTitle", "Заголовок шагов"], ["faqTitle", "Заголовок вопросов"]]],
-    ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalDemoButton", "Кнопка демо"], ["finalContactButton", "Кнопка Telegram"]]],
+    ["Баннер внизу", [["finalTitle", "Заголовок"], ["finalText", "Текст", "area"], ["finalContactButton", "Кнопка Telegram"]]],
     ["Ссылки и подвал", [["telegram", "Telegram (https://t.me/...)"], ["demoSlug", "Адрес демо-агентства"], ["footer", "Строка слева в подвале"], ["footerTagline", "Строка справа в подвале"]]]
   ];
   function loadSite() {
@@ -990,7 +990,7 @@
       siteData = d;
       var root = $("siteForm");
       // Каждая группа свёрнута и показывает, что сейчас на сайте; поля — по нажатию
-      root.innerHTML = SITE_FIELDS.map(function (g) {
+      root.innerHTML = '<div class="card site-hint"><p><b>Даты подставляются сами.</b> Пишите в текстах <code>[бесплатно до]</code> и <code>[конец сезона]</code> — на главной там будут даты из «Агентства» → «Настройки сервиса» (первый платный день и конец сезона). Поменяете дату там — она поменяется во всех текстах.</p></div>' + SITE_FIELDS.map(function (g) {
         var prev = g[1].map(function (f) { return d[f[0]]; }).filter(Boolean).slice(0, 2).join(" · ");
         return '<details class="card fold"><summary><span class="fold-t">' + esc(g[0]) + '</span><span class="fold-p">' + esc(prev) + '</span><span class="fold-btn">Изменить</span></summary><div class="fields">' + g[1].map(function (f) {
           var v = esc(d[f[0]] || "");

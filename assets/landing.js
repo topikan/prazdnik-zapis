@@ -55,35 +55,32 @@
     document.querySelectorAll('a.shot-cta').forEach(function (a) { a.href = demoHref; });
     $("steps").innerHTML = (d.steps || []).map(function (x) { return "<li><b>" + esc(x.title) + "</b><span>" + esc(x.text) + "</span></li>"; }).join("");
     $("faq").innerHTML = (d.faq || []).map(function (x) { return "<details><summary>" + esc(x.q) + "</summary><p>" + esc(x.a) + "</p></details>"; }).join("");
-    fixSeason();
   }
 
-  // дата конца сезона из настроек: подставляем вместо «10 января» во всех текстах цен и вопросов
-  var seasonText = "";
-  var GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
-  function fixSeason() {
-    if (!seasonText || seasonText === "10 января") return;
-    ["price", "faq-block", "contacts", "how"].forEach(function (id) {
-      var root = $(id); if (!root) return;
-      var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n;
-      while ((n = w.nextNode())) if (n.nodeValue.indexOf("10 января") > -1) n.nodeValue = n.nodeValue.split("10 января").join(seasonText);
-    });
+  // цены и даты — из настроек сервиса, чтобы на главной всегда были актуальные
+  var dates = { "[бесплатно до]": "15 декабря", "[конец сезона]": "10 января" };
+  function sub(v) {
+    if (typeof v === "string") return v.replace(/\[(бесплатно до|конец сезона)\]/g, function (m) { return dates[m]; });
+    if (Array.isArray(v)) return v.map(sub);
+    if (v && typeof v === "object") { var o = {}; Object.keys(v).forEach(function (k) { o[k] = sub(v[k]); }); return o; }
+    return v;
   }
-  // цены — из настроек сервиса, чтобы на главной всегда были актуальные
-  getJson("api/service.php").then(function (s) {
+  function applyService(s) {
     if (!s || !s.priceEarly) return;
-    var m = /^(\d{2})\.(\d{2})\./.exec(s.seasonEnd || "");
-    if (m) { seasonText = (+m[1]) + " " + GEN[+m[2] - 1]; fixSeason(); }
+    if (s.freeText) dates["[бесплатно до]"] = s.freeText;
+    if (s.seasonText) { dates["[конец сезона]"] = s.seasonText; document.querySelectorAll(".js-season-end").forEach(function (x) { x.textContent = s.seasonText; }); }
     var rub = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽"; };
     text("rateAgency", rub(s.priceEarly)); text("rateAgencyFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.priceFull));
     text("rateSolo", rub(s.soloEarly)); text("rateSoloFull", "если оплатить в первые " + s.earlyHours + " ч, потом " + rub(s.soloFull));
-  }).catch(function () {});
+  }
   // Прелоадер — только если тексты грузятся дольше полсекунды
   var slowTimer = setTimeout(function () { document.body.classList.add("is-slow"); }, 500);
   function loaded() { clearTimeout(slowTimer); document.body.classList.remove("is-loading", "is-slow"); }
   // Сначала тексты из админки (сервер), недостающие — из текстов по умолчанию
+  // сначала даты из настроек, потом тексты: метки [бесплатно до] и [конец сезона] заменяются датами
+  var service = getJson("api/service.php").then(applyService).catch(function () {});
   getJson("assets/landing.json").then(function (defaults) {
-    return getJson("api/site.php").then(function (d) { if (!d || !d.heroTitle) throw new Error("empty"); render(d, defaults); })
-      .catch(function () { render(JSON.parse(JSON.stringify(defaults)), null); });
+    return service.then(function () { return getJson("api/site.php"); }).then(function (d) { if (!d || !d.heroTitle) throw new Error("empty"); render(sub(d), sub(defaults)); })
+      .catch(function () { render(sub(JSON.parse(JSON.stringify(defaults))), null); });
   }).catch(function (e) { if (window.console) console.error(e); }).then(loaded);
 })();

@@ -589,7 +589,7 @@ switch ($action) {
     case 'site_get':
         need_super();
         $l = setting_get('landing');
-        json_out(['landing' => $l ? rebrand($l) : null]);
+        json_out(['landing' => $l ? landing_tokens(rebrand($l)) : null]);
 
     case 'site_save':
         need_super();

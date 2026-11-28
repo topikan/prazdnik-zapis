@@ -11,6 +11,7 @@ json_out([
     'telegram' => preg_match('#^https://[^\s<>"]+$#', (string)($land['telegram'] ?? '')) ? $land['telegram'] : 'https://t.me/rodionfrontend',
     'email' => (string)((setting_get('owner') ?: [])['email'] ?? ''),
     'freeEnd' => ru_date($b['freeEnd']), 'seasonEnd' => ru_date($b['seasonEnd']),
+    'freeText' => ru_day_month($b['freeEnd']), 'seasonText' => ru_day_month($b['seasonEnd']),
     'price' => (string)($land['pricePaidSum'] ?? '3 000 ₽'),
     'priceEarly' => $b['priceEarly'], 'priceFull' => $b['priceFull'], 'earlyHours' => $b['earlyHours'], 'soloEarly' => $b['soloEarly'], 'soloFull' => $b['soloFull'],
     'regOpen' => ($reg['open'] ?? true) !== false,

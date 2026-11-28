@@ -607,3 +607,6 @@ button.fn { cursor: pointer; } button.fn:hover { border-color: rgba(0, 0, 0, .25
 @media (prefers-reduced-motion: reduce) { .pl-arc { animation-duration: 3s; } .pl-core, .pl-text::after { animation: none; } }
 .page-loader { position: fixed; inset: 0; z-index: 90; }
 .site-hint p { margin: 0; font-size: 14px; } .site-hint code { background: var(--soft); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
+/* Safari растягивает выпадающий список по самому длинному варианту — ограничиваем шириной колонки */
+.fields > label, .fields > div, label { min-width: 0; }
+select { max-width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

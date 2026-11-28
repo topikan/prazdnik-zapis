@@ -218,13 +218,8 @@
     });
     // своя картинка первого экрана; наш Дед Мороз тогда не нужен
     var IMG_RE = /^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/, dz = cfg.design || {};
-    if (IMG_RE.test(cfg.heroImage || "")) {
-      var hero = $("hero"); hero.classList.add("custom"); hero.style.backgroundImage = "url(" + cfg.heroImage + ")";
-    }
-    // персонаж на первом экране: свой, стандартный или никакого
-    var person = $("heroSanta");
-    if (dz.personOff) person.hidden = true;
-    else if (IMG_RE.test(cfg.heroPerson || "")) { person.src = cfg.heroPerson; person.classList.add("own"); }
+    // фон и персонаж первого экрана ставит applyTheme: они зависят от повода
+    if (dz.personOff) $("heroSanta").hidden = true;
     // картинка в баннере
     var bimg = document.querySelector(".banner-img");
     if (bimg) { if (dz.bannerImgOff) bimg.hidden = true; else if (IMG_RE.test(cfg.bannerImage || "")) bimg.src = cfg.bannerImage; }
@@ -247,9 +242,17 @@
   function isWinter() { var l = occList(); if (!l.length) return true; var oc = curOcc(); return !!(oc && oc.winter); }
   function applyTheme() {
     var w = isWinter(), dz = cfg.design || {}, T = cfg.texts || {}, hero = $("hero"), person = $("heroSanta");
+    var IMG_RE = /^uploads\/heroes\/[a-z0-9-]+\.(webp|png|jpe?g)$/;
+    // свои картинки первого экрана: везде или (по галочке) только у зимних поводов
+    var own = w || !dz.ownWinterOnly;
+    var bg = own && IMG_RE.test(cfg.heroImage || "");
+    hero.classList.toggle("custom", bg); hero.style.backgroundImage = bg ? "url(" + cfg.heroImage + ")" : "";
+    var ownPerson = own && IMG_RE.test(cfg.heroPerson || "");
+    person.classList.toggle("own", ownPerson);
     hero.classList.toggle("theme-plain", !w);
     if (window.bpSnowMode) window.bpSnowMode(w ? dz.snow : "off");
-    if (!person.classList.contains("own")) { person.src = w ? "assets/img/santa.webp" : "assets/img/girl.webp"; person.classList.toggle("girl", !w); }
+    if (ownPerson) { person.src = cfg.heroPerson; person.classList.remove("girl"); }
+    else { person.src = w ? "assets/img/santa.webp" : "assets/img/girl.webp"; person.classList.toggle("girl", !w); }
     if (!T.heroTitle) $("tHeroTitle").textContent = w ? "Дед Мороз" : "Праздник";
     $("childHint").textContent = w ? "Дед Мороз обратится к детям по именам" : "Аниматор обратится к детям по именам";
     var hl = ($("tHeroTitle").textContent + $("tHeroAccent").textContent).length;

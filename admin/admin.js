@@ -697,7 +697,8 @@
         '<label class="logo-link-f">Ссылка с логотипа, например ваш сайт или соцсеть<input data-path="logoLink" type="text" placeholder="https://" value="' + esc(cfg.logoLink || "") + '"></label></div>' +
       '<div><h3>Фон первого экрана</h3><p class="muted">Своя фотография вместо общей зимней картинки. Лучше горизонтальная, от 1600 px в ширину.</p>' + imgBox("hero", "", cfg.heroImage) + "</div>" +
       '<div><h3>Персонаж на первом экране</h3><p class="muted">Картинка справа от заголовка. Лучше PNG без фона, вертикальная.</p>' + imgBox("person", "", cfg.heroPerson) +
-      '<label class="row"><input type="checkbox" data-path="design.personOff"' + (D.personOff ? " checked" : "") + "> Не показывать персонажа</label></div>" +
+      '<label class="row"><input type="checkbox" data-path="design.personOff"' + (D.personOff ? " checked" : "") + "> Не показывать персонажа</label>" +
+      '<label class="row"><input type="checkbox" data-path="design.ownWinterOnly"' + (D.ownWinterOnly ? " checked" : "") + "> Мои фон и персонаж — только для зимних поводов (у остальных — стандартное праздничное оформление)</label></div>" +
       '<div><h3>Картинка в баннере</h3><p class="muted">Справа в баннере внизу страницы. Лучше PNG без фона.</p>' + imgBox("bimg", "", cfg.bannerImage) +
       '<label class="row"><input type="checkbox" data-path="design.bannerImgOff"' + (D.bannerImgOff ? " checked" : "") + "> Не показывать картинку в баннере</label></div>" +
       "</div>" +

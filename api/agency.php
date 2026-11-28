@@ -30,6 +30,16 @@ if ($a['slug'] === 'demo' && !setting_get('demo_occasions')) {
     $a['cfg'] = $c;
     setting_set('demo_occasions', ['at' => date('c')]);
 }
+// Демо, второй шаг: зимние фото первого экрана — только у Нового года, баннер — для любого праздника
+if ($a['slug'] === 'demo' && !setting_get('demo_occasions2')) {
+    $c = $a['cfg'];
+    $c['design'] = (is_array($c['design'] ?? null) ? $c['design'] : []) + ['ownWinterOnly' => true];
+    $c['design']['ownWinterOnly'] = true;
+    if (mb_strpos((string)($c['banner']['title'] ?? ''), 'Новый год') !== false) $c['banner'] = ['title' => 'Подарите ребёнку настоящий праздник!', 'text' => 'Забронируйте праздник — мы приедем к вам домой.', 'button' => 'Забронировать праздник', 'link' => (string)($c['banner']['link'] ?? '')];
+    db()->prepare('UPDATE agencies SET config = ? WHERE id = ?')->execute([json_encode($c, JSON_UNESCAPED_UNICODE), (int)$a['id']]);
+    $a['cfg'] = $c;
+    setting_set('demo_occasions2', ['at' => date('c')]);
+}
 $cfg = $a['cfg'];
 unset($cfg['telegram'], $cfg['notify'], $cfg['backup']); // служебное: почта и пароль копий посетителям не показываются
 if (billing_closed($a) && !$preview) {

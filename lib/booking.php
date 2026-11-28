@@ -327,6 +327,7 @@ function normalize_config(array $c, array &$err): array {
     // оформление: показывать ли персонажа и картинку баннера, снег и кнопку «Отключить анимацию»
     $dz = is_array($c['design'] ?? null) ? $c['design'] : [];
     $o['design'] = ['personOff' => !empty($dz['personOff']), 'bannerImgOff' => !empty($dz['bannerImgOff']), 'snow' => in_array($dz['snow'] ?? '', ['button', 'on', 'off'], true) ? $dz['snow'] : 'button'];
+    if (!empty($dz['ownWinterOnly'])) $o['design']['ownWinterOnly'] = true; // свои фон и персонаж — только у зимних поводов
     // Предоплата: кнопка со ссылкой агентства после заявки; деньги идут агентству напрямую
     $pay = is_array($c['payment'] ?? null) ? $c['payment'] : [];
     $mode = ($pay['mode'] ?? 'link') === 'yookassa' ? 'yookassa' : 'link';
